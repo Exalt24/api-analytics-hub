@@ -1,0 +1,99 @@
+/*
+ * Deliberately small. The brief says backend quality matters more than design and
+ * asks for a clean, functional front end that a professional design can replace,
+ * so this is a readable neutral skin built from CSS custom properties: reskinning
+ * means overriding the tokens, not rewriting components.
+ */
+:root {
+  --bg: #ffffff;
+  --fg: #14161a;
+  --muted: #667085;
+  --line: #e4e7ec;
+  --card: #f9fafb;
+  --accent: #1f6feb;
+  --bad: #b42318;
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --fg: #e6e8eb;
+    --muted: #98a2b3;
+    --line: #242830;
+    --card: #161a21;
+    --accent: #4c8dff;
+    --bad: #f97066;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+
+.top {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  align-items: flex-end; justify-content: space-between;
+  border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 24px;
+}
+h1 { font-size: 24px; margin: 0; }
+h2 { font-size: 16px; margin: 32px 0 12px; }
+.sub { color: var(--muted); margin: 4px 0 0; font-size: 13px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.field select {
+  padding: 7px 10px; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 14px;
+}
+
+.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg {
+  padding: 8px 14px; border: 0; background: transparent; color: var(--muted);
+  font-size: 14px; cursor: pointer;
+}
+.seg.active { background: var(--accent); color: #fff; }
+.seg:disabled { opacity: .6; cursor: default; }
+
+.primary {
+  padding: 9px 16px; border-radius: var(--radius); border: 0;
+  background: var(--accent); color: #fff; font-size: 14px; cursor: pointer;
+}
+.primary:disabled { opacity: .55; cursor: default; }
+.sync { display: flex; align-items: center; gap: 10px; }
+.sync-msg { font-size: 12px; color: var(--muted); max-width: 240px; }
+
+.cards {
+  display: grid; gap: 12px;
+  /* 150px lets all six cards sit on one row at desktop instead of leaving a
+     single orphan card on a second row, and still wraps cleanly at 390px. */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.card-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.card-value { font-size: 24px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.card-value.muted { font-size: 15px; font-weight: 400; color: var(--muted); }
+.card-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* Wide tables scroll inside their own box; the page body never scrolls sideways. */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 500; }
+tbody tr:last-child td { border-bottom: 0; }
+td { font-variant-numeric: tabular-nums; }
+
+.muted { color: var(--muted); }
+.bad { color: var(--bad); }
+.empty { color: var(--muted); font-size: 14px; }
+.error {
+  border: 1px solid var(--bad); color: var(--bad);
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 18px; font-size: 14px;
+}

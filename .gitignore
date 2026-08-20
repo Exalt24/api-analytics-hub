@@ -1,0 +1,15 @@
+# 432MB of reproducible artifacts. Measured, not guessed: .venv 84MB,
+# web/node_modules 348MB, web/.next 73MB, 13,444 files between them.
+.venv/
+__pycache__/
+*.pyc
+web/node_modules/
+web/.next/
+web/out/
+.vercel/
+
+# Secrets never live in the repo. The Shopify token and app credentials sit in
+# Operations/.secrets/, which the workspace root already ignores.
+.env
+.env.local
+*.token

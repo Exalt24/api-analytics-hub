@@ -1,0 +1,51 @@
+# App configuration pushed with `shopify app deploy`.
+#
+# WHY THIS FILE RATHER THAN THE DASHBOARD. Redirect URLs, scopes and the app URL
+# are all configurable here, and deploying is what makes them live. Keeping them
+# in the repo means the app's configuration is reviewable and reproducible instead
+# of being a set of remembered clicks, and a second developer does not have to be
+# told which boxes to tick.
+
+client_id = "a4beb67f9da5a1ef661c402f0faa2731"
+name = "dac-analytics-hub"
+handle = "dac-analytics-hub"
+
+# Required, and it must be https for a real app. For a local install flow this is
+# only used for the app surface in admin, not for the OAuth callback, which is
+# listed under [auth] below.
+application_url = "https://localhost:8765"
+
+# Custom distribution: this app is installed on one store we own. Not a public
+# app, which is why a non-expiring offline token is still obtainable and why no
+# app review is involved.
+embedded = false
+
+[access_scopes]
+# Kept in sync with app/connectors/shopify_scopes.py. Every name here is validated
+# at import against the transcribed catalogue in shopify_scope_catalog.py, after
+# ten invented names were caught the hard way on 2026-08-20.
+#
+# THIS LIST IS THE AUTHORITY, not the OAuth URL. With use_legacy_install_flow set
+# to false the app uses managed install, where the granted scopes come from the
+# deployed app version and the `scope` query parameter is ignored. Leaving this
+# absent produced a token with no scopes that still authenticated fine, so shop
+# and product queries worked and every order query was refused. Regenerate with:
+#   python -c "from app.connectors.shopify_scopes import dev_store_scope_string; print(dev_store_scope_string())"
+scopes = "read_orders,read_customers,read_products,read_returns,read_discounts,read_locations,read_inventory,read_fulfillments,read_assigned_fulfillment_orders,read_merchant_managed_fulfillment_orders,read_third_party_fulfillment_orders,read_price_rules,read_shipping,read_reports,read_analytics_annotations,read_marketing_events,read_customer_events,read_gift_cards,read_draft_orders,read_order_edits,read_payment_terms,read_shopify_payments_payouts,read_shopify_payments_disputes,read_store_credit_accounts,read_store_credit_account_transactions,read_customer_merge,read_content,read_online_store_pages,read_online_store_navigation,read_files,read_themes,read_script_tags,read_locales,read_markets,read_translations,read_metaobjects,read_metaobject_definitions,read_legal_policies,read_privacy_settings,read_validations,read_cart_transforms,read_delivery_customizations,read_payment_customizations,read_checkout_branding_settings,read_checkout_and_accounts_configurations,read_inventory_shipments,read_inventory_transfers,write_draft_orders,write_orders,write_order_edits,write_products,write_inventory,write_customers,write_customer_merge,write_discounts,write_price_rules,write_returns,write_fulfillments,write_merchant_managed_fulfillment_orders,write_assigned_fulfillment_orders,write_third_party_fulfillment_orders,write_gift_cards,write_marketing_events,write_analytics_annotations,write_content,write_files,write_themes,write_script_tags,write_locales,write_markets,write_translations,write_locations,write_metaobjects,write_metaobject_definitions,write_payment_terms,write_shipping,write_pixels,write_inventory_shipments,write_inventory_transfers,write_validations,write_cart_transforms,write_delivery_customizations,write_payment_customizations"
+use_legacy_install_flow = false
+
+[auth]
+# The local callback the OAuth flow listens on. Shopify refuses to redirect to a
+# URL that is not on this list, which is exactly what the earlier
+# "Ensure that redirect URI is allowed in the app configuration" error meant.
+#
+# Both loopback spellings are listed because browsers and OS resolvers disagree
+# about which one a bare "localhost" becomes, and a mismatch here presents as a
+# timed-out callback rather than as a configuration error.
+redirect_urls = [
+  "http://localhost:8765/callback",
+  "http://127.0.0.1:8765/callback",
+]
+
+[webhooks]
+api_version = "2026-07"
