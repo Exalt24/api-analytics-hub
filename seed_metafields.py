@@ -87,6 +87,15 @@ SPECS = {
         "weight_grams": 2900,
         "warranty_months": 60,
     },
+    # Shopify's own test-data product, which IS published to the Online Store.
+    # The API-created products are ACTIVE but unpublished, so the storefront 404s
+    # on them: productCreate does not publish, and nothing in its response says so.
+    "The Multi-location Snowboard": {
+        "material": "Poplar core with carbon stringers",
+        "connector": "Standard 4x4 insert pattern",
+        "weight_grams": 3100,
+        "warranty_months": 24,
+    },
     "65% Mechanical Keyboard": {
         "material": "Aluminium top case, PBT keycaps",
         "connector": "USB-C detachable",

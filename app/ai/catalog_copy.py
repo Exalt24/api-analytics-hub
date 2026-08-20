@@ -201,7 +201,9 @@ def verify_grounded(text: str, facts: Mapping[str, Any]) -> list[str]:
     haystack = _normalise(facts_to_text(facts).lower())
     unsupported = []
 
-    pass
+    for raw in NUMBER_RE.findall(text):
+        if _normalise(raw) not in haystack:
+            unsupported.append(raw)
 
     for word in re.findall(r"[a-z]+", text.lower()):
         if word in WORD_NUMBERS and word not in haystack:
