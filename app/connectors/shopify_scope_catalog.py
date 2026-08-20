@@ -5,7 +5,7 @@ WHY THIS FILE EXISTS. On 2026-08-20 an install failed with
 not exist; I had written a plausible-sounding list from memory. Checking against
 Shopify's published scope reference found **ten** invented names in one tuple:
 
-    read_product_listings, read_analytics, read_checkouts, read_publications,
+    read_product_listings, read_analytics, read_checkouts,
     read_sales_channels, read_apps, write_publications, write_checkouts,
     write_product_listings, write_customer_events
 
@@ -57,6 +57,10 @@ VALID_ADMIN_SCOPES: frozenset[str] = frozenset({
     "read_online_store_navigation", "write_online_store_navigation",
     "read_order_edits", "write_order_edits",
     "read_orders", "write_orders",
+    # Added 2026-08-21 after Shopify named it in its own error: "Access denied for
+    # publications field. Required access: read_publications access scope." Both had
+    # been misfiled as invented, see the note on KNOWN_INVENTED_SCOPES.
+    "read_publications", "write_publications",
     "read_own_subscription_contracts", "write_own_subscription_contracts",
     "read_payment_customizations", "write_payment_customizations",
     "read_payment_gateways", "write_payment_gateways",
@@ -84,12 +88,20 @@ VALID_ADMIN_SCOPES: frozenset[str] = frozenset({
 
 #: Names that LOOK right and are not. Kept so the same mistake is caught by
 #: recognition rather than by another failed browser round trip.
+#:
+#: CORRECTED 2026-08-21: read_publications is REAL, and so is write_publications.
+#: Both sat in this list until Shopify named the first one in its own error:
+#:   "Access denied for publications field. Required access: `read_publications`."
+#: The original tuple held ten names, the install failed on read_sales_channels,
+#: and all ten were moved here on the strength of that one failure instead of being
+#: checked individually. Eight were invented. Two were not. That is the same class
+#: of error this file exists to prevent, one level up: a batch judgement standing in
+#: for an individual check.
 KNOWN_INVENTED_SCOPES: frozenset[str] = frozenset({
     "read_sales_channels",      # the one that actually failed the install
     "read_apps",
     "read_analytics",           # the real one is read_analytics_annotations
     "read_checkouts", "write_checkouts",
-    "read_publications", "write_publications",
     "read_product_listings", "write_product_listings",
     "write_customer_events",    # the real one is write_pixels
 })
