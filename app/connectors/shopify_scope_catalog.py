@@ -20,6 +20,28 @@ strength of it sounding right, which is exactly how the ten got in.
 from __future__ import annotations
 
 VALID_ADMIN_SCOPES: frozenset[str] = frozenset({
+    # UNAUTHENTICATED scopes, a separate family from the Admin ones and
+    # absent from this catalogue entirely until 2026-08-21. They are what a
+    # Storefront access token delegates, and `storefrontAccessTokenCreate`
+    # is denied outright if the app holds none of them. The denial carries
+    # NO required-scope hint, unlike every other Shopify denial, which is
+    # why this took a documentation search rather than reading the error.
+    # They grant a PUBLIC token, so they are listed apart from the Admin
+    # scopes deliberately: confusing the two families is how an Admin
+    # capability ends up in something that ships in browser JavaScript.
+    "unauthenticated_read_product_listings",
+    "unauthenticated_read_product_inventory",
+    "unauthenticated_read_product_pickup_locations",
+    "unauthenticated_read_product_tags",
+    "unauthenticated_read_selling_plans",
+    "unauthenticated_read_checkouts",
+    "unauthenticated_write_checkouts",
+    "unauthenticated_read_customers",
+    "unauthenticated_write_customers",
+    "unauthenticated_read_customer_tags",
+    "unauthenticated_read_content",
+    "unauthenticated_read_metaobjects",
+    "unauthenticated_read_bulk_operations",
     "read_all_orders",
     "read_analytics_annotations", "write_analytics_annotations",
     "write_app_proxy",
@@ -57,10 +79,6 @@ VALID_ADMIN_SCOPES: frozenset[str] = frozenset({
     "read_online_store_navigation", "write_online_store_navigation",
     "read_order_edits", "write_order_edits",
     "read_orders", "write_orders",
-    # Added 2026-08-21 after Shopify named it in its own error: "Access denied for
-    # publications field. Required access: read_publications access scope." Both had
-    # been misfiled as invented, see the note on KNOWN_INVENTED_SCOPES.
-    "read_publications", "write_publications",
     "read_own_subscription_contracts", "write_own_subscription_contracts",
     "read_payment_customizations", "write_payment_customizations",
     "read_payment_gateways", "write_payment_gateways",
@@ -89,7 +107,9 @@ VALID_ADMIN_SCOPES: frozenset[str] = frozenset({
 #: Names that LOOK right and are not. Kept so the same mistake is caught by
 #: recognition rather than by another failed browser round trip.
 #:
-#: CORRECTED 2026-08-21: read_publications is REAL, and so is write_publications.
+#: CORRECTED 2026-08-21, TWICE. read_publications, write_publications,
+#: read_product_listings and write_product_listings are all REAL and all moved to
+#: RESTRICTED_SCOPES above.
 #: Both sat in this list until Shopify named the first one in its own error:
 #:   "Access denied for publications field. Required access: `read_publications`."
 #: The original tuple held ten names, the install failed on read_sales_channels,
@@ -102,8 +122,30 @@ KNOWN_INVENTED_SCOPES: frozenset[str] = frozenset({
     "read_apps",
     "read_analytics",           # the real one is read_analytics_annotations
     "read_checkouts", "write_checkouts",
-    "read_product_listings", "write_product_listings",
     "write_customer_events",    # the real one is write_pixels
+})
+
+
+#: REAL, but not grantable to this app. A third category, added 2026-08-21 after
+#: two of these were wrongly filed as invented and then wrongly filed as ordinary.
+#:
+#: THE EVIDENCE POINTS BOTH WAYS, and both sources are trustworthy:
+#:   * Shopify's API named them, which it does not do for a scope that is not real:
+#:       "Required access: `read_publications` access scope."
+#:       "Required access: `read_product_listings` access scope."
+#:   * Shopify's public access-scope table does not list them at all.
+#:
+#: The reading that fits both is that these are SALES CHANNEL scopes, available
+#: only to apps distributed as a sales channel, which is why the general table
+#: omits them. That is a well-supported hypothesis, NOT a verified fact, and it is
+#: written here as a hypothesis on purpose.
+#:
+#: Either way the action is the same: do not request them. What changes is the
+#: diagnosis a future reader gets. Calling a scope invented when Shopify names it in
+#: an error sends someone hunting for a typo that does not exist.
+RESTRICTED_SCOPES: frozenset[str] = frozenset({
+    "read_publications", "write_publications",
+    "read_product_listings", "write_product_listings",
 })
 
 

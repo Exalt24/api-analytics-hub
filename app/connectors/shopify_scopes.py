@@ -92,7 +92,32 @@ APPROVAL_REQUIRED_SCOPES: tuple[str, ...] = (
 #: code: `ShopifyConnector` never issues a mutation, and only the seeder is handed
 #: these. So the read-only guarantee survives where it matters (the thing that
 #: would run against a client's live store) while the dev store stays usable.
+#: Storefront (unauthenticated) scopes. Requested so the app can mint a Storefront
+#: access token at all: `storefrontAccessTokenCreate` is denied when the app holds
+#: none of these, and the denial does not say so.
+#:
+#: These delegate to a PUBLIC token that ships in browser JavaScript, so the list
+#: is deliberately read-heavy plus checkout write, which is what a headless front
+#: end needs and nothing more. No unauthenticated_write_customers: a public token
+#: that can write customer records is a liability with no upside here.
+UNAUTHENTICATED_SCOPES: tuple[str, ...] = (
+    "unauthenticated_read_product_listings",
+    "unauthenticated_read_product_inventory",
+    "unauthenticated_read_product_tags",
+    "unauthenticated_read_selling_plans",
+    "unauthenticated_read_checkouts",
+    "unauthenticated_write_checkouts",
+    "unauthenticated_read_content",
+    "unauthenticated_read_metaobjects",
+)
+
+
 SEED_WRITE_SCOPES: tuple[str, ...] = (
+    # Added 2026-08-21. urlRedirectCreate is denied without it, and Shopify names
+    # it in the error: "Required access: write_online_store_navigation access
+    # scope." Redirects are most of technical SEO on a catalogue store, so this is
+    # not optional for the work it exists to do.
+    "write_online_store_navigation",
     "write_draft_orders",
     "write_orders",
     "write_order_edits",
@@ -267,7 +292,7 @@ ACCESS_MODE = "offline"
 #: `scope_string()` instead: the write half exists to build test data, not to
 #: touch a merchant's shop.
 def dev_store_scope_string(include_gated: bool = False) -> str:
-    scopes = list(FULL_READ_SCOPES) + list(SEED_WRITE_SCOPES)
+    scopes = list(FULL_READ_SCOPES) + list(SEED_WRITE_SCOPES) + list(UNAUTHENTICATED_SCOPES)
     if include_gated:
         # Only after Shopify approves them. Requesting one unapproved gated scope
         # rejects the entire install, so this defaults to off.
