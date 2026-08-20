@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PY = ROOT / ".venv" / "Scripts" / "python.exe"
 
 TARGETS = {
+    "aicopy": ROOT / "app" / "ai" / "catalog_copy.py",
     "crypto": ROOT / "app" / "crypto.py",
     "auth": ROOT / "app" / "api" / "auth.py",
     "apimain": ROOT / "app" / "api" / "main.py",
@@ -31,6 +32,34 @@ TARGETS = {
 }
 
 MUTATIONS = [
+    (
+        "aicopy",
+        "grounding check disabled (fabricated specs get published)",
+        "    for raw in NUMBER_RE.findall(text):\n        if _normalise(raw) not in haystack:\n            unsupported.append(raw)",
+        "    pass",
+        "an invented number must never reach the catalogue",
+    ),
+    (
+        "aicopy",
+        "written numbers no longer checked (model says 'five' not 5)",
+        '        if word in WORD_NUMBERS and word not in haystack:\n            unsupported.append(word)',
+        "        pass",
+        "a spelled-out number must be checked like a digit",
+    ),
+    (
+        "aicopy",
+        "generation attempted with no facts at all",
+        '        if not facts_text.strip():',
+        "        if False:",
+        "no facts means nothing truthful can be written",
+    ),
+    (
+        "aicopy",
+        "truncated completion reported as a content problem",
+        '        if choice.get("finish_reason") == "length" and not content:',
+        "        if False:",
+        "a truncation must not be blamed on the copy",
+    ),
     (
         "auth",
         "rbac permission check removed (every role may do everything)",
