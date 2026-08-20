@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { KeyGate } from "@/components/KeyGate";
 import { KpiCard } from "@/components/KpiCard";
 import { SyncButton } from "@/components/SyncButton";
 import { WindowPicker } from "@/components/WindowPicker";
@@ -101,6 +102,8 @@ export default function Page() {
           />
         </div>
       </header>
+
+      <KeyGate onSet={() => void load()} />
 
       {error ? (
         <div className="error" role="alert">

@@ -7,6 +7,22 @@ vendor API to render a page; it reads snapshots the sync wrote.
 Currently one live connector, **Shopify Admin GraphQL**, verified against a real
 development store.
 
+## Live
+
+**Dashboard: https://analytics-hub-pi.vercel.app**
+API: https://analytics-hub-api.onrender.com/health
+
+Click **use the read-only demo key** on the landing panel. That signs you in as a
+viewer on a demo tenant holding test orders from a Shopify development store, so
+the figures on screen came out of the real Shopify API through the connector in
+this repo. Press **Sync now** afterwards: it returns
+`403: role viewer may not write:sync`, which is the role check answering rather
+than a bug.
+
+Two honest caveats. The API runs on a free instance that sleeps after inactivity,
+so a cold first request can take a while. And the Postgres instance expires
+**2026-09-19**, after which the live link dies unless it is moved or upgraded.
+
 ---
 
 ## Run it
