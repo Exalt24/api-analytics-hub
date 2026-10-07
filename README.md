@@ -1,27 +1,26 @@
 # api-analytics-hub
 
-Multi-tenant analytics over stored platform data. External API → scheduled sync →
-normalize → PostgreSQL → backend → dashboard. The dashboard **never** calls a
-vendor API to render a page; it reads snapshots the sync wrote.
+Multi-tenant analytics over stored platform data. An external API is synced on a
+schedule, normalised, stored in PostgreSQL, served by a backend and shown on a
+dashboard. The dashboard **never** calls a vendor API to render a page; it reads
+snapshots the sync wrote.
 
 Currently one live connector, **Shopify Admin GraphQL**, verified against a real
 development store.
 
 ## Live
 
-**Dashboard: https://analytics-hub-pi.vercel.app**
-API: https://analytics-hub-api.onrender.com/health
+The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app) and
+loads, but **the API behind it has been offline since 2026-09-19**. The free Render
+PostgreSQL instance it used expired that day, so the service cannot connect to its
+database and the demo key no longer signs in to anything. Until a database is
+provisioned there is no live demo; run it locally with the steps below.
 
-Click **use the read-only demo key** on the landing panel. That signs you in as a
-viewer on a demo tenant holding test orders from a Shopify development store, so
-the figures on screen came out of the real Shopify API through the connector in
-this repo. Press **Sync now** afterwards: it returns
-`403: role viewer may not write:sync`, which is the role check answering rather
-than a bug.
-
-Two honest caveats. The API runs on a free instance that sleeps after inactivity,
-so a cold first request can take a while. And the Postgres instance expires
-**2026-09-19**, after which the live link dies unless it is moved or upgraded.
+While it was up, the demo key signed you in as a viewer on a demo tenant holding
+test orders from a Shopify development store, so the figures on screen came out of
+the real Shopify API through the connector in this repo. Pressing **Sync now** as
+that viewer returned `403: role viewer may not write:sync`, which is the role check
+answering rather than a bug.
 
 ---
 
@@ -76,11 +75,12 @@ app/
     registry.py      per-platform auth kind and rate-limit style
   crypto.py          AES-256-GCM credential encryption, AAD bound to the row
   db.py              pool, tenant-scoped transactions, RLS role assertion
+  ai/catalog_copy.py LLM meta descriptions that must pass a number-grounding check
   sync/runner.py     claim, lease, heartbeat, resume, finish
   api/               FastAPI, bearer auth, RBAC
 migrations/          001 core + RLS, 002 control plane, 003 API keys
 web/                 Next.js dashboard
-tests/               167 tests + a mutation harness
+tests/               201 tests + a mutation harness
 ```
 
 ---
@@ -128,13 +128,61 @@ failure instead of a row stuck at `running` forever.
 
 ---
 
+## Grounded catalogue copy
+
+`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions that
+refuses to publish a number it was not given. A technical catalogue has thousands of
+SKUs, and a model will happily invent a purity or a dimension, which on a materials
+or lab-supply store is someone ordering the wrong grade. So the model is only the
+generator. `verify_grounded` extracts every number from the output and requires each
+one to appear in the product facts that went into the prompt. A failure is a rejected
+row with the unsupported figures listed, not a published description.
+
+Around that check: the prompt receives the facts and never the whole product record,
+so a private cost field cannot leak into public copy; length is enforced in code
+after generation instead of trusted from the prompt; the transport is an
+OpenAI-compatible chat completion, so the provider is a base URL and a model name;
+and the default model is set in the module (Groq, `openai/gpt-oss-120b`, because
+`llama-3.3-70b-versatile` disappeared from the account's model list).
+
+I ran it against a live model in both directions with `ai_live_check.py`, which needs
+your own Shopify dev store token and Groq key. With the grounding rule in the prompt,
+three runs invented nothing. With the rule stripped from the prompt, which is what a
+prompt regression or a model swap looks like, the model produced a 99.99% purity and
+150 x 100 x 30 mm dimensions from nowhere and the verifier refused all four figures.
+The check holds when the prompt discipline is gone, which is why they are two layers.
+
+Its own tests found three defects in the first version:
+
+- **Digits inside chemical formulas read as quantities.** The 2 and 3 in `Al2O3` were
+  flagged as invented numbers, which fires the guard on every formula and gets it
+  switched off. The number pattern now ignores a digit that follows a letter, and a
+  test keeps `38ohms` written without a space still checked.
+- **A reasoning model spent 158 of its 160 completion tokens on its reasoning trace**
+  and returned empty content with a normal-looking response. The token budget is now
+  larger, the effort is set low, and a truncated empty completion is reported as a
+  truncation instead of a bad description.
+- **Numbers written as words** (`five`, `hundred`) walked straight past a digit-only
+  check, so number words are verified against the facts too.
+
+`tests/test_catalog_copy.py` and `tests/test_catalog_copy_transport.py` cover it
+(30 tests), and four of the mutation guards below target it.
+
+---
+
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 167
-./.venv/Scripts/python.exe tests/mutation_check.py  # 18 guards
+./.venv/Scripts/python.exe -m pytest tests/ -q      # 201 passed
+./.venv/Scripts/python.exe tests/mutation_check.py  # 28 guards, all caught
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
+
+Counts are from a run on 2026-10-07. 31 of the 201 tests need a Postgres (the compose
+file's, or one named by `ANALYTICS_TEST_DSN`) and skip without one, and those tests
+drop and recreate the `public` schema of whatever database they point at, so aim
+them at a scratch database. The mutation harness needs the same Postgres up the whole
+run, because a guard that only a database test catches reads as untested without it.
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It
@@ -143,13 +191,16 @@ constant using that same constant, so mutating the constant moved the test with 
 
 ---
 
-## What I would improve for production
+## What I would improve before real use
 
-Honest list, in the order I would actually do it.
+This is a lab build, not a production service. Honest list, in the order I would
+actually do it.
 
-1. **Nothing is deployed.** It runs locally and against a live Shopify store; there
-   is no hosting, no TLS termination, no managed Postgres, no backups. That is the
-   first gap and it is not a small one.
+1. **The deployment is down and was never hardened.** The dashboard is on Vercel and
+   the API was on a free Render instance with a free Postgres, which expired on
+   2026-09-19 and took the API with it. There is no managed Postgres with backups,
+   and no uptime monitoring. That is the first gap and
+   it is not a small one.
 2. **The scheduler is a runner without a clock.** `sync/runner.py` claims, leases,
    heartbeats and resumes correctly, and something still has to *call* it on a
    cadence. The schedule table and jitter column exist; the daemon does not.
