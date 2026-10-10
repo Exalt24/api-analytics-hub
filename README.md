@@ -51,7 +51,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev -- -p 3100
 `seed_local.py` loads real figures from the dev store and prints an admin and a
 viewer API key, which is the fastest way to see the role split in the browser.
 
-Paste a key into the browser console once: `localStorage.setItem('apiKey', '<key>')`.
+Open the dashboard and paste a key into the box on the page (no console needed), or click "use the read-only demo key" to see the viewer role on the demo tenant.
 
 ### Ports
 
