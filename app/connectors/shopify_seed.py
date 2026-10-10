@@ -12,7 +12,7 @@ the cost of being wrong about WHICH store is asymmetric: seeding a dev store is
 free, seeding a live shop puts fake orders in a merchant's books and their
 accounting. So it refuses unless the store looks like a development store, and it
 refuses if the store already holds more orders than it is about to create. The
-same reasoning as the Silid incident, where a script named like a test read
+same reasoning as an earlier incident, where a script named like a test read
 `.env.local` and wrote to production.
 
 Orders are created as DRAFT ORDERS then completed, which is the supported path to
