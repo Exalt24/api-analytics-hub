@@ -1,5 +1,9 @@
 # api-analytics-hub
 
+![The dashboard against a local stack: an API key unlocks it, 90 days of orders and sales read from stored Shopify data, an admin queues a sync, and a viewer key is refused with its reason](docs/demo.gif)
+
+*Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard), with `scripts/record_dashboard.cjs`. The hosted copy is offline, see below. [Full video](docs/demo.mp4).*
+
 Multi-tenant analytics over stored platform data. An external API is synced on a
 schedule, normalised, stored in PostgreSQL, served by a backend and shown on a
 dashboard. The dashboard **never** calls a vendor API to render a page; it reads
@@ -48,8 +52,14 @@ cd web && npm install
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev -- -p 3100
 ```
 
-`seed_local.py` loads real figures from the dev store and prints an admin and a
-viewer API key, which is the fastest way to see the role split in the browser.
+`seed_local.py` loads real figures from the dev store (the last 120 days by default,
+`SEED_DAYS` changes it) and prints an admin and a viewer API key, which is the fastest
+way to see the role split in the browser. It reads the store's domain and Admin API
+token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE` (`SHOP=<store>.myshopify.com`
+and `ACCESS_TOKEN=<token>`), which is never committed. Build the dashboard first
+(`npm run build`, then `npm start -- -p 3100`): the development server did not hydrate the
+page in the browsers this was recorded in, so a production build is the dependable way to
+run it, and the page must be opened as `http://localhost:3100` (the API's CORS origin).
 
 Open the dashboard and paste a key into the box on the page (no console needed). Paste the viewer key to see the role split: it can read, and Sync now comes back 403 with the reason. A deployment can also set `NEXT_PUBLIC_DEMO_VIEWER_KEY` to show a one-click viewer sign-in; none is shipped, because the hosted demo is offline.
 

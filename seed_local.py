@@ -31,7 +31,8 @@ DSN = os.environ.get(
     "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics"
 )
 ROOT = Path(__file__).resolve().parent
-SECRETS = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
+# A text file with two lines, SHOP=<your-store>.myshopify.com and ACCESS_TOKEN=<an Admin API token for it>; point SHOPIFY_DEV_TOKEN_FILE at it (it is never committed).
+SECRETS = Path(os.environ.get("SHOPIFY_DEV_TOKEN_FILE", str(ROOT / "shopify_dev_token.txt")))
 
 
 def shopify_creds() -> tuple[str, str]:
@@ -77,7 +78,8 @@ async def main() -> int:
 
         # Pull the real window through the connector.
         end = date.today() + timedelta(days=1)
-        start = end - timedelta(days=14)
+        # The dev store's test orders are weeks old, so a short window comes back empty and the dashboard shows nothing: look back 120 days by default (SEED_DAYS overrides).
+        start = end - timedelta(days=int(os.environ.get("SEED_DAYS", "120")))
         connector = ShopifyConnector(shop_domain=shop, access_token=token)
         points = []
         calls = waits = 0
