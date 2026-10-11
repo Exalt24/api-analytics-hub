@@ -21,7 +21,9 @@ import { useEffect, useState } from "react";
  * role split, because the refusal comes back from the server with its reason.
  */
 
-const DEMO_VIEWER_KEY = "aah_6k_MWfpc1N8VZmtO74-HeckyIHdWlAM_jC2y1XuLQV4";
+// A deployment that wants a one-click viewer sign-in sets NEXT_PUBLIC_DEMO_VIEWER_KEY to a viewer key of its own; with it unset (the default) the button is not shown.
+// The hosted demo this repo once shipped a key for is offline, so no key is committed any more.
+const DEMO_VIEWER_KEY = process.env.NEXT_PUBLIC_DEMO_VIEWER_KEY ?? "";
 
 export function KeyGate({ onSet }: { onSet: () => void }) {
   const [value, setValue] = useState("");
@@ -80,15 +82,19 @@ export function KeyGate({ onSet }: { onSet: () => void }) {
         >
           Use key
         </button>
-        <button type="button" className="linkish" onClick={() => save(DEMO_VIEWER_KEY)}>
-          use the read-only demo key
-        </button>
+        {DEMO_VIEWER_KEY && (
+          <button type="button" className="linkish" onClick={() => save(DEMO_VIEWER_KEY)}>
+            use the read-only demo key
+          </button>
+        )}
       </div>
-      <p className="muted small">
-        The demo key is a viewer on a demo tenant holding test orders from a
-        Shopify development store. Viewer can read; Sync now will come back 403
-        with the reason, which is the role check doing its job.
-      </p>
+      {DEMO_VIEWER_KEY && (
+        <p className="muted small">
+          The demo key is a viewer on a demo tenant holding test orders from a
+          Shopify development store. Viewer can read; Sync now will come back 403
+          with the reason, which is the role check doing its job.
+        </p>
+      )}
     </div>
   );
 }

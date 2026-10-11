@@ -51,7 +51,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev -- -p 3100
 `seed_local.py` loads real figures from the dev store and prints an admin and a
 viewer API key, which is the fastest way to see the role split in the browser.
 
-Open the dashboard and paste a key into the box on the page (no console needed), or click "use the read-only demo key" to see the viewer role on the demo tenant.
+Open the dashboard and paste a key into the box on the page (no console needed). Paste the viewer key to see the role split: it can read, and Sync now comes back 403 with the reason. A deployment can also set `NEXT_PUBLIC_DEMO_VIEWER_KEY` to show a one-click viewer sign-in; none is shipped, because the hosted demo is offline.
 
 ### Ports
 
