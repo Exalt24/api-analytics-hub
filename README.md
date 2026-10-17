@@ -1,10 +1,12 @@
 # api-analytics-hub
 
+[![CI](https://github.com/Exalt24/api-analytics-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/Exalt24/api-analytics-hub/actions/workflows/ci.yml)
+
 ![The dashboard against a local stack: an API key unlocks it, 90 days of orders and sales read from stored Shopify data, an admin queues a sync, and a viewer key is refused with its reason](docs/demo.gif)
 
 *Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard), with `scripts/record_dashboard.cjs`. The hosted copy is offline, see below. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics over stored platform data. An external API is synced on a
+Multi-tenant analytics hub: a Shopify store synced to Postgres on a schedule and shown on a dashboard. An external API is synced on a
 schedule, normalised, stored in PostgreSQL, served by a backend and shown on a
 dashboard. The dashboard **never** calls a vendor API to render a page; it reads
 snapshots the sync wrote.
