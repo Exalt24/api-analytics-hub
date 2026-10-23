@@ -29,6 +29,9 @@ TARGETS = {
     "tokens": ROOT / "app" / "connectors" / "tokens.py",
     "webhooks": ROOT / "app" / "connectors" / "shopify_webhooks.py",
     "registry": ROOT / "app" / "connectors" / "registry.py",
+    "obs": ROOT / "app" / "obs.py",
+    "health": ROOT / "app" / "health.py",
+    "m004": ROOT / "migrations" / "004_observability.sql",
 }
 
 MUTATIONS = [
@@ -233,6 +236,98 @@ MUTATIONS = [
         "            raise MetricNotSupported(",
         "            pass  # mutated\n            _ = MetricNotSupported(",
         "asking a platform for a metric it cannot produce must raise",
+    ),
+    # ------------------------------------------------------------------ observability
+    (
+        "obs",
+        "a non-ASCII request id is reused in the log",
+        'all(c.isascii() and (c.isalnum() or c in "-_") for c in incoming)',
+        'all(c.isalnum() or c in "-_" for c in incoming)',
+        "an accented header value must not become a log field",
+    ),
+    (
+        "obs",
+        "a newline in a label value is not escaped",
+        '.replace("\\n", "\\\\n")',
+        "",
+        "a label value must not be able to start a new metric line",
+    ),
+    (
+        "obs",
+        "an exception logs its message instead of its class",
+        'out["error"] = record.exc_info[0].__name__',
+        'out["error"] = str(record.exc_info[1])',
+        "an exception message can carry a connection string or a key",
+    ),
+    (
+        "obs",
+        "histogram buckets stop being cumulative",
+        "                running += n\n                lines.append('hub_http_request_seconds_bucket{route=\"%s\",le=\"%s\"} %d'",
+        "                running = n\n                lines.append('hub_http_request_seconds_bucket{route=\"%s\",le=\"%s\"} %d'",
+        "a Prometheus histogram bucket counts everything at or below its bound",
+    ),
+    (
+        "health",
+        "an unchanged problem is never repeated",
+        'if keys != old or now - float(state.get("alerted_at", 0.0)) >= repeat_seconds:',
+        "if keys != old:",
+        "a problem nobody fixed must come back after the quiet window",
+    ),
+    (
+        "health",
+        "a cleared set sends no recovery",
+        'return ("Recovered. " + describe([]) if old else None), {"keys": [], "alerted_at": 0.0}',
+        'return None, {"keys": [], "alerted_at": 0.0}',
+        "the channel must be told when the problem is gone",
+    ),
+    (
+        "apimain",
+        "a failed database read is reported as healthy",
+        "        ok = False\n        log.error(\"metrics scrape",
+        "        ok = True\n        log.error(\"metrics scrape",
+        "a metric that could not be read must say so instead of looking like zero",
+    ),
+    (
+        "apimain",
+        "the optional metrics token is ignored",
+        "        return Response(status_code=401)\n    gauges = None",
+        "        pass\n    gauges = None",
+        "a configured scrape token must be enforced",
+    ),
+    (
+        "apimain",
+        "the raw path becomes the route label",
+        'route = getattr(request.scope.get("route"), "path", None) or "unmatched"',
+        "route = request.url.path",
+        "a path with an id in it must not create a series or reach a log",
+    ),
+    (
+        "auth",
+        "the tenant id is no longer attached to the request",
+        "    request.state.tenant_id = principal.tenant_id",
+        "    pass",
+        "an operator follows one customer's trail by the tenant id in the log",
+    ),
+    (
+        "m004",
+        "the stale threshold ignores the connection's own cadence",
+        "and now() - l.at > make_interval(secs => greatest(coalesce(s.cadence_seconds * 3, p_default_stale_seconds), 900))",
+        "and now() - l.at > make_interval(secs => 21600)",
+        "a 15 minute connection is stale after three cadences, not after six hours",
+    ),
+    (
+        "m004",
+        "a paused connection is reported as never succeeded",
+        "where c.status = 'active' and l.at is null",
+        "where l.at is null",
+        "a connection somebody paused on purpose is not an incident",
+    ),
+    (
+        "m004",
+        "the worker role loses schema usage",
+        "grant usage on schema public to sync_worker;",
+        "",
+        "the worker-role pool must be able to resolve the health functions",
     ),
 ]
 

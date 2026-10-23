@@ -13,16 +13,23 @@ level security, so a forgotten WHERE clause in this file cannot leak anything.
 """
 from __future__ import annotations
 
+import hmac
+import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.api.auth import Authenticator, Principal, requires
 from app.db import Database, fetch_kpis, latest_runs
+from app.health import read_gauges
+from app.obs import Metrics, configure_logging, new_request_id
+
+log = logging.getLogger("hub")
 
 #: The windows the dashboard offers. An allow-list rather than an integer, because
 #: an open `days` parameter is an invitation to scan the whole table, and every
@@ -55,13 +62,20 @@ class SyncRequest(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_logging()
     db = Database()
     await db.connect()
     app.state.db = db
+    # A second, small pool in the cross-tenant worker role, used only for the sync gauges. The request pool stays app_request, which cannot become sync_worker.
+    worker_db = Database(role=os.environ.get("DATABASE_WORKER_ROLE", "sync_worker"), min_size=1, max_size=2)
+    await worker_db.connect()
+    app.state.worker_db = worker_db
+    app.state.metrics = Metrics()
     app.state.authenticator = Authenticator(db)
     try:
         yield
     finally:
+        await worker_db.close()
         await db.close()
 
 
@@ -77,6 +91,51 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def observe(request: Request, call_next):
+    """One log line and one metric observation per request. Registered after CORS so it is the outer layer and sees every response, preflights included.
+
+    The route is the TEMPLATE (`/api/kpis`), never the raw path, so a path with an id in it cannot create one metric series per id or put an id in a log.
+    An exception that escapes a handler is still counted, as a 500, before it propagates.
+    """
+    started = time.perf_counter()
+    request_id = new_request_id(request.headers.get("x-request-id"))
+    code = 500
+    try:
+        response = await call_next(request)
+        code = response.status_code
+        response.headers["x-request-id"] = request_id
+        return response
+    finally:
+        seconds = time.perf_counter() - started
+        route = getattr(request.scope.get("route"), "path", None) or "unmatched"
+        metrics = getattr(request.app.state, "metrics", None)
+        if metrics is not None:
+            metrics.observe(request.method, route, code, seconds)
+        log.info("request", extra={"event": "request", "request_id": request_id, "method": request.method, "route": route, "status": code,
+                                   "duration_ms": round(seconds * 1000, 1), "tenant_id": getattr(request.state, "tenant_id", None)})
+
+
+@app.get("/metrics")
+async def metrics_page(request: Request):
+    """Prometheus text format. Request counters are per process; the sync gauges are read from the database at scrape time.
+
+    A database failure does not become a 500 and does not become zeros: the page still serves the counters and says `hub_scrape_ok 0`, so an alert on that line fires
+    while a chart of the other series stays honest. No tenant-scoped value is labelled with a tenant, and no credential is selected.
+    """
+    token = os.environ.get("METRICS_TOKEN")
+    if token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
+        return Response(status_code=401)
+    gauges = None
+    ok = True
+    try:
+        gauges = await read_gauges(request.app.state.worker_db)
+    except Exception as exc:  # noqa: BLE001
+        ok = False
+        log.error("metrics scrape could not read the database", extra={"event": "scrape_failed"}, exc_info=(type(exc), exc, None))
+    return Response(request.app.state.metrics.render(gauges, ok), media_type="text/plain; version=0.0.4")
 
 
 @app.get("/health")

@@ -123,7 +123,9 @@ async def current_principal(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="missing bearer token"
         )
     auth: Authenticator = request.app.state.authenticator
-    return await auth.resolve(creds.credentials)
+    principal = await auth.resolve(creds.credentials)
+    request.state.tenant_id = principal.tenant_id      # read by the request log line; an opaque uuid, never the token
+    return principal
 
 
 def requires(permission: str):

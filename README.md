@@ -89,10 +89,13 @@ app/
   db.py              pool, tenant-scoped transactions, RLS role assertion
   ai/catalog_copy.py LLM meta descriptions that must pass a number-grounding check
   sync/runner.py     claim, lease, heartbeat, resume, finish
-  api/               FastAPI, bearer auth, RBAC
-migrations/          001 core + RLS, 002 control plane, 003 API keys
+  api/               FastAPI, bearer auth, RBAC, request log and /metrics
+  obs.py             JSON log formatter, request ids, Prometheus text page
+  health.py          stuck-sync gauges and the alert policy
+scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health
 web/                 Next.js dashboard
-tests/               201 tests + a mutation harness
+tests/               249 tests + a mutation harness
 ```
 
 ---
@@ -185,13 +188,14 @@ Its own tests found three defects in the first version:
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 201 passed
-./.venv/Scripts/python.exe tests/mutation_check.py  # 28 guards, all caught
+./.venv/Scripts/python.exe -m pytest tests/ -q      # 249 passed
+./.venv/Scripts/python.exe tests/mutation_check.py  # 41 guards, all caught
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
 
-Counts are from a run on 2026-10-07. 31 of the 201 tests need a Postgres (the compose
-file's, or one named by `ANALYTICS_TEST_DSN`) and skip without one, and those tests
+Counts are from a run on 2026-10-24. 47 of the 249 tests need a Postgres (the compose
+file's, or one named by `ANALYTICS_TEST_DSN`) and skip without one, CI starts one so they
+run there, and those tests
 drop and recreate the `public` schema of whatever database they point at, so aim
 them at a scratch database. The mutation harness needs the same Postgres up the whole
 run, because a guard that only a database test catches reads as untested without it.
@@ -230,13 +234,15 @@ actually do it.
 6. **One live connector.** The abstraction is only honest once a second platform
    lands: the second connector is what reveals whether the first one's field names
    leaked into the core. I would build Meta or GA4 next, before adding features.
-7. **No alerting.** Failures are recorded in `sync_run` and visible on the
-   dashboard, and nobody is told. A failed sync at 03:00 should page someone or at
-   minimum post to a channel.
+7. **Alerting stops at one Slack channel.** A stuck or stale sync now posts to an
+   incoming webhook ([docs/observability.md](docs/observability.md)), once per
+   change and again after six hours, and there is still no paging, no on-call
+   rota and no escalation when nobody reads the channel.
 8. **Quarantine is a table, not a workflow.** Rows that will not normalise are
    captured, and there is no way to review or replay them.
-9. **Observability stops at the run log.** No traces, no metrics, no structured
-   logs; diagnosing a slow sync means reading code.
+9. **No traces.** Requests have JSON logs, a request id and Prometheus metrics,
+   and those metrics are per process and reset on restart. A slow sync shows as a
+   late run in the log, not as a breakdown of where the time went.
 10. **Backfill is manual.** Windows are passed by hand. A real backfill needs
     chunking, resumability across process restarts, and a rate-limit budget shared
     with the live syncs so a backfill cannot starve them.
