@@ -10,19 +10,19 @@ A daily job that loads a regulator style file of carriers, finds insurance and a
 
 ## Measured run
 
-Machine: a desktop Windows 11 PC (AMD Ryzen 7 9800X3D, 8 cores and 16 threads, 64 GB of RAM, an NVMe disk), not a laptop. Postgres 17.11 in a Docker container, local, default settings, other containers and a few other programs running at the same time. The data is 400,000 invented carriers on day 1 and 400,200 on day 2 (files of about 49 MB each), with 0.5 percent of carriers changed on day 2 (an assumption, not a measured rate of any real file), 200 new carriers and 800 name only edits that must raise nothing. One run, one machine, one sample: treat the seconds as a size of the thing, not as a benchmark. The COPY stage is slower than a bare COPY because the staging table cleans every cell as it lands, and the machine was not idle (generating the files took more than twice as long as in an earlier quiet run).
+Machine: a desktop Windows 11 PC (AMD Ryzen 7 9800X3D, 8 cores and 16 threads, 64 GB of RAM, an NVMe disk), not a laptop. Postgres 17.11 in a Docker container, local, default settings, other containers and a few other programs running at the same time. The data is 400,000 invented carriers on day 1 and 400,200 on day 2 (files of about 49 MB each), with 0.5 percent of carriers changed on day 2 (an assumption, not a measured rate of any real file), 200 new carriers and 800 name only edits that must raise nothing. One run on one machine: treat the seconds as a size of the thing, not as a benchmark. An earlier run of the same command gave 30.51 and 9.38 seconds for the whole day, so expect a spread of a few percent from run to run. The COPY stage is slower than a bare COPY because the staging table cleans every cell as it lands, and the machine was in ordinary use (other containers and programs open).
 
-Command: `python scripts/measure_change_detection.py --dir <folder>`. Generating both files took 9.11 seconds and is not counted below.
+Command: `python scripts/measure_change_detection.py --dir <folder> --json-out docs/change-detection-measurement.json`. Generating both files took 10.21 seconds and is not counted below. Every number on this page is read from that saved file.
 
 | Stage, in seconds | Day 1 (baseline, 400,000 rows) | Day 2 (400,200 rows) |
 |---|---|---|
-| COPY into the unlogged staging table (cells cleaned as they land) | 7.21 | 8.22 |
-| reject, deduplicate, count unknown statuses, size check | 0.54 | 0.52 |
-| one set based compare on the hash, plus the held-but-absent count | 0.40 | 0.39 |
-| history rows for every changed carrier | 7.58 | 0.04 |
-| events, company matches, outbox rows | 0.00 | 0.09 |
-| update and insert the current table | 14.77 | 0.09 |
-| **whole day, one transaction** | **30.51** | **9.38** |
+| COPY into the unlogged staging table (cells cleaned as they land) | 7.09 | 8.74 |
+| reject, deduplicate, count unknown statuses, size check | 0.57 | 0.54 |
+| one set based compare on the hash, plus the held-but-absent count | 0.38 | 0.39 |
+| history rows for every changed carrier | 8.44 | 0.04 |
+| events, company matches, outbox rows | 0.00 | 0.08 |
+| update and insert the current table | 14.33 | 0.08 |
+| **whole day, one transaction** | **30.81** | **9.89** |
 
 Day 1 is the baseline: it fills the tables and raises no alert. On day 2, 2,200 rows were examined out of 400,200 (the hash moved or the carrier was new), 0 held carriers were absent from the file, and 2,371 events were raised.
 
@@ -36,9 +36,9 @@ Events by kind on day 2, checked against a manifest the generator wrote with its
 | new_entity | 200 |
 | replacement_filed | 340 |
 
-The file for day 2 carried 400,000 rows the day before and the report shows that comparison, so a file that shrinks a little each day is visible long before it trips the floor below. Of the events, 39 matched exactly one company, 2 matched two companies (the USDOT number points at one and the MC number at another, so a person decides) and 2,330 matched none. Only the matched and conflicting events are queued for the CRM: 41 alerts went to the fake sink in 0.09 seconds, one task each (41 tasks).
+The file for day 2 carried 400,000 rows the day before and the report shows that comparison, so a file that shrinks a little each day is visible long before it trips the floor below. Of the events, 39 matched exactly one company, 2 matched two companies (the USDOT number points at one and the MC number at another, so a person decides) and 2,330 matched none. Only the matched and conflicting events are queued for the CRM: 41 alerts went to the fake sink in 0.09 seconds (0.087 in the saved file), one task each (41 tasks).
 
-**Day 2 again.** The same file loaded a second time examined 0 rows and raised 0 events (the table held 2,371 events before and 2,371 after, and every other table was identical). It took 8.43 seconds, almost all of it the COPY.
+**Day 2 again.** The same file loaded a second time examined 0 rows and raised 0 events (the table held 2,371 events before and 2,371 after, and every other table was identical). It took 8.03 seconds, almost all of it the COPY.
 
 **A crash inside the transaction.** The load was made to raise an error at each stage in turn, on a second database holding day 1, and the tables were fingerprinted before and after (row counts and a hash over the whole current table):
 

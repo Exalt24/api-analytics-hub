@@ -180,7 +180,7 @@ Its own tests found three defects in the first version:
 
 ## Change detection on a daily file
 
-`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 on a desktop PC with local Docker Postgres: day 2 (400,200 rows, 0.5 percent changed) took 9.38 s in one transaction (COPY 8.22 s, compare 0.39 s) and raised 2,371 events; the same file again raised 0, and an error raised at each of 7 stages left the tables unchanged. A separate slice: not scheduled, not tenant scoped, not wired into the hub. The data is invented, no regulator file and no CRM was used, and delivery is at least once, so it is once in effect only when the CRM upserts on the key. Numbers, method and limits: [docs/change-detection.md](docs/change-detection.md).
+`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 on a desktop PC with local Docker Postgres: day 2 (400,200 rows, 0.5 percent changed) took 9.89 s in one transaction (COPY 8.74 s, compare 0.39 s) and raised 2,371 events; the same file again raised 0, and an error raised at each of 7 stages left the tables unchanged. A separate slice: not scheduled, not tenant scoped, not wired into the hub. The data is invented, no regulator file and no CRM was used, and delivery is at least once, so it is once in effect only when the CRM upserts on the key. Numbers, method and limits: [docs/change-detection.md](docs/change-detection.md).
 
 ---
 
@@ -198,7 +198,7 @@ schema of whatever database they point at, so aim them at a scratch database. Th
 harness needs the same Postgres up the whole run, because a guard that only a database test
 catches reads as untested without it.
 
-Of the 121 guards, 41 are older and 80 cover change detection. The first 109 passed one full run on 2026-10-24, before an independent review; its fixes added 12 more, each caught in a scoped run, and a full run of all 121 is still to do.
+Of the 121 guards, 41 are older and 80 cover change detection. A full run on 2026-10-24 caught 118 of them and skipped two whose target text had drifted; those two are repaired and each was caught in a scoped run, as was the one guard added after that run. The harness now refuses to start when any guard cannot find its target, and CI checks that on every push.
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It
