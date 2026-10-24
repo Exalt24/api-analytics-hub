@@ -896,6 +896,13 @@ MUTATIONS = [
         '    if False:\n',
         "a corrected file published on the same date must not read as one baseline with 119 alerts",
     ),
+    (
+        "cli",
+        "the loader prints the text of an unparseable connection string",
+        '        return "the connection string in DATABASE_URL could not be parsed (its text is not printed)"\n',
+        "        pass\n",
+        "a password with a bare percent sign must not reach cron mail or a log through the parse error",
+    ),
 ]
 
 

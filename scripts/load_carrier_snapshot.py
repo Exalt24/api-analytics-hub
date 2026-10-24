@@ -33,8 +33,8 @@ def _why(exc: Exception, dsn: str) -> str:
     secrets = {dsn}
     try:
         secrets.add(psycopg.conninfo.conninfo_to_dict(dsn).get("password") or "")
-    except Exception:  # noqa: BLE001 - a malformed string has no password to find, and the message must still print
-        pass
+    except Exception:  # noqa: BLE001 - a malformed string has no password to find, and its parse error quotes the offending text, so that message is never printed
+        return "the connection string in DATABASE_URL could not be parsed (its text is not printed)"
     for secret in secrets:
         if secret:
             text = text.replace(secret, "<hidden>")

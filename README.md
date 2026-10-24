@@ -88,7 +88,7 @@ scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
 migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection
 web/                 Next.js dashboard
-tests/               433 tests + a mutation harness
+tests/               545 tests + a mutation harness
 ```
 
 ---
@@ -188,7 +188,7 @@ Its own tests found three defects in the first version:
 
 ```bash
 ./.venv/Scripts/python.exe -m pytest tests/ -q      # 545 passed, 4 known limits
-./.venv/Scripts/python.exe tests/mutation_check.py  # 120 guards, see below
+./.venv/Scripts/python.exe tests/mutation_check.py  # 121 guards, see below
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
 
@@ -198,7 +198,7 @@ schema of whatever database they point at, so aim them at a scratch database. Th
 harness needs the same Postgres up the whole run, because a guard that only a database test
 catches reads as untested without it.
 
-Of the 120 guards, 41 are older and 79 cover change detection. The first 109 passed one full run on 2026-10-24, before an independent review; its fixes added 11 more, each caught in a scoped run, and a full run of all 120 is still to do.
+Of the 121 guards, 41 are older and 80 cover change detection. The first 109 passed one full run on 2026-10-24, before an independent review; its fixes added 12 more, each caught in a scoped run, and a full run of all 121 is still to do.
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It

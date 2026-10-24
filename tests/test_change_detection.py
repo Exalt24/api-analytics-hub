@@ -1240,6 +1240,8 @@ def test_the_command_line_says_why_a_load_could_not_run_and_never_prints_the_pas
     secret = "S3CR3T-pw-9f2a"
     wrong = run(psycopg.conninfo.make_conninfo(DSN, password=secret), "--date", D(0).isoformat())
     assert wrong.returncode == 2 and secret not in wrong.stderr + wrong.stdout and "could not load: OperationalError" in wrong.stderr
+    broken = run("postgresql://u:%s%%zzword@h/db" % secret, "--date", D(0).isoformat())          # a bare % makes the string unparseable, and libpq quotes what it could not parse
+    assert broken.returncode == 2 and secret not in broken.stderr + broken.stdout and "could not be parsed" in broken.stderr
 
 
 def test_the_report_names_rejected_and_repeated_rows_and_a_second_load_of_the_same_date(conn):
