@@ -198,7 +198,7 @@ schema of whatever database they point at, so aim them at a scratch database. Th
 harness needs the same Postgres up the whole run, because a guard that only a database test
 catches reads as untested without it.
 
-Of the 121 guards, 41 are older and 80 cover change detection. A full run on 2026-10-24 caught 118 of them and skipped two whose target text had drifted; those two are repaired and each was caught in a scoped run, as was the one guard added after that run. The harness now refuses to start when any guard cannot find its target, and CI checks that on every push.
+Of the 121 guards, 41 are older and 80 cover change detection. A full run of all 121 on 2026-10-24 caught every one (exit 0, "mutation control: PASS"). An earlier full run had skipped two guards whose target text had drifted; they are repaired, and the harness now refuses to start when any guard cannot find its target, and CI checks that on every push.
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It
