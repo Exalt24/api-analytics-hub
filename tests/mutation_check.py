@@ -32,6 +32,8 @@ TARGETS = {
     "obs": ROOT / "app" / "obs.py",
     "health": ROOT / "app" / "health.py",
     "m004": ROOT / "migrations" / "004_observability.sql",
+    "m005": ROOT / "migrations" / "005_change_detection.sql",
+    "changes": ROOT / "app" / "changes.py",
 }
 
 MUTATIONS = [
@@ -329,6 +331,407 @@ MUTATIONS = [
         "",
         "the worker-role pool must be able to resolve the health functions",
     ),
+    # ------------------------------------------------------------------ snapshot change detection (005 and app/changes.py)
+    # the hash and the cleaning of cells before it
+    (
+        "m005",
+        "the hash ignores authority_status",
+        "        coalesce(authority_status, E'\\x02'),\n",
+        "",
+        "a carrier whose authority status alone moved must still be examined",
+    ),
+    (
+        "m005",
+        "the hash ignores the insurer",
+        "        coalesce(insurer, E'\\x02'),\n",
+        "",
+        "an insurer change alone must move the hash",
+    ),
+    (
+        "m005",
+        "the hash ignores the filing date",
+        "        coalesce((filing_date - date '1970-01-01')::text, E'\\x02'),\n",
+        "",
+        "each tracked date must move the hash on its own",
+    ),
+    (
+        "m005",
+        "the staged hash includes an untracked column (the name)",
+        "carrier_track_hash(carrier_clean_code(insurer_raw), ",
+        "carrier_track_hash(carrier_clean_code(insurer_raw || legal_name_raw), ",
+        "a name edit alone must not make a row look changed",
+    ),
+    (
+        "m005",
+        "codes are no longer upper-cased before the hash",
+        "    select upper(carrier_clean_text(raw))",
+        "    select carrier_clean_text(raw)",
+        "a lower case status is the same status",
+    ),
+    (
+        "m005",
+        "inner whitespace is no longer collapsed before the hash",
+        "regexp_replace(coalesce(raw, ''), '\\s+', ' ', 'g')), '')",
+        "coalesce(raw, '')), '')",
+        "a doubled space inside a value is not a change",
+    ),
+    (
+        "m005",
+        "a date that is not ISO is read under the session DateStyle",
+        "    if t !~ '^\\d{4}-\\d{2}-\\d{2}$' then raise exception 'not an ISO date: %', left(t, 40); end if;\n",
+        "",
+        "an ambiguous date must fail the load, not be read as another day",
+    ),
+    # keys
+    (
+        "m005",
+        "the event natural key is no longer unique",
+        "    constraint change_event_natural_key unique (usdot_norm, kind, event_ref)",
+        "    constraint change_event_natural_key check (true)",
+        "the database itself must refuse a second alert for the same filing",
+    ),
+    (
+        "m005",
+        "the MC normaliser keeps leading zeros",
+        "nullif(ltrim(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '0'), '') as d",
+        "nullif(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '') as d",
+        "MC-0012345 and 12345 are one docket",
+    ),
+    (
+        "m005",
+        "the USDOT normaliser keeps leading zeros",
+        "    select nullif(ltrim(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '0'), '')\n$$;",
+        "    select nullif(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '')\n$$;",
+        "0090000001 and 90000001 are one carrier",
+    ),
+    (
+        "m005",
+        "an FF or MX docket is read as an MC",
+        "when upper(coalesce(raw, '')) ~ '^\\s*(FF|MX)' then substring(upper(raw) from '^\\s*(FF|MX)') else 'MC' end",
+        "when false then 'MC' else 'MC' end",
+        "a freight forwarder docket must never match an MC with the same digits",
+    ),
+    (
+        "m005",
+        "history can be rewritten",
+        "create trigger carrier_history_append_only before update or delete on carrier_history\n    for each row execute function carrier_forbid_rewrite();",
+        "",
+        "history is kept forever",
+    ),
+    (
+        "m005",
+        "events can be truncated",
+        "create trigger change_event_no_truncate before truncate on change_event\n    for each statement execute function carrier_forbid_rewrite();",
+        "",
+        "the alert record is kept forever",
+    ),
+    # the daily load
+    (
+        "changes",
+        "the day is not one transaction",
+        '    with conn.transaction():\n        cur = conn.cursor()\n        cur.execute("select pg_try_advisory_xact_lock(%s)", (LOAD_LOCK_KEY,))',
+        '    with __import__("contextlib").nullcontext():\n        cur = conn.cursor()\n        cur.execute("select pg_try_advisory_xact_lock(%s)", (LOAD_LOCK_KEY,))',
+        "a crash must leave no half day",
+    ),
+    (
+        "changes",
+        "a repeated alert raises instead of being suppressed",
+        "        on conflict on constraint change_event_natural_key do nothing\n",
+        "",
+        "a flap back to a known state must not fail the load or alert twice",
+    ),
+    (
+        "changes",
+        "the new_entity rule is inverted",
+        "          from carrier_delta where is_new\n        union all\n        select usdot_norm, mc_norm, 'insurer_changed'",
+        "          from carrier_delta where not is_new\n        union all\n        select usdot_norm, mc_norm, 'insurer_changed'",
+        "only a carrier not seen before is a new_entity",
+    ),
+    (
+        "changes",
+        "the first load raises alerts",
+        "baseline = loads == 0",
+        "baseline = False",
+        "the first file is a baseline and must not flood the outbox",
+    ),
+    (
+        "changes",
+        "an older file is applied",
+        "if latest is not None and snapshot_date < latest:",
+        "if False:",
+        "an old file must not roll the carriers back",
+    ),
+    (
+        "changes",
+        "two loads may run at once",
+        "        if not cur.fetchone()[0]:\n            raise LoadBusy",
+        "        if False:\n            raise LoadBusy",
+        "the staging table is shared",
+    ),
+    (
+        "changes",
+        "duplicate carrier rows are all kept",
+        "where s.usdot_norm = d.usdot_norm and s.seq < d.keep",
+        "where s.usdot_norm = d.usdot_norm and s.seq < 0",
+        "two rows for one carrier cannot both be today's state",
+    ),
+    (
+        "changes",
+        "rows with no usable USDOT number are kept",
+        'cur.execute("delete from carrier_stage where usdot_norm is null")',
+        'cur.execute("select 1")',
+        "a row that cannot be tied to a carrier is rejected and counted",
+    ),
+    (
+        "changes",
+        "every row is examined, not only those whose hash moved",
+        "where c.usdot_norm is null or c.track_hash is distinct from s.track_hash",
+        "where true",
+        "the hash is what keeps 400,000 rows down to a few thousand",
+    ),
+    (
+        "changes",
+        "the header is not checked",
+        "    if got != FILE_COLUMNS:",
+        "    if False:",
+        "a file with the columns in another order must not load",
+    ),
+    # refusing a bad file
+    (
+        "changes",
+        "a file with a header and no rows is not refused as empty",
+        '        if cur.fetchone()[0] == 0:\n            raise LoadRefused("the file has a header and no data rows")',
+        '        if False:\n            raise LoadRefused("the file has a header and no data rows")',
+        "a header alone is an empty file",
+    ),
+    (
+        "changes",
+        "a truncated file is applied",
+        "if not baseline and not force and held > 0 and staged < min_staged_ratio * held:",
+        "if False:",
+        "a file with under half the carriers must be refused",
+    ),
+    (
+        "changes",
+        "a file where most rows moved is applied",
+        "if not baseline and not force and changed > max_changed_ratio * staged:",
+        "if False:",
+        "a file where over a quarter moved is a bad file",
+    ),
+    (
+        "changes",
+        "force does not skip the changed-rows guard",
+        "if not baseline and not force and changed > max_changed_ratio * staged:",
+        "if not baseline and changed > max_changed_ratio * staged:",
+        "force must let a real mass change through",
+    ),
+    (
+        "changes",
+        "a date far in the future is accepted",
+        "if not force and (snapshot_date - today).days > 1:",
+        "if False:",
+        "a typo in the date would block every later file",
+    ),
+    (
+        "changes",
+        "absent carriers are not counted",
+        'cur.execute("select count(*) from carrier_current c where not exists (select 1 from carrier_stage s where s.usdot_norm = c.usdot_norm)")',
+        'cur.execute("select 0")',
+        "carriers a file does not mention must be counted, since they raise no event",
+    ),
+    (
+        "changes",
+        "unknown policy status values are not counted",
+        "policy_status <> all(%s)",
+        "policy_status = any(%s)",
+        "a vocabulary change in the feed must show as a number",
+    ),
+    # event keys
+    (
+        "changes",
+        "an authority change key leaves out the date",
+        "coalesce(authority_status, '') || ':' || coalesce((authority_date - date '1970-01-01')::text, '')",
+        "coalesce(authority_status, '')",
+        "an authority lost twice must alert twice",
+    ),
+    (
+        "changes",
+        "a cancellation key leaves out the cancel date",
+        "'cancellation_filed', coalesce(filing_id, '') || '|' || coalesce(to_char(coalesce(cancel_date, filing_date), 'YYYY-MM-DD'), '')",
+        "'cancellation_filed', coalesce(filing_id, '')",
+        "cancelled, reinstated and cancelled again on one filing must alert twice",
+    ),
+    (
+        "changes",
+        "an insurer change key ignores the filing",
+        "'insurer_changed', coalesce(filing_id, ''), jsonb_build_object",
+        "'insurer_changed', '', jsonb_build_object",
+        "two insurer changes on two filings are two alerts",
+    ),
+    # matching
+    (
+        "changes",
+        "events are never matched by MC number",
+        "from change_event e join carrier_company c on c.mc_norm = e.mc_norm where {where}",
+        "from change_event e join carrier_company c on false where {where}",
+        "a company known only by its MC number must match",
+    ),
+    (
+        "changes",
+        "events are never matched by USDOT number",
+        "from change_event e join carrier_company c on c.usdot_norm = e.usdot_norm where {where}",
+        "from change_event e join carrier_company c on false where {where}",
+        "a company known only by its USDOT number must match",
+    ),
+    (
+        "changes",
+        "a carrier matching two companies is not flagged as a conflict",
+        "case when count(*) > 1 then 'conflict' else 'matched' end",
+        "case when count(*) > 9 then 'conflict' else 'matched' end",
+        "two companies for one carrier is for a person to decide",
+    ),
+    (
+        "changes",
+        "an event that matched no company is queued anyway",
+        "          join change_event_match m on m.event_id = e.id\n          join carrier_company c on c.id = m.company_id\n         where {where}",
+        "          left join change_event_match m on m.event_id = e.id\n          left join carrier_company c on c.id = m.company_id\n         where {where}",
+        "only an event with a company is pushed",
+    ),
+    (
+        "changes",
+        "a late company is matched to events of any age",
+        'where = "e.created_at >= now() - make_interval(days => %s) and c.id = %s"',
+        'where = "%s::int is not null and c.id = %s"',
+        "the late match looks back N days and no further",
+    ),
+    (
+        "changes",
+        "a late company can queue an event twice",
+        "        on conflict (event_id) do nothing\n",
+        "",
+        "an event already queued is never queued again",
+    ),
+    # the outbox
+    (
+        "changes",
+        "a row is marked delivered when it is claimed, before any outcome",
+        "attempts = o.attempts + 1, last_attempt_at = now()",
+        "attempts = o.attempts + 1, last_attempt_at = now(), status = 'delivered'",
+        "delivered means the sink answered ok and the answer is stored",
+    ),
+    (
+        "changes",
+        "an ambiguous answer counts as delivered",
+        'if answer is not None and answer.status == "ok":',
+        'if answer is not None and answer.status in ("ok", "ambiguous"):',
+        "an answer that may not have acted is not a delivery",
+    ),
+    (
+        "changes",
+        "an answer the sink should not give counts as delivered",
+        'answer = SinkAnswer("ambiguous", None, "unrecognised answer")',
+        'answer = SinkAnswer("ok", None, None)',
+        "an unrecognised answer is retried, never trusted",
+    ),
+    (
+        "changes",
+        "a live claim does not stop a second worker",
+        " and (lease_expires_at is null or lease_expires_at <= now())",
+        "",
+        "two workers must not push the same row",
+    ),
+    (
+        "changes",
+        "a stale worker's ok is stored",
+        "where event_id = %s and claim_token = %s and status = 'pending' returning status\",\n                (answer.ref,",
+        "where event_id = %s and (claim_token = %s or true) and status = 'pending' returning status\",\n                (answer.ref,",
+        "a worker that lost its claim must not mark the row delivered",
+    ),
+    (
+        "changes",
+        "a stale worker's failure is stored",
+        " where event_id = %s and claim_token = %s and status = 'pending' returning status\",\n                (max_attempts,",
+        " where event_id = %s and (claim_token = %s or true) and status = 'pending' returning status\",\n                (max_attempts,",
+        "a worker that lost its claim must not release the new worker's row",
+    ),
+    (
+        "changes",
+        "a row never goes dead",
+        "when attempts >= %s then 'dead'",
+        "when attempts >= %s + 1000 then 'dead'",
+        "a row that keeps failing stops being pushed",
+    ),
+    (
+        "changes",
+        "a rejected answer is retried",
+        'elif answer is not None and answer.status == "rejected":',
+        "elif False:",
+        "a refusal is permanent",
+    ),
+    (
+        "changes",
+        "the sink's exception message is stored",
+        'answer = SinkAnswer("ambiguous", None, type(exc).__name__)',
+        'answer = SinkAnswer("ambiguous", None, str(exc))',
+        "an exception message can carry a webhook URL with a token",
+    ),
+    (
+        "changes",
+        "a failed push is retried with no backoff",
+        "least(%s * power(2, attempts - 1), %s)",
+        "least(%s * 0, %s)",
+        "a failing sink must not be hammered",
+    ),
+    (
+        "changes",
+        "a throttled answer spends an attempt",
+        "set attempts = greatest(attempts - 1, 0), next_attempt_at",
+        "set attempts = attempts, next_attempt_at",
+        "being told to slow down is not a failure",
+    ),
+    (
+        "changes",
+        "retry_after is ignored",
+        "wait = backoff_seconds if answer.retry_after is None else answer.retry_after",
+        "wait = backoff_seconds",
+        "the sink's own wait is honoured",
+    ),
+    (
+        "changes",
+        "a requeued row keeps its spent attempts",
+        "set status = 'pending', attempts = 0,",
+        "set status = 'pending', attempts = attempts,",
+        "a requeued row gets a fresh set of attempts",
+    ),
+    (
+        "changes",
+        "a claim is not committed on a normal connection",
+        '    with conn.transaction(), conn.cursor() as cur:\n        cur.execute(\n            """\n            update change_outbox o',
+        '    with conn.cursor() as cur:\n        cur.execute(\n            """\n            update change_outbox o',
+        "a worker's claim must be visible before the sink is called",
+    ),
+    (
+        "changes",
+        "an outcome is not committed on a normal connection",
+        '    with conn.transaction(), conn.cursor() as cur:\n        if answer is not None and answer.status == "ok":',
+        '    with conn.cursor() as cur:\n        if answer is not None and answer.status == "ok":',
+        "a lost outcome means the same alert is pushed again blind",
+    ),
+    # the report
+    (
+        "changes",
+        "the report counts every date's events",
+        'where snapshot_date = %s group by kind", (snapshot_date,))',
+        'where %s::date is not null group by kind", (snapshot_date,))',
+        "a day's report is that day's events",
+    ),
+    (
+        "changes",
+        "the report lists changes in id order, not by urgency",
+        "order by array_position(%s::text[], e.kind), e.id",
+        "order by e.id + 0 * array_position(%s::text[], e.kind)",
+        "a cancellation is read before a new carrier",
+    ),
 ]
 
 
@@ -342,10 +745,15 @@ HUNG_SENTINEL = "hung"
 MUTANT_TIMEOUT_SECONDS = 180
 
 
-def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS):
+#: The change detection guards live in code that nothing else imports, so their mutants run only the suite that can see them (about 17 seconds instead of 35). The baseline and the final
+#: check still run everything.
+SCOPED_SUITE = {"m005": "tests/test_change_detection.py", "changes": "tests/test_change_detection.py"}
+
+
+def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
     try:
         r = subprocess.run(
-            [str(PY), "-m", "pytest", "tests/", "-q"],
+            [str(PY), "-m", "pytest", path, "-q"],
             cwd=ROOT, capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
@@ -359,8 +767,13 @@ def main() -> int:
         return 1
     print("baseline: green")
 
+    # `--only m005,changes` runs just the guards aimed at those targets, for a quick loop while writing a new one. A full run is the one that counts.
+    only = set(sys.argv[sys.argv.index("--only") + 1].split(",")) if "--only" in sys.argv else None
+
     failures = 0
     for key, name, old, new, why in MUTATIONS:
+        if only and key not in only:
+            continue
         path = TARGETS[key]
         original = path.read_text(encoding="utf-8")
         if old not in original:
@@ -369,7 +782,7 @@ def main() -> int:
             continue
         try:
             path.write_text(original.replace(old, new, 1), encoding="utf-8")
-            still_green = run_suite()
+            still_green = run_suite(path=SCOPED_SUITE.get(key, "tests/"))
         finally:
             path.write_text(original, encoding="utf-8")
             assert path.read_text(encoding="utf-8") == original, "RESTORE FAILED"
