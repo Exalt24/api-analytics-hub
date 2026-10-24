@@ -394,15 +394,15 @@ MUTATIONS = [
     (
         "m005",
         "the MC normaliser keeps leading zeros",
-        "nullif(ltrim(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '0'), '') as d",
-        "nullif(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '') as d",
+        "nullif(ltrim(regexp_replace(regexp_replace(coalesce(raw, ''), '\\.0+\\s*$', ''), '\\D', '', 'g'), '0'), '') as d",
+        "nullif(regexp_replace(regexp_replace(coalesce(raw, ''), '\\.0+\\s*$', ''), '\\D', '', 'g'), '') as d",
         "MC-0012345 and 12345 are one docket",
     ),
     (
         "m005",
         "the USDOT normaliser keeps leading zeros",
-        "    select nullif(ltrim(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '0'), '')\n$$;",
-        "    select nullif(regexp_replace(coalesce(raw, ''), '\\D', '', 'g'), '')\n$$;",
+        "    select nullif(ltrim(regexp_replace(regexp_replace(coalesce(raw, ''), '\\.0+\\s*$', ''), '\\D', '', 'g'), '0'), '')\n$$;",
+        "    select nullif(regexp_replace(regexp_replace(coalesce(raw, ''), '\\.0+\\s*$', ''), '\\D', '', 'g'), '')\n$$;",
         "0090000001 and 90000001 are one carrier",
     ),
     (
@@ -932,7 +932,25 @@ def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
     return r.returncode == 0
 
 
+def missing_targets() -> list[str]:
+    """Guards whose old text is no longer in the file they aim at, or that change nothing. Such a guard proves nothing, and a full run takes about an hour to say so."""
+    problems = []
+    for key, name, old, new, *_ in MUTATIONS:
+        if old not in TARGETS[key].read_text(encoding="utf-8"):
+            problems.append(f"{name}: its target text is no longer in {TARGETS[key].name}")
+        elif old == new:
+            problems.append(f"{name}: the mutation changes nothing")
+    return problems
+
+
 def main() -> int:
+    problems = missing_targets()
+    if problems:
+        print("update this file before mutating, these guards no longer find their target:\n  " + "\n  ".join(problems))
+        return 1
+    if "--check-targets" in sys.argv:
+        print(f"all {len(MUTATIONS)} guards find their target")
+        return 0
     if run_suite() is not True:
         print("baseline suite is RED or hung, fix that before mutating")
         return 1

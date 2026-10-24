@@ -33,3 +33,4 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python -m pytest tests -q
+      - run: python tests/mutation_check.py --check-targets
