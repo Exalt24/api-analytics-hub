@@ -22,11 +22,7 @@ PostgreSQL instance it used expired that day, so the service cannot connect to i
 database and the demo key no longer signs in to anything. Until a database is
 provisioned there is no live demo; run it locally with the steps below.
 
-While it was up, the demo key signed you in as a viewer on a demo tenant holding
-test orders from a Shopify development store, so the figures on screen came out of
-the real Shopify API through the connector in this repo. Pressing **Sync now** as
-that viewer returned `403: role viewer may not write:sync`, which is the role check
-answering rather than a bug.
+While it was up, the demo key signed you in as a viewer on a demo tenant holding test orders from a Shopify development store, read through the connector in this repo. Pressing **Sync now** as that viewer returned `403: role viewer may not write:sync`, the role check answering rather than a bug.
 
 ---
 
@@ -58,19 +54,13 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev -- -p 3100
 `SEED_DAYS` changes it) and prints an admin and a viewer API key, which is the fastest
 way to see the role split in the browser. It reads the store's domain and Admin API
 token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE` (`SHOP=<store>.myshopify.com`
-and `ACCESS_TOKEN=<token>`), which is never committed. Build the dashboard first
-(`npm run build`, then `npm start -- -p 3100`): the development server did not hydrate the
-page in the browsers this was recorded in, so a production build is the dependable way to
-run it, and the page must be opened as `http://localhost:3100` (the API's CORS origin).
+and `ACCESS_TOKEN=<token>`), which is never committed. Build the dashboard first (`npm run build`, then `npm start -- -p 3100`), because the development server did not hydrate the page in the browsers this was recorded in, and open it as `http://localhost:3100` (the API's CORS origin).
 
 Open the dashboard and paste a key into the box on the page (no console needed). Paste the viewer key to see the role split: it can read, and Sync now comes back 403 with the reason. A deployment can also set `NEXT_PUBLIC_DEMO_VIEWER_KEY` to show a one-click viewer sign-in; none is shipped, because the hosted demo is offline.
 
 ### Ports
 
-Postgres is on **5433** and the dashboard on **3100**, both non-default. Every
-other Postgres on a developer machine is on 5432 and something is always already
-on 3000; a collision there presents as an authentication error against the wrong
-database, which is a genuinely confusing hour.
+Postgres is on **5433** and the dashboard on **3100**, both non-default: something is usually already on 5432 and 3000, and that collision shows up as an authentication error against the wrong database.
 
 ---
 
@@ -92,10 +82,13 @@ app/
   api/               FastAPI, bearer auth, RBAC, request log and /metrics
   obs.py             JSON log formatter, request ids, Prometheus text page
   health.py          stuck-sync gauges and the alert policy
+  changes.py         daily snapshot compare, events, company matching, alert outbox
+  changes_fake_sink.py  stand-in CRM sinks for tests
 scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health
+scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection
 web/                 Next.js dashboard
-tests/               249 tests + a mutation harness
+tests/               433 tests + a mutation harness
 ```
 
 ---
@@ -185,20 +178,27 @@ Its own tests found three defects in the first version:
 
 ---
 
+## Change detection on a daily file
+
+`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 on a desktop PC with local Docker Postgres: day 2 (400,200 rows, 0.5 percent changed) took 9.38 s in one transaction (COPY 8.22 s, compare 0.39 s) and raised 2,371 events; the same file again raised 0, and an error raised at each of 7 stages left the tables unchanged. A separate slice: not scheduled, not tenant scoped, not wired into the hub. The data is invented, no regulator file and no CRM was used, and delivery is at least once, so it is once in effect only when the CRM upserts on the key. Numbers, method and limits: [docs/change-detection.md](docs/change-detection.md).
+
+---
+
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 249 passed
-./.venv/Scripts/python.exe tests/mutation_check.py  # 41 guards, all caught
+./.venv/Scripts/python.exe -m pytest tests/ -q      # 500 passed, 4 known limits
+./.venv/Scripts/python.exe tests/mutation_check.py  # 120 guards, see below
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
 
-Counts are from a run on 2026-10-24. 47 of the 249 tests need a Postgres (the compose
-file's, or one named by `ANALYTICS_TEST_DSN`) and skip without one, CI starts one so they
-run there, and those tests
-drop and recreate the `public` schema of whatever database they point at, so aim
-them at a scratch database. The mutation harness needs the same Postgres up the whole
-run, because a guard that only a database test catches reads as untested without it.
+Counts are from a run on 2026-10-24. The database tests (the compose Postgres, or the one in
+`ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public`
+schema of whatever database they point at, so aim them at a scratch database. The mutation
+harness needs the same Postgres up the whole run, because a guard that only a database test
+catches reads as untested without it.
+
+Of the 120 guards, 41 are older and 79 cover change detection. The first 109 passed one full run on 2026-10-24, before an independent review; its fixes added 11 more, each caught in a scoped run, and a full run of all 120 is still to do.
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It
@@ -212,11 +212,7 @@ constant using that same constant, so mutating the constant moved the test with 
 This is a lab build, not a production service. Honest list, in the order I would
 actually do it.
 
-1. **The deployment is down and was never hardened.** The dashboard is on Vercel and
-   the API was on a free Render instance with a free Postgres, which expired on
-   2026-09-19 and took the API with it. There is no managed Postgres with backups,
-   and no uptime monitoring. That is the first gap and
-   it is not a small one.
+1. **The deployment is down and was never hardened.** The free Render Postgres expired on 2026-09-19 and took the API with it (see Live). There is no managed Postgres with backups and no uptime monitoring.
 2. **The scheduler is a runner without a clock.** `sync/runner.py` claims, leases,
    heartbeats and resumes correctly, and something still has to *call* it on a
    cadence. The schedule table and jitter column exist; the daemon does not.
@@ -234,15 +230,10 @@ actually do it.
 6. **One live connector.** The abstraction is only honest once a second platform
    lands: the second connector is what reveals whether the first one's field names
    leaked into the core. I would build Meta or GA4 next, before adding features.
-7. **Alerting stops at one Slack channel.** A stuck or stale sync now posts to an
-   incoming webhook ([docs/observability.md](docs/observability.md)), once per
-   change and again after six hours, and there is still no paging, no on-call
-   rota and no escalation when nobody reads the channel.
+7. **Alerting stops at one Slack channel.** A stuck or stale sync posts to an incoming webhook ([docs/observability.md](docs/observability.md)) once per change and again after six hours; there is no paging, on-call rota or escalation.
 8. **Quarantine is a table, not a workflow.** Rows that will not normalise are
    captured, and there is no way to review or replay them.
-9. **No traces.** Requests have JSON logs, a request id and Prometheus metrics,
-   and those metrics are per process and reset on restart. A slow sync shows as a
-   late run in the log, not as a breakdown of where the time went.
+9. **No traces.** Requests have JSON logs, a request id and per process Prometheus metrics that reset on restart; a slow sync shows as a late run, not as a breakdown of where the time went.
 10. **Backfill is manual.** Windows are passed by hand. A real backfill needs
     chunking, resumability across process restarts, and a rate-limit budget shared
     with the live syncs so a backfill cannot starve them.

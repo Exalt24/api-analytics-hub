@@ -34,6 +34,7 @@ TARGETS = {
     "m004": ROOT / "migrations" / "004_observability.sql",
     "m005": ROOT / "migrations" / "005_change_detection.sql",
     "changes": ROOT / "app" / "changes.py",
+    "cli": ROOT / "scripts" / "load_carrier_snapshot.py",
 }
 
 MUTATIONS = [
@@ -507,7 +508,7 @@ MUTATIONS = [
     (
         "changes",
         "a truncated file is applied",
-        "if not baseline and not force and held > 0 and staged < min_staged_ratio * held:",
+        "if not baseline and (absent_is_event or not force) and held > 0 and staged < min_staged_ratio * held:",
         "if False:",
         "a file with under half the carriers must be refused",
     ),
@@ -732,6 +733,169 @@ MUTATIONS = [
         "order by e.id + 0 * array_position(%s::text[], e.kind)",
         "a cancellation is read before a new carrier",
     ),
+    # absence as news (optional mode), the previous-load comparison, the external key, the command line
+    (
+        "changes",
+        "absence raises events even with the mode off",
+        '    """ if absent_is_event else ""',
+        '    """ if True else ""',
+        "the default is silent: a carrier that is not in the file raises nothing",
+    ),
+    (
+        "changes",
+        "a carrier that stays absent raises an event every day",
+        "         where c.absent_load is null and not exists (select 1 from carrier_stage s where s.usdot_norm = c.usdot_norm)\n    \"\"\" if absent_is_event",
+        "         where not exists (select 1 from carrier_stage s where s.usdot_norm = c.usdot_norm)\n    \"\"\" if absent_is_event",
+        "the second absent day raises nothing",
+    ),
+    (
+        "changes",
+        "an absent carrier is never marked",
+        "where cu.absent_load is null and not exists",
+        "where false and not exists",
+        "the mark is what keeps the second absent day silent",
+    ),
+    (
+        "changes",
+        "a carrier that returns is not examined",
+        "or c.track_hash is distinct from s.track_hash or c.absent_load is not null",
+        "or c.track_hash is distinct from s.track_hash",
+        "a return goes through the history path and clears the mark",
+    ),
+    (
+        "changes",
+        "a returning carrier keeps its absent mark",
+        "last_changed_load = %s, absent_load = null",
+        "last_changed_load = %s, absent_load = c.absent_load",
+        "a carrier that comes back and vanishes again alerts again",
+    ),
+    (
+        "changes",
+        "the vanish key leaves out the load, so a second vanish is suppressed",
+        "coalesce(c.filing_id, '') || ':' || c.last_changed_load,",
+        "coalesce(c.filing_id, ''),",
+        "vanish, return, vanish is two alerts",
+    ),
+    (
+        "changes",
+        "force skips the floor in absent mode",
+        "if not baseline and (absent_is_event or not force) and held > 0",
+        "if not baseline and not force and held > 0",
+        "a truncated file must never read as thousands of endings",
+    ),
+    (
+        "changes",
+        "the previous load's row count is not recorded",
+        "(select rows_staged from carrier_load order by id desc limit 1)",
+        "null::int",
+        "a shrinking file must be visible in the report",
+    ),
+    (
+        "changes",
+        "the payload carries no external key",
+        "'external_key', e.usdot_norm || ':' || e.kind || ':' || e.event_ref, ",
+        "",
+        "the sink upserts on the external key",
+    ),
+    (
+        "cli",
+        "the command line ignores --force",
+        "force=a.force,",
+        "force=False,",
+        "force must reach the load",
+    ),
+    (
+        "cli",
+        "the command line ignores --absent-is-event",
+        "absent_is_event=a.absent_is_event,",
+        "absent_is_event=False,",
+        "the flag must reach the load",
+    ),
+    (
+        "cli",
+        "a refused file exits 0",
+        "        return 3\n",
+        "        return 0\n",
+        "a cron job must be told when a file was refused",
+    ),
+    # output round 1: a connection inside a transaction, a re-filed alert, a spreadsheet number, the loader's reason, the report's rejected rows
+    (
+        "changes",
+        "apply_snapshot accepts a connection inside a transaction",
+        '    _require_idle(conn, "apply_snapshot")\n',
+        "",
+        "a load on a connection inside a transaction would be rolled back at close and the day lost without a word",
+    ),
+    (
+        "changes",
+        "claim_outbox accepts a connection inside a transaction",
+        '    _require_idle(conn, "claim_outbox")\n',
+        "",
+        "a claim that is only a savepoint is invisible to a second worker, which then pushes the same alert",
+    ),
+    (
+        "changes",
+        "record_outcome accepts a connection inside a transaction",
+        '    _require_idle(conn, "record_outcome")\n',
+        "",
+        "an outcome that is only a savepoint is lost with the connection and the next run pushes the alert again",
+    ),
+    (
+        "changes",
+        "the daily report leaves a normal connection inside a transaction",
+        "    with conn.transaction(), conn.cursor() as cur:\n        if snapshot_date is None:",
+        "    with conn.cursor() as cur:\n        if snapshot_date is None:",
+        "printing the report must not turn the next claim and outcome into savepoints",
+    ),
+    (
+        "changes",
+        "a second cancellation filing on a cancelled carrier does not alert",
+        "(old_policy_status is distinct from 'CANCELLED' or filing_id is distinct from old_filing_id)",
+        "old_policy_status is distinct from 'CANCELLED'",
+        "an owner must hear about a new cancellation filing even when the status stayed CANCELLED between two files",
+    ),
+    (
+        "changes",
+        "a second replacement filing on a replaced carrier does not alert",
+        "(old_policy_status is distinct from 'REPLACED' or filing_id is distinct from old_filing_id)",
+        "old_policy_status is distinct from 'REPLACED'",
+        "an owner must hear about a new replacement filing even when the status stayed REPLACED between two files",
+    ),
+    (
+        "m005",
+        "a trailing .0 on a USDOT number becomes a digit",
+        r"    select nullif(ltrim(regexp_replace(regexp_replace(coalesce(raw, ''), '\.0+\s*$', ''), '\D', '', 'g'), '0'), '')" + "\n",
+        r"    select nullif(ltrim(regexp_replace(coalesce(raw, ''), '\D', '', 'g'), '0'), '')" + "\n",
+        "a spreadsheet export that wrote 90005001.0 must stay the same carrier, not become 900050010",
+    ),
+    (
+        "m005",
+        "a trailing .0 on a docket number becomes a digit",
+        r"nullif(ltrim(regexp_replace(regexp_replace(coalesce(raw, ''), '\.0+\s*$', ''), '\D', '', 'g'), '0'), '') as d) t",
+        r"nullif(ltrim(regexp_replace(coalesce(raw, ''), '\D', '', 'g'), '0'), '') as d) t",
+        "a spreadsheet export that wrote MC-713740.0 must stay the same docket",
+    ),
+    (
+        "cli",
+        "the loader prints only an exception class when a load cannot run",
+        '        print("could not load: %s: %s" % (type(exc).__name__, _why(exc, dsn)), file=sys.stderr)\n',
+        '        print("could not load: %s" % type(exc).__name__, file=sys.stderr)\n',
+        "an operator and a failed cron run must see which line, cell or credential is wrong",
+    ),
+    (
+        "changes",
+        "the report hides rejected and repeated rows",
+        '    if report["rows_rejected"] or report["rows_duplicate"]:\n',
+        '    if False:\n',
+        "a column shift that drops carriers must show in the daily report, not only as an unrelated count",
+    ),
+    (
+        "changes",
+        "the report hides a second load of the same date",
+        '    if report["loads_on_date"] > 1:\n',
+        '    if False:\n',
+        "a corrected file published on the same date must not read as one baseline with 119 alerts",
+    ),
 ]
 
 
@@ -745,9 +909,9 @@ HUNG_SENTINEL = "hung"
 MUTANT_TIMEOUT_SECONDS = 180
 
 
-#: The change detection guards live in code that nothing else imports, so their mutants run only the suite that can see them (about 17 seconds instead of 35). The baseline and the final
+#: The change detection guards live in code that nothing else imports, so their mutants run only the suite that can see them (about 30 seconds instead of 60). The baseline and the final
 #: check still run everything.
-SCOPED_SUITE = {"m005": "tests/test_change_detection.py", "changes": "tests/test_change_detection.py"}
+SCOPED_SUITE = {key: "tests/test_change_detection.py" for key in ("m005", "changes", "cli")}
 
 
 def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
@@ -770,9 +934,14 @@ def main() -> int:
     # `--only m005,changes` runs just the guards aimed at those targets, for a quick loop while writing a new one. A full run is the one that counts.
     only = set(sys.argv[sys.argv.index("--only") + 1].split(",")) if "--only" in sys.argv else None
 
+    # `--match absent,previous` runs only the guards whose name holds one of those words.
+    match = sys.argv[sys.argv.index("--match") + 1].split(",") if "--match" in sys.argv else None
+
     failures = 0
     for key, name, old, new, why in MUTATIONS:
         if only and key not in only:
+            continue
+        if match and not any(word in name for word in match):
             continue
         path = TARGETS[key]
         original = path.read_text(encoding="utf-8")

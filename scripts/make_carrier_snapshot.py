@@ -52,12 +52,12 @@ CHANGE_MIX = (("insurer_changed", 0.40), ("cancellation_filed", 0.25), ("replace
 # ------------------------------------------------------------------ the oracle: the rules again, in plain Python
 
 def norm_dot(raw: str | None) -> str | None:
-    digits = re.sub(r"\D", "", raw or "").lstrip("0")
+    digits = re.sub(r"\D", "", re.sub(r"\.0+\s*$", "", raw or "")).lstrip("0")
     return digits or None
 
 
 def norm_mc(raw: str | None) -> str | None:
-    digits = re.sub(r"\D", "", raw or "").lstrip("0")
+    digits = re.sub(r"\D", "", re.sub(r"\.0+\s*$", "", raw or "")).lstrip("0")
     if not digits:
         return None
     m = re.match(r"\s*(FF|MX)", (raw or "").upper())
@@ -94,9 +94,9 @@ def expected_events(old: Row | None, new: Row) -> list[tuple[str, str]]:
     out = []
     if new.insurer != old.insurer:
         out.append(("insurer_changed", new.filing_id))
-    if new.policy_status == "CANCELLED" and old.policy_status != "CANCELLED":
+    if new.policy_status == "CANCELLED" and (old.policy_status != "CANCELLED" or old.filing_id != new.filing_id):
         out.append(("cancellation_filed", "%s|%s" % (new.filing_id, effective)))
-    if new.policy_status == "REPLACED" and old.policy_status != "REPLACED":
+    if new.policy_status == "REPLACED" and (old.policy_status != "REPLACED" or old.filing_id != new.filing_id):
         out.append(("replacement_filed", "%s|%s" % (new.filing_id, effective)))
     if new.authority_status != old.authority_status:
         out.append(("authority_status_changed", "%s:%s" % (new.authority_status, (date.fromisoformat(new.authority_date) - date(1970, 1, 1)).days if new.authority_date else "")))
@@ -228,7 +228,7 @@ def generate(out_dir, *, n: int = 400_000, seed: int = 20261024, change_rate: fl
 
     # Optional days 3 and 4 for carriers cancelled on day 2: reinstated on day 3, cancelled again on day 4 on the SAME filing id with a new cancel date. A correct run alerts on each
     # cancellation, so the manifest says two per carrier, counted from this scenario and not from the event key rule.
-    flap_ix = [ix for ix in changed_ix if new[ix].policy_status == "CANCELLED"][:flappers]
+    flap_ix = [ix for ix in changed_ix if old[ix].policy_status == "ACTIVE" and new[ix].policy_status == "CANCELLED"][:flappers]
     if flap_ix:
         day4 = day2 + timedelta(days=2)
         d3, d4 = list(new), list(new)

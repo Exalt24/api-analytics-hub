@@ -11,6 +11,7 @@ from __future__ import annotations
 import itertools
 import os
 import random
+import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -40,7 +41,7 @@ from app import changes  # noqa: E402
 from app.changes import (  # noqa: E402
     SinkAnswer, apply_snapshot, claim_outbox, daily_report, deliver_pending, format_report, load_companies, match_late_company, record_outcome, requeue_dead, rows_to_csv,
 )
-from app.changes_fake_sink import FakeSink  # noqa: E402
+from app.changes_fake_sink import AppendSink, FakeSink  # noqa: E402
 from make_carrier_snapshot import Row, expected_events, generate, normalise, norm_dot, norm_mc  # noqa: E402
 
 MIGRATIONS = ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "004_observability.sql", "005_change_detection.sql")
@@ -327,7 +328,7 @@ def test_a_bad_file_fails_the_whole_day_and_changes_nothing(conn, bad, error):
     load(conn, [row()], 0)
     base = fingerprint(conn)
     with pytest.raises(error):
-        apply_snapshot(conn, bad, D(1))
+        apply_snapshot(conn, bad, D(1), force=True)                                       # forced, so only the file itself can be what refuses it
     assert fingerprint(conn) == base
 
 
@@ -832,7 +833,7 @@ def test_the_report_shows_the_carriers_a_file_did_not_mention(conn):
     load(conn, _bulk(20), 0)
     load(conn, _bulk(12), 1)
     rep = daily_report(conn, D(1))
-    assert rep["rows_missing"] == 8 and "8 held carriers not in the file (no event raised for them)" in format_report(rep)
+    assert rep["rows_missing"] == 8 and "8 held carriers not in the file" in format_report(rep)
 
 
 # ----------------------------------------------------------------------------------------- cleaning cells before the hash
@@ -985,3 +986,270 @@ def test_claim_and_outcome_commit_on_their_own_on_a_normal_connection(conn):
     finally:
         normal.close()
     assert _ob(conn)[0][:2] == ("delivered", 2)
+
+
+# ----------------------------------------------------------------------------------------- a source where absence is the news (optional mode)
+
+def _absent_world(conn, n=20):
+    add_company(conn, "Acct 3", usdot="90000003")
+    load(conn, _bulk(n), 0)
+
+
+def _dropped(conn):
+    return conn.execute("select usdot_norm, event_ref from change_event where kind = 'dropped_from_file' order by id").fetchall()
+
+
+def test_with_the_mode_off_a_carrier_that_vanishes_is_counted_and_raises_nothing(conn):
+    _absent_world(conn)
+    r = load(conn, _bulk(19), 1, force=False)
+    assert r.rows_missing == 1 and events(conn) == []
+    assert conn.execute("select count(*) from carrier_current where absent_load is not null").fetchone()[0] == 0
+
+
+def test_a_truncated_file_is_refused_in_absent_mode_instead_of_raising_an_ending_per_missing_carrier(conn):
+    _absent_world(conn)
+    base = fingerprint(conn)
+    for force in (False, True):                                                           # force cannot skip the floor in this mode
+        with pytest.raises(changes.LoadRefused, match="truncated"):
+            load(conn, _bulk(5), 1, force=force, absent_is_event=True)
+    assert fingerprint(conn) == base and events(conn) == []
+
+
+def test_a_vanished_carrier_raises_one_event_on_the_first_absent_day_and_none_after_and_a_rerun_raises_nothing(conn):
+    _absent_world(conn)
+    gone = [r for r in _bulk(20) if r.usdot != "90000003"]
+    first = load(conn, gone, 1, force=False, absent_is_event=True)
+    assert first.events_new == 1 and [d for d, _r in _dropped(conn)] == ["90000003"]
+    assert conn.execute("select count(*) from change_outbox").fetchone()[0] == 1          # matched to the company and queued like any event
+    assert load(conn, gone, 1, force=False, absent_is_event=True).events_new == 0         # an exact rerun
+    second_day = load(conn, gone, 2, force=False, absent_is_event=True)                    # the second absent day
+    assert second_day.events_new == 0 and second_day.events_suppressed == 0              # not even raised and swallowed by the unique key: the mark is the first guard
+    assert len(_dropped(conn)) == 1 and daily_report(conn, D(1))["events_by_kind"] == {"dropped_from_file": 1}
+
+
+def test_a_carrier_that_returns_clears_the_mark_without_an_alert_and_a_second_vanish_alerts_again(conn):
+    _absent_world(conn)
+    everyone, gone = _bulk(20), [r for r in _bulk(20) if r.usdot != "90000003"]
+    load(conn, gone, 1, force=False, absent_is_event=True)
+    back = load(conn, everyone, 2, force=False, absent_is_event=True)
+    assert back.events_new == 0 and back.rows_changed == 1                                # it goes through the history path
+    assert conn.execute("select absent_load from carrier_current where usdot_norm = '90000003'").fetchone()[0] is None
+    assert conn.execute("select count(*) from carrier_history where usdot_norm = '90000003'").fetchone()[0] == 2
+    load(conn, gone, 3, force=False, absent_is_event=True)
+    keys = _dropped(conn)
+    assert len(keys) == 2 and keys[0] != keys[1]                                           # a new key, so a new alert
+    assert conn.execute("select count(*) from change_outbox").fetchone()[0] == 2
+
+
+def test_a_carrier_that_stays_absent_and_one_that_returns_each_stay_independent(conn):
+    load(conn, _bulk(20), 0)
+    load(conn, _bulk(18), 1, force=False, absent_is_event=True)                            # 18 and 19 vanish
+    assert sorted(d for d, _r in _dropped(conn)) == ["90000018", "90000019"]
+    load(conn, _bulk(19), 2, force=False, absent_is_event=True)                            # 18 returns, 19 stays away
+    assert len(_dropped(conn)) == 2
+    marked = [d for (d,) in conn.execute("select usdot_norm from carrier_current where absent_load is not null").fetchall()]
+    assert marked == ["90000019"]
+
+
+def test_the_first_load_in_absent_mode_is_still_a_baseline(conn):
+    r = load(conn, _bulk(5), 0, absent_is_event=True)
+    assert r.baseline and r.events_new == 0
+
+
+# ----------------------------------------------------------------------------------------- the row count against the previous load
+
+def test_the_report_compares_the_file_with_the_previous_load(conn):
+    first = load(conn, _bulk(20), 0)
+    second = load(conn, _bulk(18), 1, force=False)
+    assert first.previous_rows_staged is None and second.previous_rows_staged == 20
+    rep = daily_report(conn, D(1))
+    assert rep["previous_rows_staged"] == 20 and "18 rows in the file (previous load 20, -10.0 percent)" in format_report(rep)
+    assert "previous load" not in format_report(daily_report(conn, D(0)))
+
+
+# ----------------------------------------------------------------------------------------- the key reaches the sink as an external key
+
+def test_the_payload_carries_the_same_key_as_an_external_key_for_the_sink_to_upsert_on(conn):
+    _queue_one(conn)
+    payload, key = conn.execute("select payload, idempotency_key from change_outbox").fetchone()
+    assert payload["external_key"] == key == "90000001:insurer_changed:F2"
+
+
+def test_a_crash_between_the_sink_succeeding_and_the_outcome_being_stored_leaves_one_record_when_the_sink_upserts_on_the_external_key(conn):
+    _queue_one(conn)
+    sink = FakeSink()
+    died = claim_outbox(conn, lease_seconds=300)[0]
+    sink(died.payload, died.idempotency_key)                                              # the CRM stored the record, then the worker died before record_outcome
+    conn.execute("update change_outbox set lease_expires_at = now() - interval '1 second'")
+    assert deliver_pending(conn, sink).delivered == 1
+    assert len(sink.calls) == 2 and len(sink.tasks) == 1
+
+
+def test_the_same_crash_against_a_sink_that_does_not_dedupe_leaves_a_duplicate_record(conn):
+    _queue_one(conn)
+    sink = AppendSink()
+    died = claim_outbox(conn, lease_seconds=300)[0]
+    sink(died.payload, died.idempotency_key)
+    conn.execute("update change_outbox set lease_expires_at = now() - interval '1 second'")
+    assert deliver_pending(conn, sink).delivered == 1
+    assert len(sink.records) == 2 and sink.records[0] == sink.records[1]                  # at least once, and twice in effect: the limit, shown
+
+
+def test_a_stale_workers_failure_report_does_not_release_the_new_workers_claim(conn):
+    _queue_one(conn)
+    stale = claim_outbox(conn, lease_seconds=300)[0]
+    conn.execute("update change_outbox set lease_expires_at = now() - interval '1 second'")
+    fresh = claim_outbox(conn, lease_seconds=300)[0]
+    assert record_outcome(conn, stale, SinkAnswer("ambiguous", None, "late"), backoff_seconds=0) is None
+    assert record_outcome(conn, stale, SinkAnswer("rejected", None, "late")) is None
+    status, attempts, outcome, _ref, claimed = _ob(conn)[0]
+    assert (status, attempts, outcome, claimed) == ("pending", 2, None, True) and fresh
+    assert claim_outbox(conn, lease_seconds=300) == []                                    # still the fresh worker's
+
+
+# ----------------------------------------------------------------------------------------- the command line
+
+def _cli(tmp_path, rows, day, *flags):
+    f = tmp_path / ("file_%s.csv" % day)
+    f.write_text(rows_to_csv(rows), encoding="utf-8")
+    env = {**os.environ, "DATABASE_URL": DSN}
+    return subprocess.run([sys.executable, str(ROOT / "scripts" / "load_carrier_snapshot.py"), str(f), "--date", D(day).isoformat(), *flags],
+                          env=env, capture_output=True, text=True, encoding="utf-8", timeout=60)
+
+
+def test_the_command_line_loads_refuses_and_forces(conn, tmp_path):
+    ok = _cli(tmp_path, _bulk(20), 0)
+    assert ok.returncode == 0 and "baseline load" in ok.stdout
+    refused = _cli(tmp_path, _bulk(5), 1)
+    assert refused.returncode == 3 and "truncated" in refused.stderr and "nothing changed" in refused.stderr
+    assert conn.execute("select count(*) from carrier_load").fetchone()[0] == 1
+    forced = _cli(tmp_path, _bulk(5), 1, "--force")
+    assert forced.returncode == 0 and "15 held carriers not in the file" in forced.stdout
+    assert "analytics:analytics" not in ok.stdout + ok.stderr + refused.stdout + refused.stderr          # the connection string is never printed
+
+
+def test_the_command_line_absent_flag_turns_the_mode_on_and_nothing_else_does(conn, tmp_path):
+    _cli(tmp_path, _bulk(20), 0)
+    off = _cli(tmp_path, _bulk(19), 1)
+    assert off.returncode == 0 and conn.execute("select count(*) from change_event").fetchone()[0] == 0
+    on = _cli(tmp_path, _bulk(18), 2, "--absent-is-event")
+    assert on.returncode == 0 and conn.execute("select count(*) from change_event where kind = 'dropped_from_file'").fetchone()[0] == 2     # 18 and 19 both vanished; the day before, with the mode off, marked nothing
+    broken = _cli(tmp_path, _bulk(18), 3, "--date", "not-a-date")
+    assert broken.returncode == 2
+
+
+# ----------------------------------------------------------------------------------------- output round 1 fixes: a connection inside a transaction, a re-filed alert, a spreadsheet number
+
+from psycopg import pq  # noqa: E402
+
+
+def _in_transaction():
+    c = psycopg.connect(DSN)            # the psycopg default: not autocommit
+    c.execute("select 1")               # any read leaves it inside a transaction
+    return c
+
+
+CALLS_THAT_COMMIT_ON_THEIR_OWN = {
+    "apply_snapshot": lambda c: apply_snapshot(c, rows_to_csv([row()]).encode("utf-8"), D(0)),
+    "load_companies": lambda c: load_companies(c, b"name,usdot_no,mc_no\nAcme,90000001,\n"),
+    "match_late_company": lambda c: match_late_company(c, 1),
+    "claim_outbox": lambda c: claim_outbox(c),
+    "record_outcome": lambda c: record_outcome(c, changes.Claimed(1, "k", {}, 1, "00000000-0000-0000-0000-000000000000"), SinkAnswer("ok", "x")),
+    "requeue_dead": lambda c: requeue_dead(c),
+}
+
+
+@pytest.mark.parametrize("name", sorted(CALLS_THAT_COMMIT_ON_THEIR_OWN))
+@pytest.mark.parametrize("state", ["inside a transaction", "idle normal connection"])
+def test_a_call_that_promises_to_commit_refuses_a_connection_inside_a_transaction(conn, name, state):
+    # CLASS-TABLE: every call that commits on its own, against a connection inside a transaction (refused) and an idle normal connection (accepted)
+    c = _in_transaction() if state == "inside a transaction" else psycopg.connect(DSN)
+    try:
+        if state == "inside a transaction":
+            with pytest.raises(changes.ConnectionInTransaction):
+                CALLS_THAT_COMMIT_ON_THEIR_OWN[name](c)
+            assert c.info.transaction_status == pq.TransactionStatus.INTRANS, "the refused call must not touch the caller's transaction"
+        else:
+            CALLS_THAT_COMMIT_ON_THEIR_OWN[name](c)            # must not raise
+            assert c.info.transaction_status == pq.TransactionStatus.IDLE
+    finally:
+        c.rollback()
+        c.close()
+
+
+def test_report_then_delivery_on_a_normal_connection_is_seen_by_others_and_pushes_once(conn):
+    add_company(conn, "Acme Freight", usdot="90000001")
+    other = row(usdot="90000002", mc="MC-1000002", name="Other Freight")
+    load(conn, [row(), other], 0)
+    load(conn, [row(insurer="Quillon Mutual"), other], 1)
+    sink = FakeSink()
+    normal = psycopg.connect(DSN)       # the psycopg default, not autocommit
+    try:
+        daily_report(normal)
+        assert normal.info.transaction_status == pq.TransactionStatus.IDLE, "a report must leave a normal connection as it found it"
+        result = deliver_pending(normal, sink)
+        assert result.delivered == 1 and len(sink.calls) == 1
+    finally:
+        normal.close()
+    assert conn.execute("select count(*) from change_outbox where status = 'delivered'").fetchone()[0] == 1, "the outcome was lost with the connection"
+    assert conn.execute("select attempts from change_outbox").fetchone()[0] == 1
+    again = psycopg.connect(DSN)
+    try:
+        assert deliver_pending(again, sink).delivered == 0 and len(sink.calls) == 1, "a second run pushed the same alert again"
+    finally:
+        again.close()
+
+
+@pytest.mark.parametrize("status,kind", [("CANCELLED", "cancellation_filed"), ("REPLACED", "replacement_filed")])
+def test_a_new_filing_on_a_status_already_held_alerts_again_and_a_replay_alerts_once(conn, status, kind):
+    # CLASS-TABLE: both statuses that carry a filing
+    other = row(usdot="90000002", mc="MC-1000002", name="Other Freight")
+    load(conn, [row(policy=status, filing="F2", cancel="2026-10-01"), other], 0)
+    load(conn, [row(policy=status, filing="F3", cancel="2026-10-20"), other], 1)
+    assert [(k, r) for d, k, r in events(conn) if d == "90000001"] == [(kind, "F3|2026-10-20")]
+    before = events(conn)
+    load(conn, [row(policy=status, filing="F3", cancel="2026-10-20"), other], 1)          # the same file again
+    assert events(conn) == before, "a replay alerted again"
+    load(conn, [row(policy=status, filing="F3", cancel="2026-10-20", name="Renamed Freight"), other], 2)   # an untracked column only
+    assert events(conn) == before
+    load(conn, [row(policy=status, filing="F4", cancel="2026-11-02"), other], 3)
+    assert [k for d, k, r in events(conn) if d == "90000001"] == [kind, kind]
+
+
+@pytest.mark.parametrize("raw,want", [("90005001.0", "90005001"), ("90005001.00", "90005001"), (" 90005001.0 ", "90005001"), ("1234.05", "123405"), ("12.50", "1250"), ("0.0", None)])
+def test_a_spreadsheet_style_trailing_dot_zero_is_not_a_digit_of_the_usdot_number(conn, raw, want):
+    assert conn.execute("select carrier_norm_dot(%s)", (raw,)).fetchone()[0] == want
+    assert norm_dot(raw) == want
+
+
+@pytest.mark.parametrize("raw,want", [("MC-713740.0", "MC713740"), ("713740.0", "MC713740"), ("FF-12.0", "FF12"), ("MC-71.30", "MC7130")])
+def test_a_spreadsheet_style_trailing_dot_zero_is_not_a_digit_of_the_docket_number(conn, raw, want):
+    assert conn.execute("select carrier_norm_mc(%s)", (raw,)).fetchone()[0] == want
+    assert norm_mc(raw) == want
+
+
+def test_the_command_line_says_why_a_load_could_not_run_and_never_prints_the_password(conn, tmp_path):
+    # CLASS-TABLE: the ways a load fails before the rules run, each of which used to print only an exception class
+    f = tmp_path / "bad_cell.csv"
+    f.write_text(rows_to_csv([row()]).replace("2024-01-01", "garbage"), encoding="utf-8")
+    run = lambda env_dsn, *args: subprocess.run([sys.executable, str(ROOT / "scripts" / "load_carrier_snapshot.py"), str(f), *args],   # noqa: E731
+                                                  env={**os.environ, "DATABASE_URL": env_dsn}, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    bad_cell = run(DSN, "--date", D(0).isoformat())
+    assert bad_cell.returncode == 2 and "not an ISO date: garbage" in bad_cell.stderr and "line 2" in bad_cell.stderr
+    bad_date = run(DSN, "--date", "nonsense")
+    assert bad_date.returncode == 2 and "nonsense" in bad_date.stderr
+    secret = "S3CR3T-pw-9f2a"
+    wrong = run(psycopg.conninfo.make_conninfo(DSN, password=secret), "--date", D(0).isoformat())
+    assert wrong.returncode == 2 and secret not in wrong.stderr + wrong.stdout and "could not load: OperationalError" in wrong.stderr
+
+
+def test_the_report_names_rejected_and_repeated_rows_and_a_second_load_of_the_same_date(conn):
+    other = row(usdot="90000002", mc="MC-1000002", name="Other Freight")
+    load(conn, [row(), other, row(usdot="", name="No key"), row(usdot="90000003", mc="MC-1000003", name="Twice A"), row(usdot="90000003", mc="MC-1000003", name="Twice B")], 0)
+    report = daily_report(conn)
+    assert report["rows_rejected"] == 1 and report["rows_duplicate"] == 1 and report["loads_on_date"] == 1
+    text = format_report(report)
+    assert "1 rows rejected (no usable USDOT number) and 1 repeated carriers dropped" in text and "loads on this date" not in text
+    load(conn, [row(insurer="Quillon Mutual"), other], 0)                                    # a corrected file published on the same date
+    again = format_report(daily_report(conn, D(0)))
+    assert "2 loads on this date: the file numbers above are from the first" in again

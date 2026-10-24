@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 import psycopg
+from psycopg import pq
 from psycopg.types.json import Jsonb
 
 __all__ = [
@@ -63,6 +64,17 @@ class LoadBusy(RuntimeError):
 
 class LoadRefused(ValueError):
     """The file was refused before anything committed: empty, too small against what we hold, too much changed, or dated in the future."""
+
+
+class ConnectionInTransaction(RuntimeError):
+    """The connection is already inside a transaction, so a call that promises to commit on its own could not keep the promise."""
+
+
+def _require_idle(conn: psycopg.Connection, what: str) -> None:
+    """Refuse to run on a connection that is inside a transaction. On such a connection `conn.transaction()` is only a savepoint, so the claim, the outcome or the whole load would
+    be rolled back when the connection closes while the sink had already acted: a silent loss that repeats the push on the next run. Commit or roll back first, or use autocommit=True."""
+    if conn.info.transaction_status != pq.TransactionStatus.IDLE:
+        raise ConnectionInTransaction("%s needs a connection that is not inside a transaction: commit or roll back first, or open it with autocommit=True" % what)
 
 
 class StaleSnapshot(LoadRefused):
@@ -146,6 +158,7 @@ def apply_snapshot(
             on_stage(stage)
             mark[0] = time.perf_counter()
 
+    _require_idle(conn, "apply_snapshot")
     started = time.perf_counter()
     with conn.transaction():
         cur = conn.cursor()
@@ -214,7 +227,7 @@ def apply_snapshot(
             select s.usdot_norm, s.mc_norm, s.legal_name, s.insurer, s.policy_status, s.authority_status, s.authority_date, s.filing_id, s.filing_date, s.cancel_date, s.track_hash,
                    (c.usdot_norm is null) as is_new,
                    c.track_hash as prev_hash, c.insurer as old_insurer, c.policy_status as old_policy_status,
-                   c.authority_status as old_authority_status, c.authority_date as old_authority_date
+                   c.authority_status as old_authority_status, c.authority_date as old_authority_date, c.filing_id as old_filing_id
               from carrier_stage s
               left join carrier_current c on c.usdot_norm = s.usdot_norm
              where c.usdot_norm is null or c.track_hash is distinct from s.track_hash or c.absent_load is not null
@@ -351,11 +364,11 @@ def _raise_events(cur, load_id: int, snapshot_date: date, absent_is_event: bool 
         union all
         select usdot_norm, mc_norm, 'cancellation_filed', coalesce(filing_id, '') || '|' || coalesce(to_char(coalesce(cancel_date, filing_date), 'YYYY-MM-DD'), ''),
                jsonb_build_object('from', old_policy_status, 'to', policy_status, 'effective', cancel_date)
-          from carrier_delta where not is_new and policy_status = 'CANCELLED' and old_policy_status is distinct from 'CANCELLED'
+          from carrier_delta where not is_new and policy_status = 'CANCELLED' and (old_policy_status is distinct from 'CANCELLED' or filing_id is distinct from old_filing_id)
         union all
         select usdot_norm, mc_norm, 'replacement_filed', coalesce(filing_id, '') || '|' || coalesce(to_char(coalesce(cancel_date, filing_date), 'YYYY-MM-DD'), ''),
                jsonb_build_object('from', old_policy_status, 'to', policy_status, 'insurer', insurer)
-          from carrier_delta where not is_new and policy_status = 'REPLACED' and old_policy_status is distinct from 'REPLACED'
+          from carrier_delta where not is_new and policy_status = 'REPLACED' and (old_policy_status is distinct from 'REPLACED' or filing_id is distinct from old_filing_id)
         union all
         select usdot_norm, mc_norm, 'authority_status_changed', coalesce(authority_status, '') || ':' || coalesce((authority_date - date '1970-01-01')::text, ''),
                jsonb_build_object('from', old_authority_status, 'to', authority_status, 'since', authority_date)
@@ -380,6 +393,7 @@ def _raise_events(cur, load_id: int, snapshot_date: date, absent_is_event: bool 
 
 def load_companies(conn: psycopg.Connection, source) -> int:
     """Load a made-up company book (header name,usdot_no,mc_no) into carrier_company and return how many rows went in."""
+    _require_idle(conn, "load_companies")
     with conn.transaction(), conn.cursor() as cur:
         with cur.copy("copy carrier_company (name, usdot_no, mc_no) from stdin with (format csv, header true)") as copy:
             for block in _chunks(source):
@@ -392,6 +406,7 @@ def match_late_company(conn: psycopg.Connection, company_id: int, days: int = 30
 
     It uses the same matching and the same payload as the daily load, and never a second queue row for an event that is already queued (such an event gains its match row only).
     """
+    _require_idle(conn, "match_late_company")
     with conn.transaction(), conn.cursor() as cur:
         where = "e.created_at >= now() - make_interval(days => %s) and c.id = %s"
         _match_events(cur, where, (days, company_id))
@@ -441,6 +456,7 @@ def claim_outbox(conn: psycopg.Connection, *, limit: int = 100, lease_seconds: i
 
     It commits on its own, on an autocommit connection or a normal one, so the claim is visible to other workers before the sink is called.
     """
+    _require_idle(conn, "claim_outbox")
     with conn.transaction(), conn.cursor() as cur:
         cur.execute(
             """
@@ -468,6 +484,7 @@ def record_outcome(
 ) -> str | None:
     """Store what the sink said. Returns the new status, or None when this worker no longer holds the claim (its lease ran out and another worker took the row), in which case nothing is
     written, so a stale worker cannot overwrite a newer one's result. It commits on its own, so a caller on a normal connection cannot lose an outcome and push again."""
+    _require_idle(conn, "record_outcome")
     with conn.transaction(), conn.cursor() as cur:
         if answer is not None and answer.status == "ok":
             cur.execute(
@@ -539,6 +556,7 @@ def deliver_pending(
 
 def requeue_dead(conn: psycopg.Connection, event_ids: list[int] | None = None, *, reason: str = "operator requeue") -> int:
     """Put dead rows back to pending with their attempts reset, and record why on the row. `event_ids` limits it to those events; None means every dead row. Returns how many moved."""
+    _require_idle(conn, "requeue_dead")
     with conn.transaction(), conn.cursor() as cur:
         cur.execute(
             "update change_outbox set status = 'pending', attempts = 0, requeued_count = requeued_count + 1, next_attempt_at = now(), claim_token = null, lease_expires_at = null, "
@@ -557,13 +575,14 @@ def daily_report(conn: psycopg.Connection, snapshot_date: date | None = None, *,
     The date, not the load, is the unit: a file loaded twice raised its events in the first load and nothing in the second, and the report for that day must still show them. The
     file's own numbers come from the first load of the date, and `events_repeated` adds up the repeats every load of that date suppressed.
     """
-    with conn.cursor() as cur:
+    with conn.transaction(), conn.cursor() as cur:
         if snapshot_date is None:
             cur.execute("select max(snapshot_date) from carrier_load")
             snapshot_date = cur.fetchone()[0]
         cur.execute("select id, baseline, rows_staged, rows_changed, rows_new, rows_missing, unknown_policy_status, previous_rows_staged, "
-                    "(select coalesce(sum(events_suppressed), 0) from carrier_load where snapshot_date = %s) "
-                    "from carrier_load where snapshot_date = %s order by id limit 1", (snapshot_date, snapshot_date))
+                    "(select coalesce(sum(events_suppressed), 0) from carrier_load where snapshot_date = %s), rows_rejected, rows_duplicate, "
+                    "(select count(*) from carrier_load where snapshot_date = %s) "
+                    "from carrier_load where snapshot_date = %s order by id limit 1", (snapshot_date, snapshot_date, snapshot_date))
         load = cur.fetchone()
         if load is None:
             raise LookupError("no load to report on")
@@ -593,6 +612,7 @@ def daily_report(conn: psycopg.Connection, snapshot_date: date | None = None, *,
     return {
         "snapshot_date": snapshot_date.isoformat(), "baseline": load[1], "rows_staged": load[2], "rows_changed": load[3], "rows_new": load[4], "rows_missing": load[5] or 0,
         "unknown_policy_status": load[6] or {}, "previous_rows_staged": load[7], "events_new": sum(by_kind.values()), "events_repeated": int(load[8]),
+        "rows_rejected": load[9] or 0, "rows_duplicate": load[10] or 0, "loads_on_date": load[11],
         "events_by_kind": {k: by_kind[k] for k in EVENT_KINDS if k in by_kind},
         "matched_events": matched, "conflict_events": conflicts, "unmatched_events": unmatched, "outbox": outbox, "top_changes": top_rows,
     }
@@ -612,6 +632,10 @@ def format_report(report: dict[str, Any]) -> str:
         "%d rows in the file%s, %d with a tracked change, %d new carriers, %d held carriers not in the file" % (
             report["rows_staged"], _versus_previous(report), report["rows_changed"], report["rows_new"], report["rows_missing"]),
     ]
+    if report["rows_rejected"] or report["rows_duplicate"]:
+        lines.append("%d rows rejected (no usable USDOT number) and %d repeated carriers dropped (the last row of each is kept)" % (report["rows_rejected"], report["rows_duplicate"]))
+    if report["loads_on_date"] > 1:
+        lines.append("%d loads on this date: the file numbers above are from the first, the alert numbers cover all of them" % report["loads_on_date"])
     if report["unknown_policy_status"]:
         lines.append("unknown policy status values: " + ", ".join("%s x%d" % (k, v) for k, v in report["unknown_policy_status"].items()))
     for kind, n in report["events_by_kind"].items():

@@ -22,6 +22,25 @@ import psycopg  # noqa: E402
 from app.changes import LoadBusy, LoadRefused, apply_snapshot, daily_report, format_report  # noqa: E402
 
 
+def _why(exc: Exception, dsn: str) -> str:
+    """The reason a load could not run, in words an operator can act on: the database's own message and where it happened (a bad cell, the file line) when the server gave one,
+    else the exception text. The connection string and its password are cut out first, because the string is a secret and a driver message can carry it."""
+    diag = getattr(exc, "diag", None)
+    text = (diag.message_primary if diag is not None and getattr(diag, "message_primary", None) else str(exc)) or "no message"
+    where = getattr(diag, "context", None) if diag is not None else None
+    if where:
+        text = "%s (%s)" % (text, " ".join(str(where).split()))
+    secrets = {dsn}
+    try:
+        secrets.add(psycopg.conninfo.conninfo_to_dict(dsn).get("password") or "")
+    except Exception:  # noqa: BLE001 - a malformed string has no password to find, and the message must still print
+        pass
+    for secret in secrets:
+        if secret:
+            text = text.replace(secret, "<hidden>")
+    return " ".join(text.split())[:300]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("file")
@@ -43,7 +62,7 @@ def main() -> int:
         print("refused, nothing changed: %s" % exc, file=sys.stderr)
         return 3
     except (LoadBusy, psycopg.Error, OSError, ValueError) as exc:
-        print("could not load: %s" % type(exc).__name__, file=sys.stderr)
+        print("could not load: %s: %s" % (type(exc).__name__, _why(exc, dsn)), file=sys.stderr)
         return 2
     return 0
 

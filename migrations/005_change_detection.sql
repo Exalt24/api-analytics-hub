@@ -16,7 +16,7 @@
 -- A USDOT number: digits only, leading zeros dropped. NULL when nothing is left, so a blank never matches a blank.
 create function carrier_norm_dot(raw text) returns text
 language sql immutable parallel safe as $$
-    select nullif(ltrim(regexp_replace(coalesce(raw, ''), '\D', '', 'g'), '0'), '')
+    select nullif(ltrim(regexp_replace(regexp_replace(coalesce(raw, ''), '\.0+\s*$', ''), '\D', '', 'g'), '0'), '')
 $$;
 
 -- An operating authority (docket) number: a kind prefix plus digits without leading zeros. No prefix means MC. FF (freight forwarder) and MX (Mexico) are different dockets that
@@ -25,7 +25,7 @@ create function carrier_norm_mc(raw text) returns text
 language sql immutable parallel safe as $$
     select case when t.d is null then null else t.p || t.d end
       from (select case when upper(coalesce(raw, '')) ~ '^\s*(FF|MX)' then substring(upper(raw) from '^\s*(FF|MX)') else 'MC' end as p,
-                   nullif(ltrim(regexp_replace(coalesce(raw, ''), '\D', '', 'g'), '0'), '') as d) t
+                   nullif(ltrim(regexp_replace(regexp_replace(coalesce(raw, ''), '\.0+\s*$', ''), '\D', '', 'g'), '0'), '') as d) t
 $$;
 
 -- The fingerprint of the tracked columns. md5 cast to uuid is 16 bytes instead of 33, and nothing here needs it to resist an attacker, only to move when a tracked value moves.
