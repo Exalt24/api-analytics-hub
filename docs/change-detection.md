@@ -164,7 +164,8 @@ What follows for this design. The daily file here is an invented one row per car
 - An empty `bytes` source raises `ValueError` instead of `LoadRefused` (nothing is written either way); an empty file path raises `LoadRefused`.
 - Two loads on one date are allowed (a corrected file, a rerun): the report says how many loads the date held and takes the file numbers from the first.
 - A crash was simulated by raising an error from a callback at each of 7 stages, not by killing a process or cutting a connection.
-- The tests and the corpus replay are `tests/test_change_detection.py` and `tests/test_change_detection_corpus.py`; four cases of the corpus are marked as known limits (the four items above) and are expected to keep failing until someone decides to fix them.
+- A file that ends in a blank line is refused by COPY with `BadCopyFileFormat` (missing data for a column) and nothing is written; edit the blank line away. A semicolon delimited file is refused at the header check.
+- The tests are `tests/test_change_detection.py` and two replays of independent reviewers' corpora, `tests/test_change_detection_corpus.py` (45 cases) and `tests/test_change_detection_corpus_2.py` (44 cases, written blind against the finished build, all agreeing); four cases of the first corpus are marked as known limits (four items above) and are expected to keep failing until someone decides to fix them.
 - The README section and these docs do not claim the module is wired into the multi-tenant hub: it is a separate slice, not scheduled and not tenant scoped.
 
 ## Run it yourself

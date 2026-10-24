@@ -187,7 +187,7 @@ Its own tests found three defects in the first version:
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 500 passed, 4 known limits
+./.venv/Scripts/python.exe -m pytest tests/ -q      # 545 passed, 4 known limits
 ./.venv/Scripts/python.exe tests/mutation_check.py  # 120 guards, see below
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
