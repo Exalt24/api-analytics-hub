@@ -1,0 +1,72 @@
+Saved output of the 2026-10-25 runs for the monthly report stage. Nothing below is edited; blank lines and the dollar-sign command lines are added to separate the runs.
+Machine: Windows, Python 3.13.14, python-pptx 1.0.2, Postgres 17 from the compose file (postgres:17-alpine).
+Database: every run below used a scratch database made for it on that server (ANALYTICS_TEST_DSN pointed at it, not at the default database). It was dropped afterwards.
+Guard runs were made in a copy of the repository outside the working tree, so no source file was ever mutated in place.
+
+=== BEFORE: commit 23d336a, the state before this pass ===
+$ python -m pytest tests/ -q   (commit 23d336a, scratch database)
+........................................................................ [ 89%]
+..................................................................       [100%]
+638 passed, 4 xfailed in 63.63s (0:01:03)
+
+$ python tests/mutation_check.py --check-targets   (commit 23d336a)
+all 132 guards find their target
+
+$ python readme_audit.py . --strict   (commit 23d336a)
+README AUDIT: clean (0 finding(s)) .\README.md
+exit 0
+14912 README.md
+
+=== AFTER: working tree committed with this file ===
+$ python -m pytest tests/ -q   (working tree after the fixes, scratch database)
+........................................................................ [ 93%]
+..........................................                               [100%]
+686 passed, 4 xfailed in 53.02s
+
+$ python tests/mutation_check.py --check-targets   (after)
+all 144 guards find their target
+
+$ python tests/mutation_check.py --only aicopy   (the 4 catalogue copy guards; exit 0)
+﻿baseline: green
+[ok]   grounding check disabled (fabricated specs get published): suite went red as it should
+[ok]   written numbers no longer checked (model says 'five' not 5): suite went red as it should
+[ok]   generation attempted with no facts at all: suite went red as it should
+[ok]   truncated completion reported as a content problem: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS
+
+$ python tests/mutation_check.py --only report,insights,deck   (the 23 report guards; exit 0)
+﻿baseline: green
+[ok]   a day nothing covered is counted as a quiet day: suite went red as it should
+[ok]   a zero baseline reads as a 100 percent change: suite went red as it should
+[ok]   rows outside the month are summed into it: suite went red as it should
+[ok]   the percent change divides by the signed previous value: suite went red as it should
+[ok]   two rows for one day and metric are summed: suite went red as it should
+[ok]   a month that was never synced is compared as a month of zero: suite went red as it should
+[ok]   a missing day is charted as zero: suite went red as it should
+[ok]   the exact figure check is dropped: suite went red as it should
+[ok]   a figure beside a named metric is checked against every metric's figures: suite went red as it should
+[ok]   a comma that is not a thousands separator is not checked: suite went red as it should
+[ok]   number words are found by substring: suite went red as it should
+[ok]   a day number is accepted in a sentence about a metric: suite went red as it should
+[ok]   a refused model text is used anyway: suite went red as it should
+[ok]   the model's line cap is not enforced: suite went red as it should
+[ok]   the data health slide hides the missing days: suite went red as it should
+[ok]   a day with no data is not marked on the chart: suite went red as it should
+[ok]   the library template's extended properties are kept: suite went red as it should
+[ok]   a title states a change without its missing day caveat: suite went red as it should
+[ok]   a change that rounds to zero is called unchanged: suite went red as it should
+[ok]   the partial data note is dropped when a baseline note comes first: suite went red as it should
+[ok]   the buyers percent is computed from the rounded means: suite went red as it should
+[ok]   today defaults to the machine's local date: suite went red as it should
+[ok]   the UTC date is read from the local clock: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS
+
+Guards not rerun on 2026-10-25: the other 117 of 144. Their last full run was on 2026-10-24.
+
+$ python readme_audit.py . --strict   (after; README is 14897 characters)
+README AUDIT: clean (0 finding(s)) .\README.md
+exit 0

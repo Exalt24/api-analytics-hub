@@ -1,6 +1,17 @@
-# Defects the catalogue copy tests found
+# Catalogue copy: design decisions and defects
 
 Moved here from the README, unchanged. The code is `app/ai/catalog_copy.py`; the tests are `tests/test_catalog_copy.py` and `tests/test_catalog_copy_transport.py`.
+
+## Design decisions
+
+Around that check: the prompt receives the facts and never the whole product record,
+so a private cost field cannot leak into public copy; length is enforced in code
+after generation instead of trusted from the prompt; the transport is an
+OpenAI-compatible chat completion, so the provider is a base URL and a model name;
+and the default model is set in the module (Groq, `openai/gpt-oss-120b`, because
+`llama-3.3-70b-versatile` disappeared from the account's model list).
+
+## Defects the tests found
 
 The tests found three defects in the first version:
 

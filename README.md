@@ -84,7 +84,7 @@ scripts/monthly_report.py      builds the monthly deck from stored snapshots
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
 migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection
 web/                 Next.js dashboard
-tests/               638 tests + a mutation harness
+tests/               686 tests (plus 4 known limits) + a mutation harness
 ```
 
 ---
@@ -142,12 +142,7 @@ generator. `verify_grounded` extracts every number from the output and requires 
 one to appear in the product facts that went into the prompt. A failure is a rejected
 row with the unsupported figures listed, not a published description.
 
-Around that check: the prompt receives the facts and never the whole product record,
-so a private cost field cannot leak into public copy; length is enforced in code
-after generation instead of trusted from the prompt; the transport is an
-OpenAI-compatible chat completion, so the provider is a base URL and a model name;
-and the default model is set in the module (Groq, `openai/gpt-oss-120b`, because
-`llama-3.3-70b-versatile` disappeared from the account's model list).
+The design decisions around the check (facts and never the whole record, length enforced in code, the provider as a base URL) are in [docs/catalogue-copy.md](docs/catalogue-copy.md).
 
 I ran it against a live model in both directions with `ai_live_check.py`, which needs
 your own Shopify dev store token and Groq key. With the grounding rule in the prompt,
@@ -156,7 +151,7 @@ prompt regression or a model swap looks like, the model produced a 99.99% purity
 150 x 100 x 30 mm dimensions from nowhere and the verifier refused all four figures.
 The check holds when the prompt discipline is gone, which is why they are two layers.
 
-Its own tests found three defects in the first version: digits inside chemical formulas read as quantities, a reasoning model spending 158 of its 160 completion tokens on its trace and returning nothing, and numbers written as words walking past a digit only check. What each fix was: [docs/catalogue-copy-defects.md](docs/catalogue-copy-defects.md).
+Its own tests found three defects in the first version: digits inside chemical formulas read as quantities, a reasoning model spending 158 of its 160 completion tokens on its trace and returning nothing, and numbers written as words walking past a digit only check. What each fix was: [docs/catalogue-copy.md](docs/catalogue-copy.md).
 
 `tests/test_catalog_copy.py` and `tests/test_catalog_copy_transport.py` cover it
 (30 tests), and four of the mutation guards below target it.
@@ -165,7 +160,7 @@ Its own tests found three defects in the first version: digits inside chemical f
 
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a chart per section, the insights, and a data health slide that names the days with no data. Every number is computed in code. The narrative is written only from numbers that pass the grounding check the catalogue copy uses, by a fixed template when no model key is set. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a sales chart and an orders chart, the insights, and a data health slide that names the days with no data. Every number is computed in code. The narrative is a fixed template when no model key is set. A model's text is used only if every figure in it is one of the computed figures and sits beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause, or which of two named metrics a figure belongs to. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
@@ -178,8 +173,8 @@ Its own tests found three defects in the first version: digits inside chemical f
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 638 passed, 4 known limits
-./.venv/Scripts/python.exe tests/mutation_check.py  # 132 guards, see below
+./.venv/Scripts/python.exe -m pytest tests/ -q      # 686 passed, 4 known limits
+./.venv/Scripts/python.exe tests/mutation_check.py  # 144 guards, see below
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
 
@@ -189,7 +184,7 @@ schema of whatever database they point at, so aim them at a scratch database. Th
 harness needs the same Postgres up the whole run, because a guard that only a database test
 catches reads as untested without it.
 
-Of the 132 guards, 41 are older, 80 cover change detection and 11 cover the monthly report. A full run of the first 121 on 2026-10-24 caught every one (exit 0, "mutation control: PASS"). On 2026-10-25 the 11 report guards and the 4 catalogue copy guards were run again and caught every one; the other 117 were not rerun. The harness refuses to start when a guard cannot find its target, and CI checks that on every push.
+Of the 144 guards, 41 are older, 80 cover change detection and 23 cover the monthly report. A full run of the first 121 on 2026-10-24 caught every one. On 2026-10-25 the 23 report guards and the 4 catalogue copy guards were rerun against a scratch database and caught every one; the other 117 were not rerun. The harness refuses to start when a guard cannot find its target, and CI checks that on every push. Output of those runs: [docs/test-runs/2026-10-25.txt](docs/test-runs/2026-10-25.txt).
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It

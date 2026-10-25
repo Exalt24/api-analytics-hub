@@ -1,49 +1,59 @@
 --- slide 1: Monthly performance report
-Demo store, October 2026
-Invented orders from a fixed seed. Not a real store.
---- slide 2: Net sales fell 1.8% on September 2026 to USD 40,249.02
+Example Outfitters, October 2026
+Sample report: the orders are invented, not a real store.
+--- slide 2: Net sales fell 1.8% from September (October is missing 2 days)
 Metric | October 2026 | September 2026 | Change | Change % | Note
-Orders | 607 | 589 | +18 | +3.1% | partial data
-Gross sales | USD 42,374.92 | USD 42,639.05 | -USD 264.13 | -0.6% | partial data
-Refunds | USD 2,125.90 | USD 1,672.94 | +USD 452.96 | +27.1% | partial data
-Net sales | USD 40,249.02 | USD 40,966.11 | -USD 717.09 | -1.8% | partial data
-Average order value | USD 69.81 | USD 72.39 | -USD 2.58 | -3.6% | partial data
-Buyers per active day | 19.4 | 18.1 | +1.3 | +7.2% | partial data
-Source: stored daily snapshots. Change % is the change over the previous month's value, n/a when that value is zero or absent.
---- slide 3: Net sales by day, October 2026
+Orders | 607 | 589 | +18 | +3.1% | October partial: 2 days missing
+Gross sales | $42,374.92 | $42,639.05 | -$264.13 | -0.6% | October partial: 2 days missing
+Refunds | $2,125.90 | $1,672.94 | +$452.96 | +27.1% | October partial: 2 days missing
+Net sales | $40,249.02 | $40,966.11 | -$717.09 | -1.8% | October partial: 2 days missing
+Average order value | $69.81 | $72.39 | -$2.58 | -3.6% | October partial: 2 days missing
+Buyers per active day | 19.4 | 18.1 | +1.3 | +7.1% | October partial: 2 days missing
+Source: the store's daily order records.
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 3: Net sales by day in October
 chart series 'October 2026' (31 points): [1093.34, 1874.35, 1507.8, 1036.88, 840.98, 0.0, 1349.98, 1122.7, 2016.71, 1280.17, 1461.66, 1448.81, 1303.19, None, None, 1735.85, 1453.31, 1264.43, 1117.28, 960.38, 1645.78, 1705.15, 1879.87, 1710.42, 1753.51, 1363.46, 1454.7, 1140.96, 1045.38, 1494.35, 2187.62]
-chart series 'September 2026' (31 points): [1250.0, 1390.24, 1465.96, 1881.42, 1838.65, 1981.97, 0.0, 1212.26, 1047.71, 1107.8, 1454.55, 1891.53, 2008.74, 1415.63, 1253.27, 1094.08, 1592.91, 1839.95, 1648.79, 1099.31, 1295.03, 0.0, 1097.83, 1651.48, 2077.77, 1355.29, 1790.66, 1082.55, 1139.63, 1001.1, None]
-Day of the month on the horizontal axis, net sales in USD. Gaps in the line are days with no snapshot and no sync run: 2026-10-14, 2026-10-15.
---- slide 4: Orders by day, October 2026
-chart series 'Orders' (31 points): [19.0, 27.0, 21.0, 21.0, 16.0, 0.0, 21.0, 20.0, 30.0, 21.0, 21.0, 22.0, 21.0, None, None, 26.0, 21.0, 20.0, 18.0, 15.0, 23.0, 22.0, 27.0, 24.0, 27.0, 21.0, 20.0, 17.0, 16.0, 20.0, 30.0]
-Day of the month on the horizontal axis. A day with no column had no orders or no data. Days with no snapshot and no sync run: 2026-10-14, 2026-10-15.
---- slide 5: Average order value fell 3.6% on September 2026 to USD 69.81
-Metric | October 2026 | September 2026 | Change | Change %
-Average order value | USD 69.81 | USD 72.39 | -USD 2.58 | -3.6%
-Buyers per active day | 19.4 | 18.1 | +1.3 | +7.2%
+chart series 'September 2026' (30 points): [1250.0, 1390.24, 1465.96, 1881.42, 1838.65, 1981.97, 0.0, 1212.26, 1047.71, 1107.8, 1454.55, 1891.53, 2008.74, 1415.63, 1253.27, 1094.08, 1592.91, 1839.95, 1648.79, 1099.31, 1295.03, 0.0, 1097.83, 1651.48, 2077.77, 1355.29, 1790.66, 1082.55, 1139.63, 1001.1]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Day of the month across, net sales in dollars up.
+A dot on the zero line is a day with no orders.
+A break in the line with an X on the zero line is a day with no data (Oct 14, Oct 15). 29 of 31 days are plotted.
+--- slide 4: Orders by day in October
+chart series 'October 2026' (31 points): [19.0, 27.0, 21.0, 21.0, 16.0, 0.0, 21.0, 20.0, 30.0, 21.0, 21.0, 22.0, 21.0, None, None, 26.0, 21.0, 20.0, 18.0, 15.0, 23.0, 22.0, 27.0, 24.0, 27.0, 21.0, 20.0, 17.0, 16.0, 20.0, 30.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Day of the month across, orders up.
+A dot on the zero line is a day with no orders.
+A break in the line with an X on the zero line is a day with no data (Oct 14, Oct 15). 29 of 31 days are plotted.
+--- slide 5: Order value, buyers and best days in October
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Average order value | $69.81 | $72.39 | -$2.58 | -3.6% | October partial: 2 days missing
+Buyers per active day | 19.4 | 18.1 | +1.3 | +7.1% | October partial: 2 days missing
 Best days by net sales
 Rank | Day | Net sales
-1 | 2026-10-31 | USD 2,187.62
-2 | 2026-10-09 | USD 2,016.71
-3 | 2026-10-23 | USD 1,879.87
-Average order value is gross sales over orders for the month. Buyers per active day is the mean of the daily distinct buyer counts, which cannot be summed across days.
---- slide 6: What the numbers say
-Net sales were USD 40,249.02 in October 2026, down 1.8% on September 2026 (USD 40,966.11).
-Orders were 607 in October 2026, up 3.1% on September 2026 (589).
-Average order value was USD 69.81, down 3.6% on September 2026.
-Refunds were USD 2,125.90.
-The best day was 2026-10-31 with net sales of USD 2,187.62.
-2 days have no data (2026-10-14, 2026-10-15), so the totals are understated.
-Written by a fixed template from the computed figures (no model key is set). No model was used.
---- slide 7: Data health: 28 of 31 days have data in October 2026
- | October 2026 | September 2026
-Days expected | 31 | 30
-Days with snapshots | 28 | 28
-Days with no orders (a sync ran) | 1 | 2
-Days missing (no snapshot, no sync) | 2 | 0
-Snapshot rows used | 168 | 168
-First and last day with data | 2026-10-01 to 2026-10-31 | 2026-09-01 to 2026-09-30
-Missing days in October 2026: 2026-10-14, 2026-10-15.
-Missing days in September 2026: none.
-Totals for a month with missing days are understated, so its changes are marked partial data.
-A day counts as a quiet day only when a succeeded or partial sync run's window covers it.
+1 | Oct 31 | $2,187.62
+2 | Oct 9 | $2,016.71
+3 | Oct 23 | $1,879.87
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 6: Refunds moved most, up 27.1% from September (October is missing 2 days)
+Net sales were $40,249.02 in October, down 1.8% from September ($40,966.11), and October is missing 2 days.
+Orders were 607 in October, up 3.1% from September (589), and October is missing 2 days.
+Average order value was $69.81 in October, down 3.6% from September ($72.39), and October is missing 2 days.
+Refunds were $2,125.90 in October, up 27.1% from September ($1,672.94), and October is missing 2 days.
+The biggest move was Refunds, up 27.1% from September, and October is missing 2 days.
+The best day was Oct 31 with net sales of $2,187.62.
+2 days have no data (Oct 14, Oct 15), so the totals are understated.
+Narrative written from the computed figures on the previous slides.
+--- slide 7: Data health: October is missing 2 of 31 days
+Count | October 2026 | September 2026
+Days in the month | 31 | 30
+Days with orders | 28 | 28
+Days with no orders | 1 | 2
+Days with no data | 2 | 0
+Stored daily figures used | 168 | 168
+First and last day with orders | Oct 1 to Oct 31 | Sep 1 to Sep 30
+Days with no data in October: Oct 14, Oct 15.
+Days with no data in September: none.
+A month with days missing is understated, so its changes are marked partial.
+Days with orders, days with no orders and days with no data add up to the days in the month.
+A day with no orders is one where a data pull ran and found none. A day with no data is one no data pull covered.
+--- provenance (file property, not on a slide): Written by a fixed template from the computed figures (no model key is set). No model was used.
