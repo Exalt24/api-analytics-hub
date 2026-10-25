@@ -135,7 +135,7 @@ def test_from_stored_rows_to_a_saved_deck(world, tmp_path):
 
     path, report, insights = run(go())
     assert path.exists() and insights.source == "template"
-    assert report.kpi("net_sales").current_display == "USD 210.00"
+    assert report.kpi("net_sales").current_display == "$210.00"
     assert report.current.missing_days == [date(2026, 10, 10), date(2026, 10, 11)]
 
 
@@ -159,7 +159,7 @@ def test_the_command_writes_a_deck_and_prints_it_back(world, tmp_path):
                  "--as-of", AS_OF.isoformat(), "--dump"])
     assert done.returncode == 0, done.stderr
     assert out.exists()
-    assert "insights: template" in done.stdout and "Net sales rose 50.0% on September 2026 to USD 210.00" in done.stdout
+    assert "insights: template" in done.stdout and "Net sales rose 50.0% from September (October is missing 2 days)" in done.stdout
 
 
 def test_the_command_exits_2_with_the_reason_when_it_cannot_report(world, tmp_path):

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable, Mapping, Sequence
 
@@ -57,10 +57,26 @@ class ReportError(ValueError):
 # ---------------------------------------------------------------- formatting
 
 def format_money(minor: int, currency: str) -> str:
-    """`12345` and USD read `USD 123.45`; JPY is not scaled. Sign first, never a float."""
-    exponent = 0 if currency.upper() in _ZERO_DECIMAL else 2
+    """`12345` and USD read `$123.45`, EUR reads `EUR 123.45`; JPY is not scaled. Sign first, never a float."""
+    code = currency.upper()
+    exponent = 0 if code in _ZERO_DECIMAL else 2
     amount = (Decimal(abs(minor)) / (10**exponent)).quantize(Decimal(1).scaleb(-exponent))
-    return "%s%s %s" % ("-" if minor < 0 else "", currency.upper(), format(amount, ",f"))
+    prefix = "$" if code == "USD" else code + " "
+    return "%s%s%s" % ("-" if minor < 0 else "", prefix, format(amount, ",f"))
+
+
+def fmt_day(day: date) -> str:
+    """`Oct 14`, the way a reader writes a date, never `2026-10-14`."""
+    return "%s %d" % (calendar.month_abbr[day.month], day.day)
+
+
+def plural(n: int, word: str) -> str:
+    return "%d %s%s" % (n, word, "" if n == 1 else "s")
+
+
+def utc_today() -> date:
+    """Today in UTC, because the connector buckets every order by its UTC day."""
+    return datetime.now(timezone.utc).date()
 
 
 def format_signed_money(minor: int, currency: str) -> str:
@@ -125,12 +141,24 @@ class MonthStats:
     currency: str | None = None
     totals: dict[str, int] = field(default_factory=dict)
     buyers_per_active_day: Decimal | None = None
+    #: the same mean before rounding, so a percent change is not computed from a rounded figure
+    buyers_exact: Decimal | None = None
     #: day -> {metric: value}, only for days with data
     daily: dict[date, dict[str, int]] = field(default_factory=dict)
 
     @property
     def name(self) -> str:
         return month_name(self.year, self.month)
+
+    @property
+    def short(self) -> str:
+        """`October`, for a sentence that already sits inside a dated report."""
+        return calendar.month_name[self.month]
+
+    @property
+    def reported_days(self) -> int:
+        """Days a sync looked at: days with orders plus days with none."""
+        return len(self.data_days) + len(self.quiet_days)
 
     @property
     def has_baseline(self) -> bool:
@@ -176,7 +204,7 @@ def month_stats(
     instead of reading the rest of the month as missing.
     """
     first, next_first = month_bounds(year, month)
-    today = as_of or date.today()
+    today = as_of or utc_today()
     last_complete = min(next_first - timedelta(days=1), today - timedelta(days=1))
     if last_complete < first:
         raise ReportError("%s has not finished its first day yet" % month_name(year, month))
@@ -226,9 +254,8 @@ def month_stats(
 
     buyers = [d["customers"] for d in by_day.values() if "customers" in d]
     if buyers:
-        stats.buyers_per_active_day = (Decimal(sum(buyers)) / len(buyers)).quantize(
-            ONE_PLACE, rounding=ROUND_HALF_UP
-        )
+        stats.buyers_exact = Decimal(sum(buyers)) / len(buyers)
+        stats.buyers_per_active_day = stats.buyers_exact.quantize(ONE_PLACE, rounding=ROUND_HALF_UP)
     return stats
 
 
@@ -246,8 +273,23 @@ class KpiRow:
     previous_display: str
     change_display: str
     pct_display: str
-    #: "", "no previous month", "zero baseline", "partial data", "not available"
-    note: str = ""
+    #: any of "no previous month", "no previous value", "zero baseline", "not available" (at most
+    #: one), then "partial data" when a day is missing or the month is not over. Both are kept.
+    notes: tuple[str, ...] = ()
+
+    @property
+    def note(self) -> str:
+        return "; ".join(self.notes)
+
+    @property
+    def flat(self) -> bool:
+        """The percent change rounds to zero while the amounts differ."""
+        return self.pct is not None and self.pct == 0 and self.change != 0
+
+    @property
+    def unchanged(self) -> bool:
+        """Only true when the two exact values are equal."""
+        return self.change is not None and self.change == 0
 
 
 @dataclass
@@ -273,6 +315,13 @@ def _values(stats: MonthStats) -> dict[str, int | Decimal | None]:
     return out
 
 
+def _exact_values(stats: MonthStats) -> dict[str, int | Decimal | None]:
+    """The same values with the mean left unrounded, for the percent column only."""
+    out = _values(stats)
+    out["buyers_per_day"] = stats.buyers_exact
+    return out
+
+
 def _show(key: str, value: int | Decimal | None, currency: str | None, *, signed: bool = False) -> str:
     if value is None:
         return "n/a"
@@ -289,32 +338,34 @@ def _show(key: str, value: int | Decimal | None, currency: str | None, *, signed
 def _kpi_rows(cur: MonthStats, prev: MonthStats | None, currency: str | None) -> list[KpiRow]:
     cur_values = _values(cur)
     prev_values = _values(prev) if prev is not None and prev.has_baseline else None
+    cur_exact = _exact_values(cur)
+    prev_exact = _exact_values(prev) if prev is not None and prev.has_baseline else None
     partial = bool(cur.missing_days or not cur.complete or (prev is not None and prev.missing_days))
     rows = []
     for key in KPI_ORDER:
         c = cur_values[key]
         p = prev_values[key] if prev_values is not None else None
-        note = ""
+        notes: list[str] = []
         change: int | Decimal | None = None
         pct: Decimal | None = None
         if c is None:
-            note = "not available"
+            notes.append("not available")
         elif prev_values is None:
-            note = "no previous month"
+            notes.append("no previous month")
         elif p is None:
-            note = "no previous value"
+            notes.append("no previous value")
         else:
             change = c - p
-            pct = pct_change(c, p)
+            pct = pct_change(cur_exact[key], prev_exact[key])
             if pct is None:
-                note = "zero baseline"
-            elif partial:
-                note = "partial data"
+                notes.append("zero baseline")
+        if partial and c is not None:
+            notes.append("partial data")
         rows.append(KpiRow(
             key, KPI_LABELS[key], c, p, change, pct,
             _show(key, c, currency), _show(key, p, currency),
             _show(key, change, currency, signed=True) if change is not None else "n/a",
-            format_pct(pct), note,
+            format_pct(pct), tuple(notes),
         ))
     return rows
 
@@ -368,7 +419,81 @@ def daily_series(stats: MonthStats, metric: str) -> list[tuple[date, int | None]
 
 
 def days_text(days: Sequence[date]) -> str:
-    """ISO dates, comma separated, cut after MAX_DAYS_LISTED with the count of the rest."""
-    shown = ", ".join(d.isoformat() for d in days[:MAX_DAYS_LISTED])
+    """Dates as `Oct 14`, comma separated, cut after MAX_DAYS_LISTED with the count of the rest."""
+    shown = ", ".join(fmt_day(d) for d in days[:MAX_DAYS_LISTED])
     extra = len(days) - MAX_DAYS_LISTED
     return shown + (" and %d more" % extra if extra > 0 else "") if days else "none"
+
+
+# ---------------------------------------------------------------- wording shared by the deck and the narrative
+
+def partial_clause(report: MonthlyReport) -> str:
+    """Why this report's change figures are partial, in a phrase, or "" when they are not.
+
+    Month names only: a title and a sentence already sit inside a dated report.
+    """
+    cur, prev = report.current, report.previous
+    parts = []
+    if cur.missing_days:
+        parts.append("%s is missing %s" % (cur.short, plural(len(cur.missing_days), "day")))
+    if not cur.complete:
+        parts.append("only %d of %d days of %s are counted" % (cur.days_expected, cur.days_in_month, cur.short))
+    if prev is not None and prev.missing_days:
+        parts.append("%s is missing %s" % (prev.short, plural(len(prev.missing_days), "day")))
+    return " and ".join(parts)
+
+
+def largest_move(report: MonthlyReport) -> KpiRow | None:
+    """The KPI whose percent change is biggest in size; the first in table order wins a tie."""
+    movers = [k for k in report.kpis if k.pct is not None]
+    return max(movers, key=lambda k: abs(k.pct), default=None)
+
+
+def move_phrase(row: KpiRow) -> str:
+    """`up 8.4%`, `down 12.4%`, `unchanged`, `essentially flat (+$4.00)`, or `up 20` from a zero base.
+
+    `unchanged` is only said when the two exact values are equal. A change that merely
+    rounds to 0.0% is flat, and says by how much.
+    """
+    if row.change is None:
+        return ""
+    if row.unchanged:
+        return "unchanged"
+    if row.flat:
+        return "essentially flat (%s)" % row.change_display
+    if row.pct is None:
+        return "%s %s" % ("up" if row.change > 0 else "down", row.change_display.lstrip("+-"))
+    return "%s %s" % ("up" if row.pct > 0 else "down", row.pct_display.lstrip("+-"))
+
+
+def claim_title(report: MonthlyReport, key: str) -> str:
+    """A headline made of the table's own strings, with the data caveat inside it.
+
+    A fall stated as a fact while days are missing is the sentence a reader repeats, so
+    the caveat is in the title and not only in a footnote.
+    """
+    row, cur, prev = report.kpi(key), report.current, report.previous
+    clause = partial_clause(report)
+    suffix = " (%s)" % clause if clause else ""
+    if row.current is None:
+        return "%s is not available for %s" % (row.label, cur.short)
+    if prev is None or row.change is None:
+        return "%s came to %s in %s%s" % (row.label, row.current_display, cur.short, suffix)
+    move = move_phrase(row)
+    if row.unchanged:
+        return "%s did not change from %s%s" % (row.label, prev.short, suffix)
+    if row.flat:
+        return "%s stayed %s from %s%s" % (row.label, move, prev.short, suffix)
+    if row.pct is None:
+        return "%s came to %s in %s, %s from %s%s" % (row.label, row.current_display, cur.short, move, prev.short, suffix)
+    return "%s %s %s from %s%s" % (row.label, "rose" if row.pct > 0 else "fell", row.pct_display.lstrip("+-"), prev.short, suffix)
+
+
+def insights_title(report: MonthlyReport) -> str:
+    """The point of the insights slide: the biggest mover, or the net sales claim when nothing compares."""
+    mover = largest_move(report)
+    if mover is None or report.previous is None:
+        return claim_title(report, "net_sales")
+    clause = partial_clause(report)
+    return "%s moved most, %s from %s%s" % (
+        mover.label, move_phrase(mover), report.previous.short, " (%s)" % clause if clause else "")

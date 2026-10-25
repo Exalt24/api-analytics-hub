@@ -41,7 +41,7 @@ DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
 YEAR, MONTH = 2026, 10
 #: The date the sample treats as today, so the deck is the same on every machine and day.
 AS_OF = date(2026, 11, 2)
-DATA_NOTE = "Invented orders from a fixed seed. Not a real store."
+DATA_NOTE = "Sample report: the orders are invented, not a real store."
 RENDER_TIMEOUT_SECONDS = 180
 
 
@@ -78,7 +78,7 @@ def seed(dsn: str) -> tuple[str, str]:
         cur.execute("insert into tenant (id, slug, name) values (%s, 'demo', 'Demo')", (tenant,))
         cur.execute(
             "insert into platform_connection (id, tenant_id, platform, external_account, display_name, credentials_enc) "
-            "values (%s, %s, 'shopify', 'invented-demo.myshopify.com', 'Demo store', %s)",
+            "values (%s, %s, 'shopify', 'invented-demo.myshopify.com', 'Example Outfitters', %s)",
             (connection, tenant, b"no credential, invented data"),
         )
         cur.execute("select upsert_snapshots(%s::jsonb)", (json.dumps(payload),))
