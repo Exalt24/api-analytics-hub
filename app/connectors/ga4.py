@@ -80,8 +80,16 @@ _PROPERTY_RE = re.compile(r"^(?:properties/)?(\d{1,20})$")
 def _error_text(response: httpx.Response) -> str:
     """`STATUS: message` from Google's error object, cut short, or just the HTTP status."""
     try:
-        err = (response.json() or {}).get("error") or {}
+        body = response.json()
     except ValueError:
+        body = None
+    # Google sometimes wraps the error object in a list, and an OAuth refusal sends `error` as a plain string.
+    if isinstance(body, list) and body:
+        body = body[0]
+    err = body.get("error") if isinstance(body, dict) else None
+    if isinstance(err, str):
+        err = {"status": err[:60], "message": body.get("error_description")}
+    if not isinstance(err, dict):
         err = {}
     status, message = err.get("status"), err.get("message")
     if status or message:
@@ -355,6 +363,8 @@ class GA4Connector(Connector):
             sampled = self._note_metadata(payload)
             rows = payload.get("rows") or []
             total = payload.get("rowCount")
+            if total is None and not rows:
+                total = 0  # proto3 JSON drops zero-valued fields, so a report with no rows may carry no rowCount at all
             if isinstance(total, bool) or not isinstance(total, int) or total < 0:
                 raise UpstreamBroken("rowCount is %r, not a number of rows" % (total,))
             points = self._points(payload, window_start, window_end, seen, sampled)

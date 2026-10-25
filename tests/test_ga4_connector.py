@@ -227,6 +227,32 @@ def test_other_refusals_are_upstream_broken_and_never_retried(server, status, bo
     assert not exc.value.retryable and sleeps.calls == [] and len(server.requests) == 1
 
 
+@pytest.mark.parametrize("status,body,expected", [
+    (401, {"error": "invalid_token", "error_description": "expired"}, AuthExpired),      # an OAuth-style refusal: `error` is a string
+    (401, [{"error": {"code": 401, "status": "UNAUTHENTICATED"}}], AuthExpired),         # the error object wrapped in a list
+    (403, {"error": "access_denied"}, AuthRevoked),
+    (400, [1, 2], UpstreamBroken),                                                        # a list that holds no error object at all
+])
+def test_an_error_body_of_any_shape_still_becomes_the_typed_error(server, status, body, expected):
+    server.faults.append(Fault(status, body))
+    with pytest.raises(expected):
+        run(collect(make(server)))
+
+
+def test_a_server_error_with_a_list_body_is_retried_then_rate_limited_not_a_crash(server):
+    server.faults.extend([Fault(500, [1, 2])] * 3)
+    with pytest.raises(RateLimited):
+        run(collect(make(server, Sleeps())))
+
+
+def test_an_empty_report_that_carries_no_rowcount_is_an_empty_run_not_a_failure(server):
+    """proto3 JSON drops zero-valued fields, so GA4 may answer a day with no traffic without rows or rowCount."""
+    empty = {k: v for k, v in good_payload(rows=[], rowCount=0).items() if k not in ("rows", "rowCount")}
+    server.faults.append(Fault(200, empty))
+    pages = run(collect(make(server)))
+    assert points_of(pages) == [] or as_set(points_of(pages)) == set()
+
+
 def test_the_400_text_from_the_error_object_reaches_the_message_cut_short(server):
     server.faults.append(Fault(400, error_body(400, "INVALID_ARGUMENT", "x" * 500)))
     with pytest.raises(UpstreamBroken) as exc:

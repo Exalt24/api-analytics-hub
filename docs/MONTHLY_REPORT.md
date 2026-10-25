@@ -160,6 +160,7 @@ The saved output of the 2026-10-25 runs (the whole suite against a scratch datab
 * The sample is invented figures in a scratch database. No real store, property or live client went through this stage.
 * The model path is tested only through a mocked transport. It was not run against a live model in this build, so how a real model behaves on the report prompt is unmeasured.
 * The figure check has the known limits listed above, and the website figures inherit them.
+* Found by an adversary pass and left as known limits (not pinned by a test): a model's sentence can write users per active day as a monthly visitor count and pass the figure check; the "moved most" line reads only the store's figures, so a larger website move can go unnamed; the insights slide can run onto the footer when both months have gaps in both sources; a store with no earlier month still shows the website's earlier month; GA4 sampling is stored on each row but the deck does not say a month was sampled; with a `Retry-After` of 30 seconds the connector waits 30 seconds twice, which is longer than GA4_SOURCES.md implies.
 * One store connection, one website connection and one currency per report. Money rows with two currencies in a month are refused, not converted.
 * Days follow the connector's UTC bucketing for the store and, probably, the property's time zone for the website.
 * The deck is a fixed layout of seven slides, or eight with a website, with no template or branding option, and no delivery: nothing emails it or runs it monthly.
