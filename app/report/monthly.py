@@ -479,11 +479,18 @@ def daily_series(stats: MonthStats, metric: str) -> list[tuple[date, int | None]
     return out
 
 
-def days_text(days: Sequence[date]) -> str:
-    """Dates as `Oct 14`, comma separated, cut after MAX_DAYS_LISTED with the count of the rest."""
+def days_text(days: Sequence[date], *, count_rest: bool = True) -> str:
+    """Dates as `Oct 14`, comma separated, cut after MAX_DAYS_LISTED with the count of the rest.
+
+    The narrative passes count_rest=False: the figure check only accepts a count that is a
+    fact, and "N more" is not one, so a sentence that printed it was refused and the whole run
+    died for any month with more than MAX_DAYS_LISTED days with no data.
+    """
     shown = ", ".join(fmt_day(d) for d in days[:MAX_DAYS_LISTED])
     extra = len(days) - MAX_DAYS_LISTED
-    return shown + (" and %d more" % extra if extra > 0 else "") if days else "none"
+    if extra > 0:
+        shown += " and %d more" % extra if count_rest else " and others"
+    return shown if days else "none"
 
 
 # ---------------------------------------------------------------- wording shared by the deck and the narrative

@@ -152,7 +152,7 @@ Its own tests found three defects in the first version: digits inside chemical f
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 748 passed, 4 known limits (virtual environment active)
+python -m pytest tests/ -q                # 1153 passed, 4 known limits (virtual environment active)
 python tests/mutation_check.py            # all 161 guards; edits source in place, run it in a copy (--help)
 python live_check.py                      # against the real store
 ```

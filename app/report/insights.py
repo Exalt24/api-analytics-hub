@@ -351,7 +351,7 @@ def template_lines(report: MonthlyReport) -> list[str]:
     if cur.missing_days:
         n = len(cur.missing_days)
         lines.append("%s no data (%s), so the totals are understated."
-                     % (plural(n, "day") + (" has" if n == 1 else " have"), days_text(cur.missing_days)))
+                     % (plural(n, "day") + (" has" if n == 1 else " have"), days_text(cur.missing_days, count_rest=False)))
     if not cur.complete:
         lines.append("Only %d of %d days of %s are counted, so the totals are partial."
                      % (cur.days_expected, cur.days_in_month, cur.short))
