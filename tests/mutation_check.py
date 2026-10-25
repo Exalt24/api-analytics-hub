@@ -35,6 +35,9 @@ TARGETS = {
     "m005": ROOT / "migrations" / "005_change_detection.sql",
     "changes": ROOT / "app" / "changes.py",
     "cli": ROOT / "scripts" / "load_carrier_snapshot.py",
+    "report": ROOT / "app" / "report" / "monthly.py",
+    "insights": ROOT / "app" / "report" / "insights.py",
+    "deck": ROOT / "app" / "report" / "deck.py",
 }
 
 MUTATIONS = [
@@ -903,6 +906,84 @@ MUTATIONS = [
         "        pass\n",
         "a password with a bare percent sign must not reach cron mail or a log through the parse error",
     ),
+    # the monthly report: days, baselines, boundaries, grounding, the deck
+    (
+        "report",
+        "a day nothing covered is counted as a quiet day",
+        "        elif _covered(day, covered):\n            stats.quiet_days.append(day)\n        else:\n            stats.missing_days.append(day)",
+        "        elif _covered(day, covered):\n            stats.quiet_days.append(day)\n        else:\n            stats.quiet_days.append(day)",
+        "a day with no snapshot and no sync must read as missing, never as zero orders",
+    ),
+    (
+        "report",
+        "a zero baseline reads as a 100 percent change",
+        "    if previous == 0:\n        return None",
+        "    if previous == 0:\n        return Decimal(100)",
+        "a change from zero has no percentage",
+    ),
+    (
+        "report",
+        "rows outside the month are summed into it",
+        "        if not (first <= day <= last_complete):\n            continue",
+        "        if False:\n            continue",
+        "the last day of one month must not land in the next",
+    ),
+    (
+        "report",
+        "the percent change divides by the signed previous value",
+        "/ abs(Decimal(previous))",
+        "/ Decimal(previous)",
+        "an improvement from a negative month must stay positive",
+    ),
+    (
+        "report",
+        "two rows for one day and metric are summed",
+        '            raise ReportError("two rows for %s on %s: report one connection at a time" % (key, day))',
+        "            pass",
+        "two connections must not be added into one doubled total",
+    ),
+    (
+        "report",
+        "a month that was never synced is compared as a month of zero",
+        "    if not prev.has_baseline:\n        prev = None",
+        "    if False:\n        prev = None",
+        "no previous month and a previous month of zero are different facts",
+    ),
+    (
+        "report",
+        "a missing day is charted as zero",
+        "        elif day in stats.missing_days:\n            out.append((day, None))",
+        "        elif day in stats.missing_days:\n            out.append((day, 0))",
+        "a missing day must be a gap in the line, not a dip to zero",
+    ),
+    (
+        "insights",
+        "the stricter whole number grounding check is dropped",
+        "        if _normalise(raw) not in allowed and raw not in bad:\n            bad.append(raw)",
+        "        pass",
+        "a number hiding inside a longer fact must still be refused",
+    ),
+    (
+        "insights",
+        "a refused model text is used anyway",
+        "    if reason:\n        return _fallback(",
+        "    if False:\n        return _fallback(",
+        "text with a number that is not a computed figure must never reach the deck",
+    ),
+    (
+        "insights",
+        "the model's line cap is not enforced",
+        "    if len(lines) > MAX_LINES:",
+        "    if False:",
+        "a model essay must not become the commentary",
+    ),
+    (
+        "deck",
+        "the data health slide hides the missing days",
+        '    notes = ["Missing days in %s: %s." % (cur.name, days_text(cur.missing_days))]',
+        "    notes = []",
+        "the days a reader cannot trust must be named on the slide",
+    ),
 ]
 
 
@@ -919,12 +1000,14 @@ MUTANT_TIMEOUT_SECONDS = 180
 #: The change detection guards live in code that nothing else imports, so their mutants run only the suite that can see them (about 30 seconds instead of 60). The baseline and the final
 #: check still run everything.
 SCOPED_SUITE = {key: "tests/test_change_detection.py" for key in ("m005", "changes", "cli")}
+#: The report guards run the report's own test files (space separated), which see all of them in a few seconds.
+SCOPED_SUITE.update({key: "tests/test_monthly_report.py tests/test_report_insights.py tests/test_report_deck.py tests/test_report_service_db.py tests/test_report_cli.py" for key in ("report", "insights", "deck")})
 
 
 def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
     try:
         r = subprocess.run(
-            [str(PY), "-m", "pytest", path, "-q"],
+            [str(PY), "-m", "pytest", *path.split(), "-q"],
             cwd=ROOT, capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
