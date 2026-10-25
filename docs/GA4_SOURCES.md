@@ -19,7 +19,7 @@ The page says to find it under Admin, Property Settings, as "PROPERTY ID". The c
 
 **The date range is inclusive at both ends.** https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/DateRange (2026-04-23).
 "The inclusive end date for the query in the format YYYY-MM-DD."
-The hub's windows are half open, so the connector sends `endDate` as the window end minus one day. Relative forms are accepted by the page ("NdaysAgo, yesterday, or today"); `verify()` uses `yesterday`.
+The hub's windows are half open, so the connector sends `endDate` as the window end minus one day.  `scripts/sync_ga4.py` ends its default window at the UTC date twelve hours ago, so a day still running in a US time zone is never pulled and counted as finished. Relative forms are accepted by the page ("NdaysAgo, yesterday, or today"); `verify()` uses `yesterday`.
 
 **Limits per request.** Dimension page: "Requests are allowed up to 9 dimensions." Metric page: "Requests are allowed up to 10 metrics." DateRange page: "Requests are allowed up to 4 date ranges." The connector sends one dimension, four metrics and one range.
 

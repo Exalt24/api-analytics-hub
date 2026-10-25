@@ -4,8 +4,8 @@
     DATABASE_URL=postgresql://... GA4_PROPERTY_ID=<number> GA4_ACCESS_TOKEN=<token> \
         python scripts/sync_ga4.py --tenant <tenant uuid> --connection <connection uuid> [--days 30] [--end 2026-11-01]
 
-The window is half open: it runs from END minus DAYS up to, not including, END (default: today in UTC, so
-today's unfinished day is not pulled). Running it again over the same window rewrites the same rows, it
+The window is half open: it runs from END minus DAYS up to, not including, END (default: the UTC date twelve hours
+ago, so no day that is still running in any time zone is pulled). Running it again over the same window rewrites the same rows, it
 never adds a second set. The credentials come from the environment only. GA4_API_BASE_URL points it at
 another server, which is how it is run against the stand-in in app/connectors/ga4_fake.py.
 
@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import asyncpg  # noqa: E402
 
-from app.connectors.ga4 import GA4Connector  # noqa: E402
+from app.connectors.ga4 import GA4Connector, settled_window_end  # noqa: E402
 from app.db import Database, UnsafeDatabaseRole  # noqa: E402
 from app.sync.runner import SyncRunner  # noqa: E402
 
@@ -40,7 +40,7 @@ async def run(args: argparse.Namespace) -> int:
     except ValueError as exc:
         print("no sync: %s" % exc, file=sys.stderr)
         return 2
-    end = args.end or datetime.now(timezone.utc).date()
+    end = args.end or settled_window_end(datetime.now(timezone.utc))
     start = end - timedelta(days=args.days)
     try:
         db = Database(max_size=2, role=WORKER_ROLE)

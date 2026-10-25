@@ -32,7 +32,7 @@ import asyncio
 import os
 import random
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, AsyncIterator, Awaitable, Callable, Mapping
 
@@ -75,6 +75,18 @@ QUOTA_FLOOR = 100
 
 _DATE_RE = re.compile(r"^\d{8}$")
 _PROPERTY_RE = re.compile(r"^(?:properties/)?(\d{1,20})$")
+
+
+def settled_window_end(now: datetime) -> date:
+    """The half-open end of a window whose every day is over in every time zone, for a timezone-aware `now`.
+
+    GA4 cuts a day in the property's own time zone, and the zone furthest behind UTC is UTC-12. A day is
+    finished everywhere only once it is finished there, so the end is the date twelve hours before `now` in UTC:
+    a sync at 00:30 UTC on Nov 1 stops before Oct 31, which is still an evening in New York.
+    """
+    if now.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    return (now - timedelta(hours=12)).astimezone(timezone.utc).date()
 
 
 def _error_text(response: httpx.Response) -> str:

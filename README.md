@@ -129,7 +129,7 @@ failure instead of a row stuck at `running` forever.
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 1423 passed, 5 known limits (virtual environment active)
+python -m pytest tests/ -q                # 1429 passed, 5 known limits (virtual environment active)
 python tests/mutation_check.py            # all 209 guards; edits source in place, run it in a copy (--help)
 python live_check.py                      # against the real store
 ```

@@ -253,6 +253,32 @@ def test_an_empty_report_that_carries_no_rowcount_is_an_empty_run_not_a_failure(
     assert points_of(pages) == [] or as_set(points_of(pages)) == set()
 
 
+@pytest.mark.parametrize("stamp,zone_offset,expected_end", [
+    ("2026-11-01T00:30:00+00:00", -4, date(2026, 10, 31)),    # New York is still on Oct 31 evening: the day is not in the window
+    ("2026-11-01T06:00:00+00:00", -7, date(2026, 10, 31)),    # Los Angeles is at 23:00 on Oct 31
+    ("2026-11-01T11:59:00+00:00", -12, date(2026, 10, 31)),   # the furthest-behind zone is still inside Oct 31
+    ("2026-11-01T12:00:00+00:00", -12, date(2026, 11, 1)),     # now Oct 31 is over everywhere, so it is in the window
+    ("2026-11-01T23:59:00+00:00", 8, date(2026, 11, 1)),
+])
+def test_the_default_window_never_includes_a_day_still_running_in_any_time_zone(stamp, zone_offset, expected_end):
+    from datetime import datetime, timezone as tz
+    from app.connectors.ga4 import settled_window_end
+    now = datetime.fromisoformat(stamp)
+    end = settled_window_end(now)
+    assert end == expected_end
+    last_day_in_window = end - timedelta(days=1)
+    local_today = (now + timedelta(hours=zone_offset)).date()
+    assert last_day_in_window < local_today                              # that day is over where the property lives
+    with pytest.raises(ValueError):
+        settled_window_end(datetime(2026, 11, 1, 0, 30))                 # a naive time is refused
+
+
+def test_the_sync_script_takes_its_default_end_from_that_function():
+    source = (Path(__file__).resolve().parents[1] / "scripts" / "sync_ga4.py").read_text(encoding="utf-8")
+    assert "settled_window_end(datetime.now(timezone.utc))" in source
+    assert "datetime.now(timezone.utc).date()" not in source
+
+
 def test_the_400_text_from_the_error_object_reaches_the_message_cut_short(server):
     server.faults.append(Fault(400, error_body(400, "INVALID_ARGUMENT", "x" * 500)))
     with pytest.raises(UpstreamBroken) as exc:
