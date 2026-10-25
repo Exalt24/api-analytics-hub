@@ -77,4 +77,9 @@ async def generate(
     inputs = await load_inputs(db, tenant_id, year, month, connection_id)
     report = build_report(inputs.rows, year, month, label=inputs.label, covered=inputs.covered, as_of=as_of)
     insights = await write_insights(report, writer)
-    return save_deck(report, insights, out, data_note=data_note), report, insights
+    try:
+        saved = save_deck(report, insights, out, data_note=data_note)
+    except OSError as exc:
+        # Not a database fault: most often the previous deck is still open in PowerPoint.
+        raise ReportError("the deck could not be saved to %s (%s); close it if it is open" % (out, type(exc).__name__)) from exc
+    return saved, report, insights
