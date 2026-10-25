@@ -70,3 +70,41 @@ def demo_points(seed: int = SEED) -> list[CanonicalPoint]:
         ]
         day += timedelta(days=1)
     return points
+
+
+# ---------------------------------------------------------------- the website side
+
+#: Days the invented website property reported nothing at all (a sync ran and found no traffic).
+WEB_QUIET_DAYS = frozenset({date(2026, 9, 15)})
+#: Days no sync covered: a failed run touched them, which is not coverage.
+WEB_MISSING_DAYS = frozenset({date(2026, 10, 3), date(2026, 10, 4), date(2026, 10, 5)})
+
+#: The website runs the sample makes through the connector, and the one it records as failed.
+WEB_SYNC_WINDOWS = ((date(2026, 9, 1), date(2026, 10, 3)), (date(2026, 10, 6), date(2026, 11, 1)))
+WEB_FAILED_WINDOW = DemoRun(date(2026, 10, 3), date(2026, 10, 6), "failed")
+
+
+def demo_web_days(seed: int = SEED) -> dict[date, dict[str, int]]:
+    """Invented GA4 daily figures, keyed by day, in GA4's own metric names.
+
+    The numbers follow the invented orders loosely (a store with more orders had more visits) from a
+    separate generator, so the store's figures above are not disturbed by this addition. A day in
+    WEB_QUIET_DAYS or WEB_MISSING_DAYS has no entry: GA4 leaves out a day whose metrics are all zero.
+    """
+    rng = random.Random(seed + 1)
+    orders_by_day = {p.observed_on: p.value_numeric for p in demo_points(seed) if p.metric_key == "orders"}
+    days: dict[date, dict[str, int]] = {}
+    day = START
+    while day < END:
+        base = orders_by_day.get(day, 16)
+        sessions = max(1, base * rng.randint(30, 48) + rng.randint(-40, 40))
+        users = int(sessions * rng.uniform(0.72, 0.84))
+        if day not in WEB_QUIET_DAYS and day not in WEB_MISSING_DAYS:
+            days[day] = {
+                "sessions": sessions,
+                "totalUsers": users,
+                "screenPageViews": int(sessions * rng.uniform(2.1, 3.4)),
+                "keyEvents": int(sessions * rng.uniform(0.03, 0.06)),
+            }
+        day += timedelta(days=1)
+    return days

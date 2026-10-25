@@ -6,17 +6,11 @@
 
 *Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard), with `scripts/record_dashboard.cjs`. The hosted copy is offline, see below. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics hub: an external API (one live connector so far, **Shopify Admin GraphQL**, verified against a real development store) is synced on a schedule, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote.
+Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are two connectors: **Shopify Admin GraphQL**, verified against a real development store, and **Google Analytics 4**, tested only against a stand-in server and never run against a live property. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts the store and the website side by side.
 
 ## Live
 
-The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app) and
-loads, but **the API behind it has been offline since 2026-09-19**. The free Render
-PostgreSQL instance it used expired that day, so the service cannot connect to its
-database and the demo key no longer signs in to anything. Until a database is
-provisioned there is no live demo; run it locally with the steps below.
-
-While it was up, the demo key signed in as a viewer on a tenant of test orders, and **Sync now** answered `403: role viewer may not write:sync`, the role check working as designed.
+The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app) and loads, but **the API behind it has been offline since 2026-09-19**: the free Render PostgreSQL instance expired that day, so the service cannot reach its database and the demo key signs in to nothing. Until a database is provisioned there is no live demo; run it locally with the steps below. While it was up, the demo key signed in as a viewer and **Sync now** answered `403: role viewer may not write:sync`, the role check working as designed.
 
 ---
 
@@ -48,13 +42,9 @@ cd web && npm install
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev -- -p 3100
 ```
 
-`seed_local.py` loads real figures from the dev store (the last 120 days by default,
-`SEED_DAYS` changes it) and prints an admin and a viewer API key, which is the fastest
-way to see the role split in the browser. It reads the store's domain and Admin API
-token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE` (`SHOP=<store>.myshopify.com`
-and `ACCESS_TOKEN=<token>`), or `.secrets/shopify_dev_token.txt` in the repo when the variable is unset. Every live script, `ai_live_check.py` included, reads it through `app/secret_files.py`, and the file is never committed. Build the dashboard first (`npm run build`, then `npm start -- -p 3100`), because the development server did not hydrate the page in the browsers this was recorded in, and open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` loads real figures from the dev store (the last 120 days by default, `SEED_DAYS` changes it) and prints an admin and a viewer API key, the fastest way to see the role split in the browser. It reads the store's domain and Admin API token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE` (`SHOP=<store>.myshopify.com`, `ACCESS_TOKEN=<token>`), or `.secrets/shopify_dev_token.txt` when the variable is unset, through `app/secret_files.py`; the file is never committed. Build the dashboard first (`npm run build`, then `npm start -- -p 3100`), because the development server did not hydrate the page in the browsers this was recorded in, and open it as `http://localhost:3100` (the API's CORS origin).
 
-Open the dashboard and paste a key into the box on the page (no console needed). Paste the viewer key to see the role split: it can read, and Sync now comes back 403 with the reason. A deployment can also set `NEXT_PUBLIC_DEMO_VIEWER_KEY` to show a one-click viewer sign-in; none is shipped, because the hosted demo is offline.
+Open the dashboard and paste a key into the box on the page. The viewer key can read, and Sync now comes back 403 with the reason. A deployment can set `NEXT_PUBLIC_DEMO_VIEWER_KEY` for a one-click viewer sign-in; none is shipped, because the hosted demo is offline.
 
 ### Ports
 
@@ -74,7 +64,12 @@ Postgres is on **5433** and the dashboard on **3100**, both non-default, because
 `CanonicalPoint` values. It never returns a vendor's field names, so `spend` from
 one platform and `cost` from another arrive as one metric key with one unit.
 Adding a platform means writing one connector and registering it; the scheduler,
-the API and the dashboard do not change.
+the API and the dashboard do not change. GA4 was the test of that claim: it landed as one
+class, one registry entry and a migration that adds four metric keys (`sessions`, `users`,
+`page_views`, `key_events`), with no change to the contract, the sync runner, the snapshot
+table or its row level security. The one place that did assume a single source was the
+monthly report, which had a single connection in its query and its deck, and that is where
+the work went (see Monthly report).
 
 **Money is an integer in minor units with its currency beside it**, enforced by a
 `currency_iff_money` CHECK in the database as well as at the connector boundary,
@@ -113,33 +108,15 @@ failure instead of a row stuck at `running` forever.
 
 ## Grounded catalogue copy
 
-`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions that
-refuses to publish a number it was not given. A technical catalogue has thousands of
-SKUs, and a model will happily invent a purity or a dimension, which on a materials
-or lab-supply store is someone ordering the wrong grade. So the model is only the
-generator. `verify_grounded` extracts every number from the output and requires each
-one to appear in the product facts that went into the prompt. A failure is a rejected
-row with the unsupported figures listed, not a published description.
-
-The design decisions around the check (facts and never the whole record, length enforced in code, the provider as a base URL) are in [docs/catalogue-copy.md](docs/catalogue-copy.md).
-
-I ran it against a live model in both directions with `ai_live_check.py`, which needs
-your own Shopify dev store token and Groq key. With the grounding rule in the prompt,
-three runs invented nothing. With the rule stripped from the prompt, which is what a
-prompt regression or a model swap looks like, the model produced a 99.99% purity and
-150 x 100 x 30 mm dimensions from nowhere and the verifier refused all four figures.
-The check holds when the prompt discipline is gone, which is why they are two layers.
-
-Its own tests found three defects in the first version: digits inside chemical formulas read as quantities, a reasoning model spending 158 of its 160 completion tokens on its trace and returning nothing, and numbers written as words walking past a digit only check. What each fix was: [docs/catalogue-copy.md](docs/catalogue-copy.md).
-
-`tests/test_catalog_copy.py` and `tests/test_catalog_copy_transport.py` cover it
-(30 tests), and four of the mutation guards below target it.
+`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions that refuses to publish a number it was not given: `verify_grounded` extracts every number from the output and requires each one to appear in the product facts that went into the prompt, and a failure is a rejected row with the unsupported figures listed. I ran it against a live model in both directions with `ai_live_check.py` (your own Shopify dev store token and Groq key). With the grounding rule in the prompt, three runs invented nothing. With the rule stripped, the model produced a 99.99% purity and 150 x 100 x 30 mm dimensions from nowhere and the verifier refused all four figures, which is why there are two layers. Its own tests found three defects in the first version (digits in chemical formulas read as quantities, a reasoning model spending 158 of its 160 completion tokens on its trace, numbers written as words). Design decisions and fixes: [docs/catalogue-copy.md](docs/catalogue-copy.md). `tests/test_catalog_copy.py` and `tests/test_catalog_copy_transport.py` cover it (30 tests), and four of the mutation guards target it.
 
 ---
 
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a sales chart and an orders chart, the insights, and a data health slide that names up to ten days with no data and counts the rest. Every number is computed in code. The narrative is a fixed template when no model key is set. When days have no data, a total's headline gives the change per reported day beside the raw total. A model's text is used only if every figure in it is a computed figure, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role; its other known limits are in the docs. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck: seven slides for a store, eight when the tenant also has a Google Analytics 4 connection. The website figures (sessions, users per active day, page views, key events and an order rate) sit next to the store's with the change on the month before, a sessions chart stands beside the orders chart, a weekly table sets sessions against orders, and the data health slide names the days with no data for each source. `scripts/sync_ga4.py` pulls a property's daily figures into the snapshots, with its credentials from the environment. Every number is computed in code. The narrative is a fixed template when no model key is set. A model's text is used only if every figure in it is a computed figure, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role; its other known limits are in the docs.
+
+**What was and was not run.** The GA4 side was tested against a stand-in server on 127.0.0.1 written from Google's documentation, and it has not run against a live property. The sample deck's figures, store and website, are invented. A store with no website renders exactly as before, which a test checks against the saved read-back of the earlier sample. The model path is tested only through a mocked transport. What the Google pages said and what is UNVERIFIED: [docs/GA4_SOURCES.md](docs/GA4_SOURCES.md). Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
@@ -152,25 +129,16 @@ Its own tests found three defects in the first version: digits inside chemical f
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 1213 passed, 4 known limits (virtual environment active)
-python tests/mutation_check.py            # all 161 guards; edits source in place, run it in a copy (--help)
+python -m pytest tests/ -q                # 1417 passed, 5 known limits (virtual environment active)
+python tests/mutation_check.py            # all 209 guards; edits source in place, run it in a copy (--help)
 python live_check.py                      # against the real store
 ```
 
-Counts are from a run on 2026-10-25. The database tests (the compose Postgres, or the one in
-`ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public`
-schema of whatever database they point at, so aim them at a scratch database. The mutation
-harness needs the same Postgres up the whole run, because a guard that only a database test
-catches reads as untested without it. It writes each mutation into the real source file and
-puts the original bytes back, also on Ctrl-C or SIGTERM, but a killed process can leave a
-weakened line behind: run it in a copy of the repository, as the saved output was made.
+Counts are from a run on 2026-10-25. The database tests (the compose Postgres, or `ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public` schema of whatever database they point at, so aim them at a scratch database; the mutation harness needs it up the whole run. It writes each mutation into the real source file and restores the original bytes, also on Ctrl-C or SIGTERM, but a killed process can leave a weakened line behind: run it in a copy of the repository.
 
-Of the 161 guards, 41 are older, 80 cover change detection and 40 cover the monthly report. Commit 6e7d5f5 ("Say plainly that a full run caught all 121 guards") records a full run of the first 121 on 2026-10-24 that caught every one; its output was not saved. On 2026-10-25 the 40 report guards and the 4 catalogue copy guards were rerun against a scratch database and caught every one; the other 117 were not rerun. The harness refuses to start when a guard cannot find its target, and CI checks that on every push. Output of the 2026-10-25 reruns: [docs/test-runs/2026-10-25.txt](docs/test-runs/2026-10-25.txt).
+Of the 209 guards, 41 are older, 80 cover change detection, 40 the monthly report and 48 the GA4 connector, the website half of the report and their database path. On 2026-10-25 the 40 report guards and the 48 new ones all caught their mutation, run in a copy of the repository; the other 121 were not rerun after the GA4 change. The harness refuses to start when a guard cannot find its target, and CI checks that on every push. Saved output: [docs/test-runs](docs/test-runs).
 
-The mutation harness is the part worth reading. It breaks each load-bearing guard
-in turn and asserts the suite goes red, because a green suite is not evidence. It
-has caught four of this project's own vacuous tests, including one that measured a
-constant using that same constant, so mutating the constant moved the test with it.
+The mutation harness is the part worth reading: it breaks each load-bearing guard in turn and asserts the suite goes red, because a green suite is not evidence. It has caught four of this project's own vacuous tests, one of which measured a constant using that same constant.
 
 ---
 
@@ -181,26 +149,25 @@ actually do it.
 
 1. **The deployment is down and was never hardened** (see Live): no managed Postgres with backups, no uptime monitoring.
 2. **The scheduler is a runner without a clock.** `sync/runner.py` claims, leases,
-   heartbeats and resumes correctly, and something still has to *call* it on a
-   cadence. The schedule table and jitter column exist; the daemon does not.
-3. **Key management is an environment variable.** `CREDENTIAL_KEYS` should be a KMS
-   or a secrets manager with an audited rotation path. The versioned envelope means
-   rotation is already a config change rather than a migration, which is the part
-   that is expensive to retrofit, but the key still sits in the process environment.
-4. **API keys are the whole auth model.** No users, no sessions, no SSO, no
-   per-key scoping beyond the three roles. Fine for a service integration, not fine
-   for a team of people.
-5. **`customers` is a per-day distinct count and cannot be summed.** The dashboard
-   shows buyers per day for exactly this reason. A true window-distinct needs either
-   identities retained per day or an aggregate computed at source, and both cost
-   storage or an extra call.
-6. **One live connector.** The abstraction is only honest once a second platform
-   lands: the second connector is what reveals whether the first one's field names
-   leaked into the core. I would build Meta or GA4 next, before adding features.
-7. **Alerting stops at one Slack channel.** A stuck or stale sync posts to an incoming webhook ([docs/observability.md](docs/observability.md)) once per change and again after six hours; there is no paging, on-call rota or escalation.
-8. **Quarantine is a table, not a workflow.** Rows that will not normalise are
-   captured, and there is no way to review or replay them.
-9. **No traces.** Requests have JSON logs, a request id and per process Prometheus metrics that reset on restart; a slow sync shows as a late run, not as a breakdown of where the time went.
-10. **Backfill is manual.** Windows are passed by hand. A real backfill needs
-    chunking, resumability across process restarts, and a rate-limit budget shared
-    with the live syncs so a backfill cannot starve them.
+   heartbeats and resumes correctly, and nothing calls it on a cadence; `scripts/sync_ga4.py`
+   runs one window by hand. The schedule table and jitter column exist; the daemon does not.
+3. **Key management is an environment variable.** `CREDENTIAL_KEYS` should be a KMS or
+   secrets manager with audited rotation. The versioned envelope makes rotation a config
+   change, not a migration, but the key still sits in the process environment.
+4. **API keys are the whole auth model.** No users, sessions or SSO, and no per-key
+   scoping beyond three roles. Fine for a service integration, not for a team.
+5. **`customers` and `users` are per-day distinct counts and cannot be summed.** The
+   dashboard shows buyers per day for this reason, and the report averages users over the
+   days that have data. A true window-distinct needs identities kept per day or an
+   aggregate computed at source.
+6. **Two connectors, one never run live.** GA4 showed what the contract absorbs and
+   what it does not: the report assumed a single source. It has run only against a
+   stand-in server written from Google's pages ([docs/GA4_SOURCES.md](docs/GA4_SOURCES.md)
+   lists what is UNVERIFIED), it takes an issued access token and cannot get or refresh
+   one, and nothing calls its sync on a schedule. The next step is one real property.
+7. **Alerting stops at one Slack channel.** A stuck or stale sync posts to an incoming webhook ([docs/observability.md](docs/observability.md)); there is no paging, on-call rota or escalation.
+8. **Quarantine is a table, not a workflow.** Rows that will not normalise are captured,
+   with no way to review or replay them.
+9. **No traces.** JSON logs, a request id and per process Prometheus metrics that reset on restart; a slow sync shows as a late run, not a breakdown.
+10. **Backfill is manual.** Windows are passed by hand. A real backfill needs chunking,
+    resumability across restarts, and a rate-limit budget shared with the live syncs.

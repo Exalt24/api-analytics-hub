@@ -195,6 +195,7 @@ registry = ConnectorRegistry()
 def _register_builtin() -> None:
     """Registered here rather than at import of each module, so the set of
     available platforms is one readable list instead of scattered side effects."""
+    from .ga4 import GA4Connector
     from .shopify import ShopifyConnector
     from .shopify_scopes import DEFAULT_ORDER_HISTORY_DAYS
 
@@ -217,6 +218,31 @@ def _register_builtin() -> None:
                 "Orders beyond 60 days need the approval-gated read_all_orders scope. "
                 "Pacing is read from extensions.cost.throttleStatus per response, so the "
                 "connector adapts to standard (1000/50) and Plus (2000/100) buckets alike."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="ga4",
+            label="Google Analytics 4",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.DAILY_QUOTA,
+            supported_metrics=GA4Connector.supported_metrics,
+            credential_fields=(
+                CredentialField("property_id", "GA4 property id", secret=False,
+                                hint="the numeric PROPERTY ID under Admin, Property Settings"),
+                CredentialField("access_token", "OAuth 2.0 access token",
+                                hint="a token for the analytics.readonly scope; it lasts about an hour"),
+            ),
+            factory=GA4Connector,
+            # No history limit is declared on the pages read, which is a gap in what was read and not a
+            # promise that there is none (docs/GA4_SOURCES.md, UNVERIFIED).
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Daily rows from runReport. Per property quotas (tokens per hour and per day, 10 concurrent "
+                "requests) answer 429, and 500 and 503 count against a server error quota, so retries are "
+                "bounded. This build takes an issued access token and does not exchange or refresh one."
             ),
         )
     )

@@ -46,6 +46,7 @@ from app.report.monthly import (
     per_day_phrase,
     plural,
 )
+from app.report.web import WebReport, web_claim_title
 
 NAVY = RGBColor(0x1F, 0x3A, 0x5F)
 ACCENT = RGBColor(0x1B, 0x7F, 0x8C)
@@ -195,9 +196,14 @@ def _definitions(report: MonthlyReport) -> str:
 # ---------------------------------------------------------------- charts
 
 def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, axis_title: str,
-                 number_format: str, alt: str, *, compare: bool, top, height) -> None:
-    """A line of daily values: a dot on zero for a day with no orders, a break and an X for no data."""
-    cur, prev, cc = report.current, report.previous if compare else None, report.currency
+                 number_format: str, alt: str, *, compare: bool, top, height, left=MARGIN, width=BODY_W,
+                 source: tuple[MonthStats, MonthStats | None] | None = None) -> None:
+    """A line of daily values: a dot on zero for a day with no orders, a break and an X for no data.
+
+    `source` draws another source's days (the website's) instead of the store's.
+    """
+    cur, prev, cc = (source[0], source[1] if compare else None, report.currency) if source else (
+        report.current, report.previous if compare else None, report.currency)
     days = max(cur.days_in_month, prev.days_in_month if prev else 0)
     to_axis = (lambda v: _major(v, cc)) if metric == "net_sales" else (lambda v: None if v is None else float(v))
     points = daily_series(cur, metric)
@@ -219,7 +225,7 @@ def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, ax
     data.categories = [str(d) for d in range(1, days + 1)]
     for name, vals, _ in series:
         data.add_series(name, vals)
-    gframe = slide.shapes.add_chart(XL_CHART_TYPE.LINE, MARGIN, top, BODY_W, height, data)
+    gframe = slide.shapes.add_chart(XL_CHART_TYPE.LINE, left, top, width, height, data)
     gframe._element.nvGraphicFramePr.cNvPr.set("descr", alt)
     chart = gframe.chart
     chart.has_title = False
@@ -348,7 +354,10 @@ def _value_slide(prs, report: MonthlyReport) -> None:
 
 def _insights_slide(prs, report: MonthlyReport, insights: Insights) -> None:
     slide = _new_slide(prs, insights_title(report))
-    _text(slide, MARGIN, Inches(1.6), BODY_W, Inches(4.8), list(insights.lines), 18, INK, space_after=8)
+    # More lines when a second source is on the report, so the text is a little smaller to stay on the slide.
+    size = 18 if report.web is None or len(insights.lines) <= 8 else 15
+    _text(slide, MARGIN, Inches(1.6), BODY_W, Inches(4.8), list(insights.lines), size, INK,
+          space_after=8 if size == 18 else 5)
     _footer(slide, [NARRATIVE_FOOTER])
 
 
@@ -395,6 +404,146 @@ def _health_slide(prs, report: MonthlyReport) -> None:
                     "A day with no orders is one where a data pull ran and found none. A day with no data is one no data pull covered."])
 
 
+# ---------------------------------------------------------------- the website source
+
+_HALF_W = (BODY_W - Inches(0.3)) // 2
+
+
+def _web_chart_notes(report: MonthlyReport) -> list[str]:
+    web, shop = report.web, report.current
+    lines = ["Day of the month across. Left: website sessions. Right: orders. The grey line is the month before."]
+    for name, stats, quiet in (("Sessions", web.current, "no sessions reported"), ("Orders", shop, "no orders")):
+        bits = []
+        if stats.quiet_days:
+            bits.append("a dot on the zero line is a day with %s" % quiet)
+        if stats.missing_days:
+            bits.append("a break with an X is a day with no data (%s)" % days_text(stats.missing_days))
+        if bits:
+            lines.append("%s: %s." % (name, ", ".join(bits)))
+    return lines
+
+
+def _sessions_orders_slide(prs, report: MonthlyReport) -> None:
+    web, cur = report.web, report.current
+    slide = _new_slide(prs, "Sessions and orders by day in %s" % cur.short)
+    top, height = Inches(1.5), Inches(4.5)
+    _daily_chart(
+        slide, report, "sessions", web.current.name, "Sessions", "#,##0",
+        "Line chart of website sessions for each day of %s%s" % (
+            cur.name, ", with %s as a grey line" % web.previous.name if web.previous else ""),
+        compare=True, top=top, height=height, left=MARGIN, width=_HALF_W, source=(web.current, web.previous),
+    )
+    _daily_chart(
+        slide, report, "orders", cur.name, "Orders", "#,##0",
+        "Line chart of orders for each day of %s%s" % (
+            cur.name, ", with %s as a grey line" % report.previous.name if report.previous else ""),
+        compare=True, top=top, height=height, left=MARGIN + _HALF_W + Inches(0.3), width=_HALF_W,
+    )
+    _footer(slide, _web_chart_notes(report))
+
+
+def _web_note_text(web: WebReport, row: KpiRow) -> str:
+    """The Note cell of a website figure, naming the month and the days behind it."""
+    cur, prev = web.current, web.previous
+    parts = []
+    for note in row.notes:
+        if note == "partial data":
+            if cur.missing_days:
+                parts.append("%s: %s missing" % (cur.short, plural(len(cur.missing_days), "day")))
+            if not cur.complete:
+                parts.append("%s: %d of %d days" % (cur.short, cur.days_expected, cur.days_in_month))
+            if prev is not None and prev.missing_days:
+                parts.append("%s: %s missing" % (prev.short, plural(len(prev.missing_days), "day")))
+            if row.per_day is not None:
+                parts.append("per reported day %s" % per_day_phrase(row.per_day))
+        elif note == "zero baseline":
+            parts.append("%s was zero" % prev.short)
+        elif note == "no previous month":
+            parts.append("no earlier month stored")
+        elif note == "no previous value":
+            parts.append("no %s figure" % prev.short)
+        elif note == "not available":
+            parts.append("not reported")
+    if row.key == "order_rate" and row.current is not None:
+        parts.append("%d days in both" % web.joint_current)
+    return "; ".join(parts)
+
+
+def _web_per_day_definition(web: WebReport) -> list[str]:
+    if not any(k.per_day is not None for k in web.kpis):
+        return []
+    return ["Per reported day divides a total by the days with traffic plus the days with no traffic."]
+
+
+def _web_slide(prs, report: MonthlyReport) -> None:
+    web = report.web
+    wcur, wprev = web.current, web.previous
+    slide = _new_slide(prs, web_claim_title(web, "sessions"))
+    head = ["Metric", wcur.name, wprev.name if wprev else "Previous month", "Change", "Change %", "Note"]
+    rows = [head] + [[k.label, k.current_display, k.previous_display, k.change_display, k.pct_display,
+                      _web_note_text(web, k)] for k in web.kpis]
+    _table(slide, Inches(1.4), rows, [2.6, 1.8, 1.8, 1.5, 1.2, 5.0], size=12, row_h=0.42)
+    if web.weeks:
+        _text(slide, MARGIN, Inches(4.1), BODY_W, Inches(0.35), ["Sessions against orders by week"], 16, NAVY)
+        weeks = [["Week", "Days counted", "Sessions", "Orders", "Order rate"]] + [
+            [w.label, w.days, w.sessions, w.orders, w.rate] for w in web.weeks]
+        _table(slide, Inches(4.5), weeks, [2.6, 1.8, 1.6, 1.4, 1.6], size=12, row_h=0.32, left_cols=1,
+               width=Inches(9.0))
+    _footer(slide, [
+        "Source: the website's Google Analytics 4 daily figures. Website days follow the property's own time zone, store days follow UTC.",
+        "Users per active day is the average of each day's distinct users. Order rate is orders divided by sessions over the days both sources reported, not a Google Analytics conversion rate.",
+    ] + _web_per_day_definition(web))
+
+
+def _health_title_multi(report: MonthlyReport) -> str:
+    cur, web = report.current, report.web.current
+    if cur.missing_days and web.missing_days:
+        return "Data health: %s is missing %s of store data and %s of website data" % (
+            cur.short, plural(len(cur.missing_days), "day"), plural(len(web.missing_days), "day"))
+    if cur.missing_days:
+        return "Data health: %s is missing %d of %d days of store data" % (cur.short, len(cur.missing_days), cur.days_in_month)
+    if web.missing_days:
+        return "Data health: %s is missing %d of %d days of website data" % (cur.short, len(web.missing_days), web.days_in_month)
+    if not cur.complete:
+        return "Data health: %d of %d days of %s are counted so far" % (cur.days_expected, cur.days_in_month, cur.short)
+    return "Data health: every day of %s is covered in both sources" % cur.short
+
+
+def _health_slide_multi(prs, report: MonthlyReport) -> None:
+    cur, prev, web = report.current, report.previous, report.web
+    wcur, wprev = web.current, web.previous
+    slide = _new_slide(prs, _health_title_multi(report))
+
+    def col(stats: MonthStats | None) -> list[str]:
+        if stats is None:
+            return ["n/a"] * 5
+        return [str(stats.days_in_month), str(len(stats.data_days)), str(len(stats.quiet_days)),
+                str(len(stats.missing_days)), str(stats.rows_used)]
+
+    labels = ["Days in the month", "Days with data", "Days with nothing to report", "Days with no data",
+              "Stored daily figures used"]
+    cols = [col(cur), col(prev), col(wcur), col(wprev)]
+    head = ["Count", "Store, %s" % cur.short, "Store, %s" % (prev.short if prev else "earlier"),
+            "Website, %s" % cur.short, "Website, %s" % (wprev.short if wprev else "earlier")]
+    rows = [head] + [[labels[i]] + [c[i] for c in cols] for i in range(len(labels))]
+    _table(slide, Inches(1.4), rows, [3.8, 2.0, 2.0, 2.0, 2.0], size=14, row_h=0.44)
+    notes = ["Days with no data in %s, store: %s." % (cur.short, days_text(cur.missing_days)),
+             "Days with no data in %s, website: %s." % (cur.short, days_text(wcur.missing_days))]
+    if prev is not None:
+        notes.append("Days with no data in %s, store: %s." % (prev.short, days_text(prev.missing_days)))
+    if wprev is not None:
+        notes.append("Days with no data in %s, website: %s." % (wprev.short, days_text(wprev.missing_days)))
+    if not cur.complete:
+        notes.append("%s is not over: %d of %d days are counted." % (cur.short, cur.days_expected, cur.days_in_month))
+    partial = (cur.missing_days or wcur.missing_days or not cur.complete
+               or (prev is not None and prev.missing_days) or (wprev is not None and wprev.missing_days))
+    if partial:
+        notes.append("A month with days missing is understated, so its changes are marked partial.")
+    _text(slide, MARGIN, Inches(4.2), BODY_W, Inches(2.3), notes, 14, INK, space_after=3)
+    _footer(slide, ["For each source, days with data, days with nothing to report and days with no data add up to the days in the month.",
+                    "A day with nothing to report is one where a data pull ran and found none. A day with no data is one no data pull covered."])
+
+
 # ---------------------------------------------------------------- public
 
 def _set_app_properties(prs: Presentation) -> None:
@@ -422,10 +571,19 @@ def build_deck(report: MonthlyReport, insights: Insights, *, data_note: str = ""
     _title_slide(prs, report, data_note)
     _kpi_slide(prs, report)
     _sales_slide(prs, report)
-    _orders_slide(prs, report)
-    _value_slide(prs, report)
-    _insights_slide(prs, report, insights)
-    _health_slide(prs, report)
+    if report.web is None:
+        _orders_slide(prs, report)
+        _value_slide(prs, report)
+        _insights_slide(prs, report, insights)
+        _health_slide(prs, report)
+    else:
+        # A second source needs its own figures and its own days, so the deck is eight slides, not
+        # seven: the orders chart moves beside the sessions chart and the website table is new.
+        _sessions_orders_slide(prs, report)
+        _value_slide(prs, report)
+        _web_slide(prs, report)
+        _insights_slide(prs, report, insights)
+        _health_slide_multi(prs, report)
     props = prs.core_properties
     props.title = "Monthly performance report, %s" % report.current.name
     props.author = props.last_modified_by = "api-analytics-hub"

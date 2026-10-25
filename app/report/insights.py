@@ -52,12 +52,16 @@ from app.report.monthly import (
     states_total_with_per_day,
     total_phrase,
 )
+from app.report.web import (
+    web_partial_clause,
+    web_states_total_with_per_day,
+)
 
 #: A report's commentary is a few lines. Past this a reply is an essay, and the more
 #: text there is the more room for a claim the numbers do not carry.
 MAX_LINES = 6
 
-REPORT_PROMPT = """You write the commentary for a monthly performance report on one online store.
+REPORT_PROMPT = """You write the commentary for a monthly performance report on one online store and, when the facts hold website figures (sessions, users, page views, key events, order rate), its website.
 
 Rules, in order of importance:
 1. Use ONLY the facts given. Copy every amount, percentage, count and date exactly as it is
@@ -127,7 +131,33 @@ def report_facts(report: MonthlyReport) -> dict[str, Any]:
         day, value = report.top_days[0]
         facts["best day"] = fmt_day(day)
         facts["Net sales on the best day"] = format_money(value, report.currency)
+    if report.web is not None:
+        _add_web_facts(facts, report)
     return facts
+
+
+def _add_web_facts(facts: dict[str, Any], report: MonthlyReport) -> None:
+    """The website figures in the same shape as the store's, so each is held beside its own metric."""
+    web = report.web
+    cur, prev = web.current, web.previous
+    facts["days with website data"] = len(cur.data_days)
+    facts["days with no website traffic"] = len(cur.quiet_days)
+    facts["days with no website data"] = len(cur.missing_days)
+    facts["dates with no website data"] = days_text(cur.missing_days)
+    if prev is not None:
+        facts["previous period days with no website data"] = len(prev.missing_days)
+    for row in web.kpis:
+        facts[row.label] = row.current_display
+        if prev is not None:
+            facts[row.label + " previous"] = row.previous_display
+        facts[row.label + " change"] = row.change_display
+        facts[row.label + " change percent"] = row.pct_display
+        if row.note:
+            facts[row.label + " note"] = row.note
+        if row.per_day is not None:
+            facts[row.label + " per reported day"] = row.per_day.current_display
+            facts[row.label + " per reported day previous"] = row.per_day.previous_display
+            facts[row.label + " per reported day percent"] = row.per_day.pct_display
 
 
 # ---------------------------------------------------------------- the check
@@ -177,6 +207,11 @@ ALIASES = {
                             "average order size", "average order"),
     "Buyers per active day": ("buyers per active day", "buyers", "buyer count", "customers", "customer count",
                               "shoppers", "shopper count"),
+    "Sessions": ("sessions", "session count", "visits"),
+    "Users per active day": ("users per active day", "users", "visitors", "user count"),
+    "Page views": ("page views", "pageviews", "views"),
+    "Key events": ("key events", "key event count"),
+    "Order rate": ("order rate", "orders per session"),
 }
 
 #: Words for sales that say neither net nor gross: a sentence using one may use either's figures.
@@ -356,6 +391,49 @@ def template_lines(report: MonthlyReport) -> list[str]:
     if not cur.complete:
         lines.append("Only %d of %d days of %s are counted, so the totals are partial."
                      % (cur.days_expected, cur.days_in_month, cur.short))
+    if report.web is not None:
+        lines.extend(_web_lines(report))
+    return lines
+
+
+#: The website figures the template writes a line for, in order. Users and page views are in the table.
+_WEB_LINE_KEYS = ("sessions", "key_events", "order_rate")
+_WEB_VERBS = {"order_rate": "was"}
+
+
+def _web_total_sentence(report: MonthlyReport, key: str) -> str:
+    """A website total in a partial month: the total and its raw relation, then the per reported day change."""
+    web = report.web
+    row, cur, prev = web.kpi(key), web.current, web.previous
+    return "%s total was %s in %s, %s (%s), but %s: per reported day, %s are %s (%s against %s)." % (
+        row.label, row.current_display, cur.short, total_phrase(row, prev), row.previous_display,
+        web_partial_clause(web), row.label.lower(), per_day_phrase(row.per_day),
+        row.per_day.current_display, row.per_day.previous_display)
+
+
+def _web_lines(report: MonthlyReport) -> list[str]:
+    web = report.web
+    cur, prev = web.current, web.previous
+    clause = web_partial_clause(web)
+    lines: list[str] = []
+    for key in _WEB_LINE_KEYS:
+        row = web.kpi(key)
+        if row.current is None:
+            continue
+        if web_states_total_with_per_day(web, key):
+            lines.append(_web_total_sentence(report, key))
+            continue
+        sentence = "%s %s %s in %s" % (row.label, _WEB_VERBS.get(key, "were"), row.current_display, cur.short)
+        compare = _comparison(row, prev)
+        if compare and clause:
+            compare += ", and %s" % clause
+        lines.append(sentence + compare + ".")
+    if not cur.has_baseline:
+        lines.append("No website data is stored for %s yet." % cur.short)
+    elif cur.missing_days:
+        n = len(cur.missing_days)
+        lines.append("%s no website data (%s), so the website totals are understated."
+                     % (plural(n, "day") + (" has" if n == 1 else " have"), days_text(cur.missing_days, count_rest=False)))
     return lines
 
 

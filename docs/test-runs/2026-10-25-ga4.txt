@@ -1,0 +1,152 @@
+Saved output of the 2026-10-25 runs for the GA4 connector and the website half of the monthly report. Nothing below is edited except that the saved files are joined and the dollar sign command lines added.
+Machine: Windows, Python 3.13, python-pptx 1.0.2, Postgres 17 from the compose file (postgres:17-alpine).
+The test suite ran against the compose database named analytics (the tests drop and recreate its public schema). The guard runs were made in a copy of the repository outside the working tree, so no source file was mutated in place; the copy was made from the working tree after the last change to app/, tests/ and migrations/.
+The GA4 side ran only against the stand-in server in app/connectors/ga4_fake.py. No live property was used.
+Before this pass (commit 3408ad6): 1213 passed, 4 xfailed in 98.22s, 161 guards.
+
+$ python -m pytest tests/ -q   (working tree)
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 20%]
+x..............x.xx..................................................... [ 25%]
+........................................................................ [ 30%]
+........................................................................ [ 35%]
+....x................................................................... [ 40%]
+........................................................................ [ 45%]
+........................................................................ [ 50%]
+........................................................................ [ 55%]
+........................................................................ [ 60%]
+........................................................................ [ 65%]
+........................................................................ [ 70%]
+........................................................................ [ 75%]
+........................................................................ [ 81%]
+........................................................................ [ 86%]
+........................................................................ [ 91%]
+........................................................................ [ 96%]
+......................................................                   [100%]
+1417 passed, 5 xfailed in 108.27s (0:01:48)
+
+$ python tests/mutation_check.py --check-targets
+all 209 guards find their target
+
+$ python tests/mutation_check.py --only ga4,web,service,m006   (copy of the repository; 40 new guards)
+$ python tests/mutation_check.py --only insights,deck --match website,visitors,visits,views,weekly,order rate,data health title   (8 new guards)
+=== RUN 1: --only ga4,web,service,m006
+baseline: green
+[ok]   the inclusive endDate is not moved back from the half open window end: suite went red as it should
+[ok]   the connector never gives up after its last attempt: suite went red as it should
+[ok]   a 429 is not retried: suite went red as it should
+[ok]   a Retry-After from the server is ignored: suite went red as it should
+[ok]   a wait longer than the cap is slept instead of handed to the runner: suite went red as it should
+[ok]   the exponential backoff has no cap: suite went red as it should
+[ok]   a rejected token is no longer auth expired: suite went red as it should
+[ok]   no access to a property is no longer auth revoked: suite went red as it should
+[ok]   a fractional count is truncated instead of refused: suite went red as it should
+[ok]   a negative count is accepted: suite went red as it should
+[ok]   two rows for one day are accepted: suite went red as it should
+[ok]   a row outside the window is accepted: suite went red as it should
+[ok]   the connector stops after the first page: suite went red as it should
+[ok]   the hourly token floor is ignored: suite went red as it should
+[ok]   the access token is written into the error: suite went red as it should
+[ok]   the dimension column is not checked: suite went red as it should
+[ok]   a missing metric column is not noticed: suite went red as it should
+[ok]   a property id that is not a number is accepted: suite went red as it should
+[ok]   a negative resume cursor is accepted: suite went red as it should
+[ok]   key events are asked for under the old name conversions: suite went red as it should
+[ok]   a sampled report is not marked: suite went red as it should
+[ok]   a dropped connection is not retried: suite went red as it should
+[ok]   zero attempts are accepted: suite went red as it should
+[ok]   a rowCount that is not a number is accepted: suite went red as it should
+[ok]   a missing environment variable is not named: suite went red as it should
+[ok]   a date that is not eight digits is read anyway: suite went red as it should
+[ok]   users are added across days instead of averaged: suite went red as it should
+[ok]   the mean of users is truncated instead of rounded half up: suite went red as it should
+[ok]   a day with no traffic counts as unreported for the order rate: suite went red as it should
+[ok]   the order rate counts days only one source reported: suite went red as it should
+[ok]   the order rate with no sessions is zero instead of n/a: suite went red as it should
+[ok]   the order rate is a fraction, not a percent: suite went red as it should
+[ok]   website totals get no per reported day figure: suite went red as it should
+[ok]   a week is eight days: suite went red as it should
+[ok]   a website nobody synced reads as zero instead of not available: suite went red as it should
+[ok]   the website connection is picked from the stores: suite went red as it should
+[ok]   two websites are summed instead of refused: suite went red as it should
+[ok]   a website id that is not found is ignored: suite went red as it should
+[ok]   the metric migration cannot run twice: suite went red as it should
+[ok]   users are registered as a delta: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS
+exit 0
+=== RUN 2: --only insights,deck --match website,visitors,visits,views,weekly,order rate,data health title
+baseline: green
+[ok]   the website figures are left out of the facts: suite went red as it should
+[ok]   the website total sentence states a direction from the raw totals alone: suite went red as it should
+[ok]   visitors and users are not words for users per active day: suite went red as it should
+[ok]   visits is not a word for sessions: suite went red as it should
+[ok]   views is not a word for page views: suite went red as it should
+[ok]   the weekly sessions against orders table is dropped: suite went red as it should
+[ok]   the order rate note drops how many days it counted: suite went red as it should
+[ok]   the data health title does not name the source that is missing days: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS
+exit 0
+ALLDONE
+
+$ python tests/mutation_check.py --only report,insights,deck   (copy of the repository; the 40 report guards that existed before, with the 8 new insights and deck guards)
+baseline: green
+[ok]   a day nothing covered is counted as a quiet day: suite went red as it should
+[ok]   a zero baseline reads as a 100 percent change: suite went red as it should
+[ok]   rows outside the month are summed into it: suite went red as it should
+[ok]   the percent change divides by the signed previous value: suite went red as it should
+[ok]   two rows for one day and metric are summed: suite went red as it should
+[ok]   a month that was never synced is compared as a month of zero: suite went red as it should
+[ok]   a missing day is charted as zero: suite went red as it should
+[ok]   the exact figure check is dropped: suite went red as it should
+[ok]   a figure beside a named metric is checked against every metric's figures: suite went red as it should
+[ok]   a comma that is not a thousands separator is not checked: suite went red as it should
+[ok]   number words are found by substring: suite went red as it should
+[ok]   a day number is accepted in a sentence about a metric: suite went red as it should
+[ok]   a refused model text is used anyway: suite went red as it should
+[ok]   the model's line cap is not enforced: suite went red as it should
+[ok]   the data health slide hides the missing days: suite went red as it should
+[ok]   a day with no data is not marked on the chart: suite went red as it should
+[ok]   the library template's extended properties are kept: suite went red as it should
+[ok]   a title states a change without its missing day caveat: suite went red as it should
+[ok]   a change that rounds to zero is called unchanged: suite went red as it should
+[ok]   the partial data note is dropped when a baseline note comes first: suite went red as it should
+[ok]   the buyers percent is computed from the rounded means: suite went red as it should
+[ok]   today defaults to the machine's local date: suite went red as it should
+[ok]   the UTC date is read from the local clock: suite went red as it should
+[ok]   a total's headline states a direction from the raw totals alone: suite went red as it should
+[ok]   per reported day divides by the days in the month instead of the days with data: suite went red as it should
+[ok]   average order value is truncated instead of rounded half up: suite went red as it should
+[ok]   buyers per active day is called unchanged when only the rounded means are equal: suite went red as it should
+[ok]   a zero total in a month with no money row prints n/a: suite went red as it should
+[ok]   the Note column drops the per reported day change: suite went red as it should
+[ok]   a day with no orders is a dot on the current line only: suite went red as it should
+[ok]   the template states a total's direction from the raw totals alone: suite went red as it should
+[ok]   a sentence naming no metric may carry any existing figure: suite went red as it should
+[ok]   sales and revenue are not metric words: suite went red as it should
+[ok]   shoppers is not a word for buyers: suite went red as it should
+[ok]   customers is not a word for buyers: suite went red as it should
+[ok]   the currency is dropped from an amount's identity: suite went red as it should
+[ok]   spelled fractions, positions and counts are not refused: suite went red as it should
+[ok]   multiplier words are not refused: suite went red as it should
+[ok]   markdown emphasis stays in a model's line: suite went red as it should
+[ok]   a preamble ending in a colon is kept as an insight: suite went red as it should
+[ok]   the website figures are left out of the facts: suite went red as it should
+[ok]   the website total sentence states a direction from the raw totals alone: suite went red as it should
+[ok]   visitors and users are not words for users per active day: suite went red as it should
+[ok]   visits is not a word for sessions: suite went red as it should
+[ok]   views is not a word for page views: suite went red as it should
+[ok]   the weekly sessions against orders table is dropped: suite went red as it should
+[ok]   the order rate note drops how many days it counted: suite went red as it should
+[ok]   the data health title does not name the source that is missing days: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS
+exit 0
+
+Guards not rerun in this pass: the 121 older guards for the catalogue copy, the connectors, the database layer, the API and change detection. 48 of the 209 are new and all 48 caught their mutation.

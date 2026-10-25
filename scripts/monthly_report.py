@@ -1,9 +1,11 @@
 # LIFESPAN: permanent
 """Build the monthly report deck for one tenant's connection from the stored snapshots.
 
-    DATABASE_URL=postgresql://... python scripts/monthly_report.py --month 2026-10 --tenant <tenant uuid> [--connection <uuid>] [--out report.pptx] [--dump]
+    DATABASE_URL=postgresql://... python scripts/monthly_report.py --month 2026-10 --tenant <tenant uuid> [--connection <uuid>] [--web-connection <uuid>] [--out report.pptx] [--dump]
 
-Reads stored snapshots only, never a vendor API. The narrative is written by a model only
+Reads stored snapshots only, never a vendor API. A tenant with an active Google Analytics 4 connection
+gets the website figures in the same deck (eight slides instead of seven); a tenant without one gets the
+store-only deck exactly as before. The narrative is written by a model only
 when GROQ_API_KEY or LLM_API_KEY is set (and --no-model is not); otherwise, or when the
 model's text names a number that is not among the computed figures, a fixed template writes
 it. The command prints which writer ran and why a refused text was refused; no slide says so. The key is never printed.
@@ -57,7 +59,7 @@ async def run(args: argparse.Namespace) -> int:
         await db.connect()
         path, report, insights = await generate(
             db, args.tenant, year, month, out,
-            connection_id=args.connection, writer=model_writer(args.no_model),
+            connection_id=args.connection, web_connection_id=args.web_connection, writer=model_writer(args.no_model),
             data_note=args.data_note, as_of=args.as_of,
         )
     except ReportError as exc:
@@ -69,7 +71,8 @@ async def run(args: argparse.Namespace) -> int:
         return 2
     finally:
         await db.close()
-    print("wrote %s (%s, insights: %s)" % (path, report.current.name, insights.source))
+    print("wrote %s (%s%s, insights: %s)" % (
+        path, report.current.name, " with website figures" if report.web is not None else "", insights.source))
     if insights.rejected_reason:
         print("model text not used: %s" % insights.rejected_reason)
     if args.dump:
@@ -81,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--month", type=parse_month, required=True, help="YYYY-MM")
     p.add_argument("--tenant", required=True, help="tenant uuid")
-    p.add_argument("--connection", help="connection uuid, needed when the tenant has more than one")
+    p.add_argument("--connection", help="store connection uuid, needed when the tenant has more than one store")
+    p.add_argument("--web-connection", help="website (GA4) connection uuid, needed when the tenant has more than one")
     p.add_argument("--out", help="deck path, default monthly_report_<month>.pptx")
     p.add_argument("--no-model", action="store_true", help="use the template even when a key is set")
     p.add_argument("--dump", action="store_true", help="print the saved deck back as text")

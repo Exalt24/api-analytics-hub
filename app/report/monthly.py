@@ -340,6 +340,8 @@ class MonthlyReport:
     previous: MonthStats | None
     kpis: list[KpiRow]
     top_days: list[tuple[date, int]]
+    #: the website figures of a second source (app/report/web.py), or None for a store with no such source
+    web: "WebReport | None" = None
 
     @property
     def currency(self) -> str | None:
@@ -376,9 +378,13 @@ def _show(key: str, value: int | Decimal | None, currency: str | None, *, signed
     return ("+" if signed and value > 0 else "") + format_count(int(value))
 
 
-def _per_day(key: str, cur: MonthStats, prev: MonthStats, currency: str | None) -> PerDay | None:
-    """`key` per reported day in each month, and the change between them from the exact values."""
-    if key not in TOTAL_KEYS or not cur.reported_days or not prev.reported_days:
+def _per_day(key: str, cur: MonthStats, prev: MonthStats, currency: str | None,
+             total_keys: frozenset[str] = TOTAL_KEYS) -> PerDay | None:
+    """`key` per reported day in each month, and the change between them from the exact values.
+
+    `total_keys` names the figures that are totals over days; the website figures pass their own.
+    """
+    if key not in total_keys or not cur.reported_days or not prev.reported_days:
         return None
     c = Decimal(cur.totals[key]) / cur.reported_days
     p = Decimal(prev.totals[key]) / prev.reported_days

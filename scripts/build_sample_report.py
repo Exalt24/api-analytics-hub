@@ -4,11 +4,13 @@
     python scripts/build_sample_report.py [--out docs/monthly-report-sample]
 
 It makes a scratch database on the server named by ANALYTICS_TEST_DSN (default: the compose
-Postgres on port 5433), applies migrations 001 and 002, loads the invented snapshots and sync
-runs from app/report/demo_data.py, runs the same `generate` the command line uses (as the
-app_request role, so row level security applies), writes the deck and a text read-back, and
-drops the scratch database. It never touches the database the DSN names. The password in the
-DSN is never printed.
+Postgres on port 5433), applies migrations 001, 002 and 006, loads the invented store snapshots and
+sync runs from app/report/demo_data.py, and gets the invented website figures the way a real run
+would: the GA4 connector reads them over HTTP from the stand-in server in app/connectors/ga4_fake.py
+and the sync runner stores them (as the sync_worker role). It records one failed website run over
+the days it leaves without data, runs the same `generate` the command line uses (as the app_request
+role, so row level security applies), writes the deck and a text read-back, and drops the scratch
+database. It never touches the database the DSN names. The password in the DSN is never printed.
 
 If LibreOffice (soffice) and pdftoppm are found, it also renders every slide to a PNG and a
 contact sheet. If either is missing it says so and leaves the text read-back as the proof.
@@ -32,16 +34,28 @@ import psycopg
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from app.connectors.ga4 import GA4Connector  # noqa: E402
+from app.connectors.ga4_fake import FakeGA4  # noqa: E402
 from app.db import Database  # noqa: E402
 from app.report.deck import dump_deck  # noqa: E402
-from app.report.demo_data import DEMO_RUNS, demo_points  # noqa: E402
+from app.report.demo_data import (  # noqa: E402
+    DEMO_RUNS,
+    WEB_FAILED_WINDOW,
+    WEB_SYNC_WINDOWS,
+    demo_points,
+    demo_web_days,
+)
 from app.report.service import generate  # noqa: E402
+from app.sync.runner import SyncRunner  # noqa: E402
 
 DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
 YEAR, MONTH = 2026, 10
 #: The date the sample treats as today, so the deck is the same on every machine and day.
 AS_OF = date(2026, 11, 2)
-DATA_NOTE = "Sample report: the orders are invented, not a real store."
+DATA_NOTE = "Sample report: invented store orders and website figures. The website side ran against a stand-in server, not Google."
+#: The invented property and token the stand-in server answers for. Neither is real.
+SAMPLE_PROPERTY = "100000001"
+SAMPLE_TOKEN = "sample-token-not-a-credential"
 RENDER_TIMEOUT_SECONDS = 180
 
 
@@ -62,9 +76,12 @@ def find_soffice() -> str | None:
     return None
 
 
-def seed(dsn: str) -> tuple[str, str]:
-    """Load the invented tenant, connection, snapshots and runs. Returns (tenant, connection)."""
-    tenant, connection = str(uuid.uuid4()), str(uuid.uuid4())
+def seed(dsn: str) -> tuple[str, str, str]:
+    """Load the invented tenant, store connection, snapshots and runs, and an empty website connection.
+
+    Returns (tenant, store connection, website connection). The website's rows come from `sync_website`.
+    """
+    tenant, connection, website = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
     payload = [
         {"tenant_id": tenant, "connection_id": connection, "metric_key": p.metric_key,
          "observed_on": p.observed_on.isoformat(), "value_numeric": p.value_numeric,
@@ -72,7 +89,7 @@ def seed(dsn: str) -> tuple[str, str]:
         for p in demo_points()
     ]
     with psycopg.connect(dsn, autocommit=True) as conn, conn.cursor() as cur:
-        for name in ("001_init.sql", "002_control_plane.sql"):
+        for name in ("001_init.sql", "002_control_plane.sql", "006_ga4_metrics.sql"):
             cur.execute((ROOT / "migrations" / name).read_text(encoding="utf-8"))
         cur.execute("select set_config('app.tenant_id', %s, false)", (tenant,))
         cur.execute("insert into tenant (id, slug, name) values (%s, 'demo', 'Demo')", (tenant,))
@@ -81,6 +98,11 @@ def seed(dsn: str) -> tuple[str, str]:
             "values (%s, %s, 'shopify', 'invented-demo.myshopify.com', 'Example Outfitters', %s)",
             (connection, tenant, b"no credential, invented data"),
         )
+        cur.execute(
+            "insert into platform_connection (id, tenant_id, platform, external_account, display_name, credentials_enc) "
+            "values (%s, %s, 'ga4', 'properties/' || %s, 'Example site', %s)",
+            (website, tenant, SAMPLE_PROPERTY, b"no credential, invented data"),
+        )
         cur.execute("select upsert_snapshots(%s::jsonb)", (json.dumps(payload),))
         for run in DEMO_RUNS:
             cur.execute(
@@ -88,7 +110,39 @@ def seed(dsn: str) -> tuple[str, str]:
                 "values (%s, %s, 'schedule', %s, %s, %s, now())",
                 (tenant, connection, run.window_start, run.window_end, run.status),
             )
-    return tenant, connection
+        # the days the website sync left without data: a run that failed over them, which is not coverage
+        cur.execute(
+            "insert into sync_run (tenant_id, connection_id, trigger, window_start, window_end, status, finished_at) "
+            "values (%s, %s, 'schedule', %s, %s, %s, now())",
+            (tenant, website, WEB_FAILED_WINDOW.window_start, WEB_FAILED_WINDOW.window_end, WEB_FAILED_WINDOW.status),
+        )
+    return tenant, connection, website
+
+
+async def sync_website(dsn: str, tenant: str, website: str) -> None:
+    """Fill the website connection through the GA4 connector, the stand-in server and the sync runner."""
+    import httpx
+
+    db = Database(dsn, max_size=2, role="sync_worker")
+    await db.connect()
+    try:
+        with FakeGA4(token=SAMPLE_TOKEN) as server:
+            server.set_days(SAMPLE_PROPERTY, demo_web_days())
+            for start, end in WEB_SYNC_WINDOWS:
+                connector = GA4Connector(
+                    property_id=SAMPLE_PROPERTY, access_token=SAMPLE_TOKEN, base_url=server.url,
+                    client=httpx.AsyncClient(trust_env=False, verify=False, timeout=10))
+                try:
+                    outcome = await SyncRunner(db).run_once(
+                        tenant_id=tenant, connection_id=website, connector=connector,
+                        window_start=start, window_end=end, trigger="backfill")
+                finally:
+                    await connector.aclose()
+                if outcome.status != "succeeded":
+                    raise SystemExit("the website sync did not succeed: %s %s" % (outcome.status, outcome.error_code))
+                print("website sync %s to %s: %d rows" % (start, end, outcome.rows_written))
+    finally:
+        await db.close()
 
 
 def render(deck: Path, outdir: Path) -> list[Path]:
@@ -138,12 +192,14 @@ async def build(dsn: str, outdir: Path) -> int:
     scratch_dsn = _swap_db(dsn, scratch)
     db = Database(scratch_dsn, max_size=2)
     try:
-        tenant, connection = seed(scratch_dsn)
+        tenant, connection, website = seed(scratch_dsn)
+        await sync_website(scratch_dsn, tenant, website)
         await db.connect()
         outdir.mkdir(parents=True, exist_ok=True)
         deck = outdir / ("report_%04d-%02d.pptx" % (YEAR, MONTH))
         path, report, insights = await generate(
-            db, tenant, YEAR, MONTH, deck, connection_id=connection, data_note=DATA_NOTE, as_of=AS_OF,
+            db, tenant, YEAR, MONTH, deck, connection_id=connection, web_connection_id=website,
+            data_note=DATA_NOTE, as_of=AS_OF,
         )
         text = dump_deck(path)
         (outdir / ("report_%04d-%02d.txt" % (YEAR, MONTH))).write_text(text + "\n", encoding="utf-8", newline="\n")
