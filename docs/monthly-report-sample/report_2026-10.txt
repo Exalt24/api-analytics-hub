@@ -1,28 +1,29 @@
 --- slide 1: Monthly performance report
 Example Outfitters, October 2026
 Sample report: the orders are invented, not a real store.
---- slide 2: Net sales fell 1.8% from September (October is missing 2 days)
+--- slide 2: October net sales total is 1.8% below September, but October is missing 2 days: per reported day it is up 1.6%
 Metric | October 2026 | September 2026 | Change | Change % | Note
-Orders | 607 | 589 | +18 | +3.1% | October partial: 2 days missing
-Gross sales | $42,374.92 | $42,639.05 | -$264.13 | -0.6% | October partial: 2 days missing
-Refunds | $2,125.90 | $1,672.94 | +$452.96 | +27.1% | October partial: 2 days missing
-Net sales | $40,249.02 | $40,966.11 | -$717.09 | -1.8% | October partial: 2 days missing
+Orders | 607 | 589 | +18 | +3.1% | October partial: 2 days missing; per reported day up 6.6%
+Gross sales | $42,374.92 | $42,639.05 | -$264.13 | -0.6% | October partial: 2 days missing; per reported day up 2.8%
+Refunds | $2,125.90 | $1,672.94 | +$452.96 | +27.1% | October partial: 2 days missing; per reported day up 31.5%
+Net sales | $40,249.02 | $40,966.11 | -$717.09 | -1.8% | October partial: 2 days missing; per reported day up 1.6%
 Average order value | $69.81 | $72.39 | -$2.58 | -3.6% | October partial: 2 days missing
 Buyers per active day | 19.4 | 18.1 | +1.3 | +7.1% | October partial: 2 days missing
 Source: the store's daily order records.
 Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+Per reported day divides a total by the days with orders plus the days with no orders, so months with different numbers of days with data can be compared.
 --- slide 3: Net sales by day in October
 chart series 'October 2026' (31 points): [1093.34, 1874.35, 1507.8, 1036.88, 840.98, 0.0, 1349.98, 1122.7, 2016.71, 1280.17, 1461.66, 1448.81, 1303.19, None, None, 1735.85, 1453.31, 1264.43, 1117.28, 960.38, 1645.78, 1705.15, 1879.87, 1710.42, 1753.51, 1363.46, 1454.7, 1140.96, 1045.38, 1494.35, 2187.62]
 chart series 'September 2026' (30 points): [1250.0, 1390.24, 1465.96, 1881.42, 1838.65, 1981.97, 0.0, 1212.26, 1047.71, 1107.8, 1454.55, 1891.53, 2008.74, 1415.63, 1253.27, 1094.08, 1592.91, 1839.95, 1648.79, 1099.31, 1295.03, 0.0, 1097.83, 1651.48, 2077.77, 1355.29, 1790.66, 1082.55, 1139.63, 1001.1]
 chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
 Day of the month across, net sales in dollars up.
-A dot on the zero line is a day with no orders.
+A dot on the zero line is a day with no orders, on either line.
 A break in the line with an X on the zero line is a day with no data (Oct 14, Oct 15). 29 of 31 days are plotted.
 --- slide 4: Orders by day in October
 chart series 'October 2026' (31 points): [19.0, 27.0, 21.0, 21.0, 16.0, 0.0, 21.0, 20.0, 30.0, 21.0, 21.0, 22.0, 21.0, None, None, 26.0, 21.0, 20.0, 18.0, 15.0, 23.0, 22.0, 27.0, 24.0, 27.0, 21.0, 20.0, 17.0, 16.0, 20.0, 30.0]
 chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
 Day of the month across, orders up.
-A dot on the zero line is a day with no orders.
+A dot on the zero line is a day with no orders, on either line.
 A break in the line with an X on the zero line is a day with no data (Oct 14, Oct 15). 29 of 31 days are plotted.
 --- slide 5: Order value, buyers and best days in October
 Metric | October 2026 | September 2026 | Change | Change % | Note
@@ -34,12 +35,12 @@ Rank | Day | Net sales
 2 | Oct 9 | $2,016.71
 3 | Oct 23 | $1,879.87
 Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
---- slide 6: Refunds moved most, up 27.1% from September (October is missing 2 days)
-Net sales were $40,249.02 in October, down 1.8% from September ($40,966.11), and October is missing 2 days.
-Orders were 607 in October, up 3.1% from September (589), and October is missing 2 days.
+--- slide 6: October refunds total is 27.1% above September, but October is missing 2 days: per reported day it is up 31.5%
+Net sales total was $40,249.02 in October, 1.8% below September ($40,966.11), but October is missing 2 days: per reported day, net sales are up 1.6% ($1,387.90 against $1,365.54).
+Orders total was 607 in October, 3.1% above September (589), but October is missing 2 days: per reported day, orders are up 6.6% (20.93 against 19.63).
 Average order value was $69.81 in October, down 3.6% from September ($72.39), and October is missing 2 days.
-Refunds were $2,125.90 in October, up 27.1% from September ($1,672.94), and October is missing 2 days.
-The biggest move was Refunds, up 27.1% from September, and October is missing 2 days.
+Refunds total was $2,125.90 in October, 27.1% above September ($1,672.94), but October is missing 2 days: per reported day, refunds are up 31.5% ($73.31 against $55.76).
+The biggest move was Refunds, 27.1% above September in total, but October is missing 2 days: per reported day it is up 31.5%.
 The best day was Oct 31 with net sales of $2,187.62.
 2 days have no data (Oct 14, Oct 15), so the totals are understated.
 Narrative written from the computed figures on the previous slides.

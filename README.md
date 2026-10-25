@@ -22,22 +22,26 @@ While it was up, the demo key signed in as a viewer on a tenant of test orders, 
 
 ## Run it
 
-Requirements: Docker, Python 3.13, Node 20+.
+Requirements: Docker, Python 3.13, Node 20+, and the `psql` client (or use the container's own, second form below). Run on Windows 11 with Git Bash. The psql form of the migrations and the macOS and Linux lines (`.venv/bin`, the standard venv layout) were not run here.
 
 ```bash
 # 1. Postgres
 docker compose up -d                      # exposes 5433, deliberately not 5432
 
 # 2. Backend
-python -m venv .venv && ./.venv/Scripts/python.exe -m pip install -r requirements.txt
+python -m venv .venv
+. .venv/Scripts/activate                  # Windows, Git Bash. macOS or Linux: . .venv/bin/activate
+pip install -r requirements.txt
 export DATABASE_URL="postgresql://analytics:analytics@localhost:5433/analytics"
-export CREDENTIAL_KEYS="1:$(./.venv/Scripts/python.exe -c 'from app.crypto import generate_key; print(generate_key())')"
+export CREDENTIAL_KEYS="1:$(python -c 'from app.crypto import generate_key; print(generate_key())')"
 export DASHBOARD_ORIGIN="http://localhost:3100"
 
-# migrations, in order
+# migrations, in order, with the psql client
 for f in migrations/00*.sql; do psql "$DATABASE_URL" -f "$f"; done
+# or through the container, no client needed (run on Windows, in a scratch database)
+for f in migrations/00*.sql; do docker compose exec -T db psql -q -U analytics -d analytics -v ON_ERROR_STOP=1 < "$f"; done
 
-./.venv/Scripts/python.exe -m uvicorn app.api.main:app --port 8000
+uvicorn app.api.main:app --port 8000
 
 # 3. Dashboard
 cd web && npm install
@@ -48,7 +52,7 @@ NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev -- -p 3100
 `SEED_DAYS` changes it) and prints an admin and a viewer API key, which is the fastest
 way to see the role split in the browser. It reads the store's domain and Admin API
 token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE` (`SHOP=<store>.myshopify.com`
-and `ACCESS_TOKEN=<token>`), which is never committed. Build the dashboard first (`npm run build`, then `npm start -- -p 3100`), because the development server did not hydrate the page in the browsers this was recorded in, and open it as `http://localhost:3100` (the API's CORS origin).
+and `ACCESS_TOKEN=<token>`), or `.secrets/shopify_dev_token.txt` in the repo when the variable is unset. Every live script, `ai_live_check.py` included, reads it through `app/secret_files.py`, and the file is never committed. Build the dashboard first (`npm run build`, then `npm start -- -p 3100`), because the development server did not hydrate the page in the browsers this was recorded in, and open it as `http://localhost:3100` (the API's CORS origin).
 
 Open the dashboard and paste a key into the box on the page (no console needed). Paste the viewer key to see the role split: it can read, and Sync now comes back 403 with the reason. A deployment can also set `NEXT_PUBLIC_DEMO_VIEWER_KEY` to show a one-click viewer sign-in; none is shipped, because the hosted demo is offline.
 
@@ -60,32 +64,7 @@ Postgres is on **5433** and the dashboard on **3100**, both non-default, because
 
 ## Layout
 
-```
-app/
-  connectors/        one module per platform + the shared contract
-    base.py          Connector protocol, CanonicalPoint, error taxonomy
-    shopify.py       Admin GraphQL: pacing, day bucketing, money, degradation
-    shopify_oauth.py install flow, offline tokens
-    shopify_webhooks.py  HMAC verification over the raw body
-    tokens.py        refresh behind one lock, absolute expiry
-    registry.py      per-platform auth kind and rate-limit style
-  crypto.py          AES-256-GCM credential encryption, AAD bound to the row
-  db.py              pool, tenant-scoped transactions, RLS role assertion
-  ai/catalog_copy.py LLM meta descriptions that must pass a number-grounding check
-  sync/runner.py     claim, lease, heartbeat, resume, finish
-  api/               FastAPI, bearer auth, RBAC, request log and /metrics
-  obs.py             JSON log formatter, request ids, Prometheus text page
-  health.py          stuck-sync gauges and the alert policy
-  changes.py         daily snapshot compare, events, company matching, alert outbox
-  changes_fake_sink.py  stand-in CRM sinks for tests
-  report/            monthly report: KPI math, grounded narrative, PowerPoint deck
-scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
-scripts/monthly_report.py      builds the monthly deck from stored snapshots
-scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection
-web/                 Next.js dashboard
-tests/               686 tests (plus 4 known limits) + a mutation harness
-```
+`app/` holds the connectors, sync runner, API, change detection and the monthly report, `migrations/` the SQL in order, `web/` the Next.js dashboard and `tests/` the suite and the mutation harness. File by file: [docs/layout.md](docs/layout.md).
 
 ---
 
@@ -160,7 +139,7 @@ Its own tests found three defects in the first version: digits inside chemical f
 
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a sales chart and an orders chart, the insights, and a data health slide that names the days with no data. Every number is computed in code. The narrative is a fixed template when no model key is set. A model's text is used only if every figure in it is one of the computed figures and sits beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause, or which of two named metrics a figure belongs to. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a sales chart and an orders chart, the insights, and a data health slide that names the days with no data. Every number is computed in code. The narrative is a fixed template when no model key is set. When days have no data, a total's headline gives the change per reported day beside the raw total. A model's text is used only if every figure in it is a computed figure, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role; its other known limits are in the docs. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
@@ -173,18 +152,20 @@ Its own tests found three defects in the first version: digits inside chemical f
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 686 passed, 4 known limits
-./.venv/Scripts/python.exe tests/mutation_check.py  # 144 guards, see below
-./.venv/Scripts/python.exe live_check.py            # against the real store
+python -m pytest tests/ -q                # 748 passed, 4 known limits (virtual environment active)
+python tests/mutation_check.py            # all 161 guards; edits source in place, run it in a copy (--help)
+python live_check.py                      # against the real store
 ```
 
 Counts are from a run on 2026-10-25. The database tests (the compose Postgres, or the one in
 `ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public`
 schema of whatever database they point at, so aim them at a scratch database. The mutation
 harness needs the same Postgres up the whole run, because a guard that only a database test
-catches reads as untested without it.
+catches reads as untested without it. It writes each mutation into the real source file and
+puts the original bytes back, also on Ctrl-C or SIGTERM, but a killed process can leave a
+weakened line behind: run it in a copy of the repository, as the saved output was made.
 
-Of the 144 guards, 41 are older, 80 cover change detection and 23 cover the monthly report. A full run of the first 121 on 2026-10-24 caught every one. On 2026-10-25 the 23 report guards and the 4 catalogue copy guards were rerun against a scratch database and caught every one; the other 117 were not rerun. The harness refuses to start when a guard cannot find its target, and CI checks that on every push. Output of those runs: [docs/test-runs/2026-10-25.txt](docs/test-runs/2026-10-25.txt).
+Of the 161 guards, 41 are older, 80 cover change detection and 40 cover the monthly report. Commit 6e7d5f5 ("Say plainly that a full run caught all 121 guards") records a full run of the first 121 on 2026-10-24 that caught every one; its output was not saved. On 2026-10-25 the 40 report guards and the 4 catalogue copy guards were rerun against a scratch database and caught every one; the other 117 were not rerun. The harness refuses to start when a guard cannot find its target, and CI checks that on every push. Output of the 2026-10-25 reruns: [docs/test-runs/2026-10-25.txt](docs/test-runs/2026-10-25.txt).
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It
