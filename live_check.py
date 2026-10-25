@@ -21,13 +21,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.secret_files import DEV_TOKEN  # noqa: E402
+
 from app.connectors.shopify import ShopifyConnector
 
-SECRETS = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
 
 
 def creds() -> tuple[str, str]:
-    text = io.open(SECRETS, encoding="utf-8").read()
+    text = DEV_TOKEN.read()
     token = re.search(r"^ACCESS_TOKEN=(.+)$", text, re.M).group(1).strip()
     shop = re.search(r"^SHOP=(.+)$", text, re.M).group(1).strip()
     return shop, token

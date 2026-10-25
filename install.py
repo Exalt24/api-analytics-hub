@@ -22,24 +22,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.secret_files import DEV_APP, DEV_TOKEN  # noqa: E402
+
 from app.connectors.shopify_oauth import OAuthError, ShopifyOAuth
 from app.connectors.shopify_scopes import dev_store_scope_string
 
-SECRETS = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_app.txt")
-TOKEN_OUT = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
 PORT = 8765
 STORE = "dac-dev-store.myshopify.com"
 
 
 def read_creds() -> dict:
     out = {}
-    for line in SECRETS.read_text(encoding="utf-8").splitlines():
+    for line in DEV_APP.read().splitlines():
         if "=" in line and not line.startswith("#"):
             k, v = line.split("=", 1)
             out[k.strip()] = v.strip()
     for required in ("CLIENT_ID", "CLIENT_SECRET"):
         if not out.get(required):
-            raise SystemExit(f"{required} missing from {SECRETS}")
+            raise SystemExit(f"{required} missing from {DEV_APP.path().name}")
     return out
 
 
@@ -117,7 +117,7 @@ async def main() -> int:
         print("callback rejected:", exc)
         return 1
 
-    TOKEN_OUT.write_text(
+    DEV_TOKEN.write(
         "Shopify OFFLINE access token (dac-dev-store)\n"
         "Obtained via the app's own OAuth flow, NOT `shopify store auth` (which\n"
         "issues a 24-hour ONLINE token). Offline because grant_options[] was omitted.\n\n"
@@ -133,7 +133,7 @@ async def main() -> int:
     print(f"  token       : {tokens.access_token[:12]}... ({len(tokens.access_token)} chars)")
     print(f"  expires_at  : {tokens.expires_at or 'never (non-expiring offline token)'}")
     print(f"  refreshable : {tokens.is_refreshable}")
-    print(f"  written to  : {TOKEN_OUT}")
+    print(f"  written to  : {DEV_TOKEN.path()}")
     return 0
 
 

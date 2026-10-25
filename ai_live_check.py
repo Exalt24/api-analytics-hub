@@ -20,6 +20,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.secret_files import DEV_TOKEN  # noqa: E402
+
 import httpx
 
 # A Windows console is cp1252 by default, and the first successful
@@ -30,7 +32,6 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from app.ai.catalog_copy import CatalogCopyWriter, verify_grounded
 
-SHOPIFY = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
 
 PRODUCTS_QUERY = """
 query {
@@ -49,7 +50,7 @@ query {
 
 
 async def real_product() -> tuple[str, dict]:
-    text = io.open(SHOPIFY, encoding="utf-8").read()
+    text = DEV_TOKEN.read()
     token = re.search(r"^ACCESS_TOKEN=(.+)$", text, re.M).group(1).strip()
     shop = re.search(r"^SHOP=(.+)$", text, re.M).group(1).strip()
     async with httpx.AsyncClient(timeout=40.0) as client:

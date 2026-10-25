@@ -24,13 +24,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.secret_files import DEV_TOKEN  # noqa: E402
+
 import asyncpg
 
 from app.api.auth import generate_key, hash_key
 from app.connectors.shopify import ShopifyConnector
 from app.crypto import CredentialCipher, generate_key as gen_crypto_key
 
-SHOPIFY_SECRETS = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
 
 
 async def main() -> int:
@@ -38,7 +39,7 @@ async def main() -> int:
     if not dsn:
         raise SystemExit("ANALYTICS_DEPLOY_DSN is not set")
 
-    text = io.open(SHOPIFY_SECRETS, encoding="utf-8").read()
+    text = DEV_TOKEN.read()
     shop = re.search(r"^SHOP=(.+)$", text, re.M).group(1).strip()
     token = re.search(r"^ACCESS_TOKEN=(.+)$", text, re.M).group(1).strip()
 

@@ -32,6 +32,10 @@ from app.connectors.shopify import _ZERO_DECIMAL
 #: cannot be summed (README, limit 5), so it is averaged over the days that report it.
 SUM_METRICS = ("orders", "gross_sales", "refunds", "net_sales")
 
+#: The KPIs that are totals over the days of a month, so a month with fewer reported days is
+#: smaller for that reason alone. AOV and buyers per active day are already per order or per day.
+TOTAL_KEYS = frozenset(SUM_METRICS)
+
 #: One decimal place for percentages and averages, rounded half up so 0.25 reads 0.3
 #: the way a person checking it by hand would round it.
 ONE_PLACE = Decimal("0.1")
@@ -180,7 +184,9 @@ class MonthStats:
     @property
     def avg_order_value(self) -> int | None:
         orders = self.totals.get("orders", 0)
-        return self.totals["gross_sales"] // orders if orders else None
+        if not orders:
+            return None
+        return int((Decimal(self.totals["gross_sales"]) / orders).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def _covered(day: date, windows: Sequence[tuple[date, date]]) -> bool:
@@ -262,6 +268,30 @@ def month_stats(
 # ---------------------------------------------------------------- the report
 
 @dataclass(frozen=True)
+class PerDay:
+    """A total over the days a sync looked at (days with orders plus days with none).
+
+    Computed only when a month has days with no data or is not over, because then the raw
+    totals are not over the same number of days and their direction can mislead.
+    """
+
+    current: Decimal
+    previous: Decimal
+    pct: Decimal | None
+    current_display: str
+    previous_display: str
+    pct_display: str
+
+    @property
+    def unchanged(self) -> bool:
+        return self.current == self.previous
+
+    @property
+    def flat(self) -> bool:
+        return self.pct is not None and self.pct == 0 and not self.unchanged
+
+
+@dataclass(frozen=True)
 class KpiRow:
     key: str
     label: str
@@ -276,6 +306,10 @@ class KpiRow:
     #: any of "no previous month", "no previous value", "zero baseline", "not available" (at most
     #: one), then "partial data" when a day is missing or the month is not over. Both are kept.
     notes: tuple[str, ...] = ()
+    #: the same comparison per reported day, for a total whose months do not have the same days
+    per_day: PerDay | None = None
+    #: whether the two UNROUNDED values are equal; the displayed ones can be equal when these are not
+    exact_equal: bool | None = None
 
     @property
     def note(self) -> str:
@@ -283,13 +317,20 @@ class KpiRow:
 
     @property
     def flat(self) -> bool:
-        """The percent change rounds to zero while the amounts differ."""
-        return self.pct is not None and self.pct == 0 and self.change != 0
+        """The values differ, but the percent change rounds to zero or the displayed change is zero."""
+        if self.change is None or self.unchanged:
+            return False
+        return (self.pct is not None and self.pct == 0) or self.change == 0
 
     @property
     def unchanged(self) -> bool:
-        """Only true when the two exact values are equal."""
-        return self.change is not None and self.change == 0
+        """Only true when the two exact (unrounded) values are equal."""
+        return self.exact_equal is True
+
+    @property
+    def flat_detail(self) -> str:
+        """How much a flat figure moved: the amount, or the percent when the amount rounds to zero."""
+        return self.change_display if self.change != 0 else self.pct_display
 
 
 @dataclass
@@ -327,12 +368,30 @@ def _show(key: str, value: int | Decimal | None, currency: str | None, *, signed
         return "n/a"
     if key in MONEY_METRICS:
         if currency is None:
-            return "n/a"
+            return "0" if int(value) == 0 else "n/a"
         return format_signed_money(int(value), currency) if signed else format_money(int(value), currency)
     if key == "buyers_per_day":
         text = format(value, ",f")
         return "+" + text if signed and value > 0 else text
     return ("+" if signed and value > 0 else "") + format_count(int(value))
+
+
+def _per_day(key: str, cur: MonthStats, prev: MonthStats, currency: str | None) -> PerDay | None:
+    """`key` per reported day in each month, and the change between them from the exact values."""
+    if key not in TOTAL_KEYS or not cur.reported_days or not prev.reported_days:
+        return None
+    c = Decimal(cur.totals[key]) / cur.reported_days
+    p = Decimal(prev.totals[key]) / prev.reported_days
+
+    def show(value: Decimal) -> str:
+        if key in MONEY_METRICS:
+            if currency is None:
+                return "0"
+            return format_money(int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP)), currency)
+        return format(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), ",f")
+
+    pct = pct_change(c, p)
+    return PerDay(c, p, pct, show(c), show(p), format_pct(pct))
 
 
 def _kpi_rows(cur: MonthStats, prev: MonthStats | None, currency: str | None) -> list[KpiRow]:
@@ -361,11 +420,13 @@ def _kpi_rows(cur: MonthStats, prev: MonthStats | None, currency: str | None) ->
                 notes.append("zero baseline")
         if partial and c is not None:
             notes.append("partial data")
+        per_day = _per_day(key, cur, prev, currency) if partial and change is not None else None
         rows.append(KpiRow(
             key, KPI_LABELS[key], c, p, change, pct,
             _show(key, c, currency), _show(key, p, currency),
             _show(key, change, currency, signed=True) if change is not None else "n/a",
-            format_pct(pct), tuple(notes),
+            format_pct(pct), tuple(notes), per_day,
+            (cur_exact[key] == prev_exact[key]) if change is not None else None,
         ))
     return rows
 
@@ -460,17 +521,45 @@ def move_phrase(row: KpiRow) -> str:
     if row.unchanged:
         return "unchanged"
     if row.flat:
-        return "essentially flat (%s)" % row.change_display
+        return "essentially flat (%s)" % row.flat_detail
     if row.pct is None:
         return "%s %s" % ("up" if row.change > 0 else "down", row.change_display.lstrip("+-"))
     return "%s %s" % ("up" if row.pct > 0 else "down", row.pct_display.lstrip("+-"))
 
 
+def total_phrase(row: KpiRow, prev: MonthStats) -> str:
+    """The raw change of a total, as a plain relation: `1.8% below September`, never `fell`."""
+    if row.unchanged:
+        return "level with %s" % prev.short
+    if row.flat:
+        return "essentially flat (%s) against %s" % (row.flat_detail, prev.short)
+    return "%s %s %s" % (row.pct_display.lstrip("+-"), "above" if row.pct > 0 else "below", prev.short)
+
+
+def per_day_phrase(per_day: PerDay) -> str:
+    if per_day.unchanged:
+        return "unchanged"
+    if per_day.flat:
+        return "essentially flat"
+    if per_day.pct is None:
+        return "up" if per_day.current > per_day.previous else "down"
+    return "%s %s" % ("up" if per_day.pct > 0 else "down", per_day.pct_display.lstrip("+-"))
+
+
+def states_total_with_per_day(report: MonthlyReport, key: str) -> bool:
+    """True when the headline for `key` must give the total and the per reported day change together."""
+    row = report.kpi(key)
+    return bool(report.previous is not None and partial_clause(report) and key in TOTAL_KEYS
+                and row.per_day is not None and row.pct is not None)
+
+
 def claim_title(report: MonthlyReport, key: str) -> str:
     """A headline made of the table's own strings, with the data caveat inside it.
 
-    A fall stated as a fact while days are missing is the sentence a reader repeats, so
-    the caveat is in the title and not only in a footnote.
+    A fall stated as a fact while days are missing is the sentence a reader repeats, and a
+    total over 29 days against one over 30 can fall while every reported day rose. So for a
+    total in a partial month the headline gives the total plainly and the per reported day
+    change next to it, and states no direction from the raw totals alone.
     """
     row, cur, prev = report.kpi(key), report.current, report.previous
     clause = partial_clause(report)
@@ -479,6 +568,9 @@ def claim_title(report: MonthlyReport, key: str) -> str:
         return "%s is not available for %s" % (row.label, cur.short)
     if prev is None or row.change is None:
         return "%s came to %s in %s%s" % (row.label, row.current_display, cur.short, suffix)
+    if states_total_with_per_day(report, key):
+        return "%s %s total is %s, but %s: per reported day it is %s" % (
+            cur.short, row.label.lower(), total_phrase(row, prev), clause, per_day_phrase(row.per_day))
     move = move_phrase(row)
     if row.unchanged:
         return "%s did not change from %s%s" % (row.label, prev.short, suffix)
@@ -494,6 +586,8 @@ def insights_title(report: MonthlyReport) -> str:
     mover = largest_move(report)
     if mover is None or report.previous is None:
         return claim_title(report, "net_sales")
+    if states_total_with_per_day(report, mover.key):
+        return claim_title(report, mover.key)
     clause = partial_clause(report)
     return "%s moved most, %s from %s%s" % (
         mover.label, move_phrase(mover), report.previous.short, " (%s)" % clause if clause else "")

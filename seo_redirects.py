@@ -35,9 +35,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.secret_files import DEV_TOKEN  # noqa: E402
+
 import httpx
 
-SECRETS = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
 API = "2026-07"
 
 LIST_REDIRECTS = """
@@ -66,7 +67,7 @@ mutation Delete($id: ID!) {
 
 
 def creds() -> tuple[str, str]:
-    text = io.open(SECRETS, encoding="utf-8").read()
+    text = DEV_TOKEN.read()
     return (re.search(r"^SHOP=(.+)$", text, re.M).group(1).strip(),
             re.search(r"^ACCESS_TOKEN=(.+)$", text, re.M).group(1).strip())
 

@@ -281,9 +281,15 @@ def test_a_money_row_without_a_currency_is_refused():
 
 # ------------------------------------------------------------ the wording of a change
 
-def flat_report(net_after: int):
+def flat_report(net_after: int, covered=COVERED):
     """October's single day nets `net_after` against September's 14000."""
     rows = september_rows() + day_rows(date(2026, 10, 1), 15, net_after + 1000, 1000, 8)
+    return report(rows, covered=covered)
+
+
+def one_day_each(sept_net: int, oct_net: int, oct_orders: int = 1):
+    """One day in each month, so the totals are exactly the given nets."""
+    rows = day_rows(date(2026, 9, 1), 1, sept_net, 0, 1) + day_rows(date(2026, 10, 1), oct_orders, oct_net, 0, 1)
     return report(rows)
 
 
@@ -292,7 +298,11 @@ def test_a_change_that_rounds_to_zero_is_flat_and_says_by_how_much_not_unchanged
     k = r.kpi("net_sales")
     assert (k.pct_display, k.change_display, k.flat, k.unchanged) == ("0.0%", "+$0.04", True, False)
     assert move_phrase(k) == "essentially flat (+$0.04)"
-    assert claim_title(r, "net_sales") == "Net sales stayed essentially flat (+$0.04) from September (October is missing 2 days)"
+    assert claim_title(r, "net_sales") == (
+        "October net sales total is essentially flat (+$0.04) against September, but October is missing 2 days: "
+        "per reported day it is up 3.5%")
+    complete = flat_report(14004, covered=FULL)
+    assert claim_title(complete, "net_sales") == "Net sales stayed essentially flat (+$0.04) from September"
 
 
 def test_only_equal_values_are_called_unchanged():
@@ -300,7 +310,9 @@ def test_only_equal_values_are_called_unchanged():
     k = r.kpi("net_sales")
     assert (k.unchanged, k.flat) == (True, False)
     assert move_phrase(k) == "unchanged"
-    assert claim_title(r, "net_sales") == "Net sales did not change from September (October is missing 2 days)"
+    assert claim_title(r, "net_sales") == (
+        "October net sales total is level with September, but October is missing 2 days: per reported day it is up 3.4%")
+    assert claim_title(flat_report(14000, covered=FULL), "net_sales") == "Net sales did not change from September"
 
 
 def test_a_rise_a_fall_and_a_zero_base_have_their_own_phrases():
@@ -311,10 +323,89 @@ def test_a_rise_a_fall_and_a_zero_base_have_their_own_phrases():
     assert move_phrase(build_report(october_rows(), 2026, 10, covered=COVERED, as_of=AS_OF).kpi("orders")) == "up 20"
 
 
+# ------------------------------------------------------------ per reported day
+
+def test_a_total_in_a_partial_month_is_also_given_per_reported_day_from_the_days_with_data():
+    """October has 29 reported days (28 minus none: 2 with orders and 27 with none), September 30."""
+    r = report()
+    assert r.current.reported_days == 29 and r.previous.reported_days == 30
+    shown = {k.key: (k.per_day.current_display, k.per_day.previous_display, k.per_day.pct_display)
+             for k in r.kpis if k.per_day}
+    assert shown == {
+        "orders": ("0.69", "0.50", "+37.9%"),        # 20 / 29 against 15 / 30
+        "gross_sales": ("$8.28", "$5.00", "+65.5%"),  # 24000 / 29 and 15000 / 30, in cents
+        "refunds": ("$1.03", "$0.33", "+210.3%"),
+        "net_sales": ("$7.24", "$4.67", "+55.2%"),
+    }
+    assert [k.key for k in r.kpis if not k.per_day] == ["avg_order_value", "buyers_per_day"]
+
+
+def test_a_complete_month_has_no_per_reported_day_figures_and_keeps_its_plain_title():
+    r = report(covered=FULL)
+    assert all(k.per_day is None for k in r.kpis)
+    assert claim_title(r, "net_sales") == "Net sales rose 50.0% from September"
+    assert insights_title(r) == "Refunds moved most, up 200.0% from September"
+
+
+def test_a_month_with_two_missing_days_where_the_direction_does_not_flip():
+    r = report()
+    assert claim_title(r, "net_sales") == (
+        "October net sales total is 50.0% above September, but October is missing 2 days: per reported day it is up 55.2%")
+
+
+def test_a_month_with_two_missing_days_where_the_direction_flips():
+    """Net sales of 13800 over 29 reported days against 14000 over 30: the total is 1.4% lower
+    and every reported day is 2.0% higher."""
+    rows = september_rows() + day_rows(date(2026, 10, 1), 14, 14800, 1000, 8)
+    r = report(rows)
+    k = r.kpi("net_sales")
+    assert (k.pct_display, k.per_day.pct_display) == ("-1.4%", "+2.0%")
+    title = claim_title(r, "net_sales")
+    assert title == ("October net sales total is 1.4% below September, but October is missing 2 days: "
+                     "per reported day it is up 2.0%")
+    assert "fell" not in title and "rose" not in title
+    assert claim_title(r, "gross_sales") == ("October gross sales total is 1.3% below September, but October is "
+                                             "missing 2 days: per reported day it is up 2.1%")
+    # orders move the same way on both bases: 14 against 15, and 14 / 29 against 15 / 30
+    assert claim_title(r, "orders") == ("October orders total is 6.7% below September, but October is missing 2 days: "
+                                        "per reported day it is down 3.4%")
+
+
+def test_the_per_reported_day_comparison_uses_days_with_data_not_days_in_the_month():
+    """Dividing by the 31 days of October would give +45.2% here; the 29 reported days give +55.2%."""
+    assert report().kpi("net_sales").per_day.pct_display == "+55.2%"
+
+
+def test_a_previous_month_with_a_missing_day_is_the_one_named_and_divided_by_its_reported_days():
+    r = report(covered=[(date(2026, 9, 1), date(2026, 9, 9)), (date(2026, 9, 10), date(2026, 11, 1))])
+    assert r.previous.reported_days == 29 and r.current.reported_days == 31
+    assert claim_title(r, "net_sales") == (
+        "October net sales total is 50.0% above September, but September is missing 1 day: per reported day it is up 40.3%")
+
+
+def test_per_reported_day_can_be_flat_or_unchanged_while_the_totals_differ():
+    exact = one_day_each(30000, 29000)       # 30000 / 30 and 29000 / 29 are both 1000
+    assert claim_title(exact, "net_sales") == (
+        "October net sales total is 3.3% below September, but October is missing 2 days: "
+        "per reported day it is unchanged")
+    flat = one_day_each(30000, 29010)
+    assert claim_title(flat, "net_sales") == (
+        "October net sales total is 3.3% below September, but October is missing 2 days: "
+        "per reported day it is essentially flat")
+
+
+def test_a_zero_baseline_keeps_its_plain_title_with_the_caveat():
+    r = build_report(october_rows(), 2026, 10, covered=COVERED, as_of=AS_OF)
+    assert r.kpi("orders").per_day is not None and r.kpi("orders").pct is None
+    assert claim_title(r, "orders") == "Orders came to 20 in October, up 20 from September (October is missing 2 days)"
+
+
 # ------------------------------------------------------------ titles carry the caveat
 
 def test_a_title_that_states_a_change_names_the_missing_days_in_the_same_sentence():
-    assert claim_title(report(), "net_sales") == "Net sales rose 50.0% from September (October is missing 2 days)"
+    assert "October is missing 2 days" in claim_title(report(), "net_sales")
+    assert claim_title(report(), "avg_order_value") == (
+        "Average order value rose 20.0% from September (October is missing 2 days)")
 
 
 def test_a_complete_month_has_no_caveat_in_its_title():
@@ -338,7 +429,9 @@ def test_a_title_without_a_previous_month_says_so_and_keeps_the_caveat():
 def test_the_biggest_mover_is_the_largest_percent_and_gives_the_insights_title():
     r = report()
     assert largest_move(r).key == "refunds"
-    assert insights_title(r) == "Refunds moved most, up 200.0% from September (October is missing 2 days)"
+    assert insights_title(r) == (
+        "October refunds total is 200.0% above September, but October is missing 2 days: "
+        "per reported day it is up 210.3%")
 
 
 # ------------------------------------------------------------ refusals
@@ -402,3 +495,47 @@ def test_dates_read_like_a_person_writes_them_and_a_list_says_how_many_it_cut():
 
 def test_plurals():
     assert plural(1, "day") == "1 day" and plural(2, "day") == "2 days" and plural(0, "day") == "0 days"
+
+
+# ------------------------------------------------------------ averages, flat buyers and a zero month
+
+def test_average_order_value_rounds_half_up_like_every_other_figure():
+    """Two orders worth 1999 cents together are 999.5 each: half up is 1000, truncating is 999."""
+    rows = september_rows() + day_rows(date(2026, 10, 1), 2, 1999, 0, 1)
+    r = report(rows, covered=FULL)
+    assert r.current.avg_order_value == 1000
+    assert r.kpi("avg_order_value").current_display == "$10.00"      # truncating would print $9.99
+    assert report(september_rows() + day_rows(date(2026, 10, 1), 3, 1000, 0, 1), covered=FULL).kpi(
+        "avg_order_value").current_display == "$3.33"                # 333.33 rounds down
+
+
+def buyers_report(october_buyers):
+    """September: two days of 8 buyers (mean 8.0). October: one day per entry of `october_buyers`."""
+    rows = day_rows(date(2026, 9, 1), 1, 100, 0, 8) + day_rows(date(2026, 9, 2), 1, 100, 0, 8)
+    for d, buyers in enumerate(october_buyers, 1):
+        rows += day_rows(date(2026, 10, d), 1, 100, 0, buyers)
+    return report(rows, covered=FULL)
+
+
+def test_buyers_per_active_day_is_unchanged_only_when_the_unrounded_means_are_equal():
+    same = buyers_report([8] * 25)
+    k = same.kpi("buyers_per_day")
+    assert (k.unchanged, k.flat, move_phrase(k)) == (True, False, "unchanged")
+    assert claim_title(same, "buyers_per_day") == "Buyers per active day did not change from September"
+
+
+def test_buyers_whose_means_both_print_as_8_0_but_differ_are_essentially_flat_with_the_percent():
+    """24 days of 8 buyers and one of 9 average 8.04, which prints 8.0 against September's 8.0."""
+    r = buyers_report([8] * 24 + [9])
+    k = r.kpi("buyers_per_day")
+    assert (k.current_display, k.previous_display, k.pct_display) == ("8.0", "8.0", "+0.5%")
+    assert (k.unchanged, k.flat) == (False, True)
+    assert move_phrase(k) == "essentially flat (+0.5%)"
+    assert claim_title(r, "buyers_per_day") == "Buyers per active day stayed essentially flat (+0.5%) from September"
+
+
+def test_a_synced_month_with_no_orders_prints_zero_totals_not_n_a():
+    r = build_report([], 2026, 10, covered=OCTOBER_COVERED, as_of=AS_OF)
+    assert [r.kpi(k).current_display for k in ("orders", "gross_sales", "refunds", "net_sales")] == ["0", "0", "0", "0"]
+    assert r.kpi("avg_order_value").current_display == "n/a"
+    assert r.kpi("buyers_per_day").current_display == "n/a"

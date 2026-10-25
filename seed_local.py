@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import asyncpg
 
 from app.api.auth import generate_key, hash_key
+from app.secret_files import DEV_TOKEN
 from app.connectors.shopify import ShopifyConnector
 from app.crypto import CredentialCipher, generate_key as gen_crypto_key
 
@@ -31,12 +32,9 @@ DSN = os.environ.get(
     "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics"
 )
 ROOT = Path(__file__).resolve().parent
-# A text file with two lines, SHOP=<your-store>.myshopify.com and ACCESS_TOKEN=<an Admin API token for it>; point SHOPIFY_DEV_TOKEN_FILE at it (it is never committed).
-SECRETS = Path(os.environ.get("SHOPIFY_DEV_TOKEN_FILE", str(ROOT / "shopify_dev_token.txt")))
-
 
 def shopify_creds() -> tuple[str, str]:
-    text = io.open(SECRETS, encoding="utf-8").read()
+    text = DEV_TOKEN.read()
     return (
         re.search(r"^SHOP=(.+)$", text, re.M).group(1).strip(),
         re.search(r"^ACCESS_TOKEN=(.+)$", text, re.M).group(1).strip(),

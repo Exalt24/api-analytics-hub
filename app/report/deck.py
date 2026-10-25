@@ -43,6 +43,7 @@ from app.report.monthly import (
     fmt_day,
     format_money,
     insights_title,
+    per_day_phrase,
     plural,
 )
 
@@ -164,6 +165,8 @@ def _note_text(report: MonthlyReport, row: KpiRow) -> str:
                 parts.append("%s partial: %d of %d days" % (cur.short, cur.days_expected, cur.days_in_month))
             if prev is not None and prev.missing_days:
                 parts.append("%s partial: %s missing" % (prev.short, plural(len(prev.missing_days), "day")))
+            if row.per_day is not None:
+                parts.append("per reported day %s" % per_day_phrase(row.per_day))
         elif note == "zero baseline":
             parts.append("%s was zero" % prev.short)
         elif note == "no previous month":
@@ -173,6 +176,13 @@ def _note_text(report: MonthlyReport, row: KpiRow) -> str:
         elif note == "not available":
             parts.append("not reported")
     return "; ".join(parts)
+
+
+def _per_day_definition(report: MonthlyReport) -> list[str]:
+    if not any(k.per_day is not None for k in report.kpis):
+        return []
+    return ["Per reported day divides a total by the days with orders plus the days with no orders, "
+            "so months with different numbers of days with data can be compared."]
 
 
 def _definitions(report: MonthlyReport) -> str:
@@ -195,10 +205,15 @@ def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, ax
     series = [(series_name, values, ACCENT)]
     if prev is not None:
         series.append((prev.name, [to_axis(v) for _, v in daily_series(prev, metric)], GREY))
-    missing_idx = [i for i, (_, v) in enumerate(points) if v is None]
-    quiet_idx = [i for i, (d, v) in enumerate(points) if v is not None and d in cur.quiet_days]
-    if missing_idx:
-        series.append(("Day with no data", [0.0 if v is None else None for _, v in points], ALERT))
+    #: (series index, point indexes, colour): a dot on the zero line for a day with no orders, on every line
+    dot_specs = [(0, [i for i, (d, v) in enumerate(points) if v is not None and d in cur.quiet_days], ACCENT)]
+    if prev is not None:
+        prev_points = daily_series(prev, metric)
+        dot_specs.append((1, [i for i, (d, v) in enumerate(prev_points) if v is not None and d in prev.quiet_days], GREY))
+    for stats, pts, color in ((cur, points, ALERT), (prev, prev_points if prev is not None else [], GREY)):
+        if stats is not None and stats.missing_days:
+            name = "Day with no data" if stats is cur else "%s day with no data" % stats.short
+            series.append((name, [0.0 if v is None else None for _, v in pts], color))
 
     data = CategoryChartData()
     data.categories = [str(d) for d in range(1, days + 1)]
@@ -227,7 +242,7 @@ def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, ax
     chart.category_axis.format.line.color.rgb = GREY
     for plot_series, (name, _, color) in zip(chart.plots[0].series, series):
         plot_series.smooth = False
-        if name == "Day with no data":
+        if name.lower().endswith("day with no data"):
             plot_series.format.line.fill.background()
             plot_series.marker.style = XL_MARKER_STYLE.X
             plot_series.marker.size = 10
@@ -236,22 +251,26 @@ def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, ax
         plot_series.format.line.color.rgb = color
         plot_series.format.line.width = Pt(2.5)
         plot_series.marker.style = XL_MARKER_STYLE.NONE
-    for i in quiet_idx:
-        marker = chart.plots[0].series[0].points[i].marker
-        marker.style = XL_MARKER_STYLE.CIRCLE
-        marker.size = 9
-        marker.format.fill.solid()
-        marker.format.fill.fore_color.rgb = ACCENT
-        marker.format.line.color.rgb = ACCENT
+    for s_index, idxs, dot_color in dot_specs:
+        for i in idxs:
+            marker = chart.plots[0].series[s_index].points[i].marker
+            marker.style = XL_MARKER_STYLE.CIRCLE
+            marker.size = 9
+            marker.format.fill.solid()
+            marker.format.fill.fore_color.rgb = dot_color
+            marker.format.line.color.rgb = dot_color
 
 
-def _chart_notes(stats: MonthStats, what: str) -> list[str]:
+def _chart_notes(stats: MonthStats, what: str, prev: MonthStats | None = None) -> list[str]:
     lines = ["Day of the month across, %s up." % what]
-    if stats.quiet_days:
-        lines.append("A dot on the zero line is a day with no orders.")
+    if stats.quiet_days or (prev is not None and prev.quiet_days):
+        lines.append("A dot on the zero line is a day with no orders, on either line.")
     if stats.missing_days:
         lines.append("A break in the line with an X on the zero line is a day with no data (%s). %d of %d days are plotted."
                      % (days_text(stats.missing_days), stats.reported_days, stats.days_expected))
+    if prev is not None and prev.missing_days:
+        lines.append("A break in the grey line with a grey X is a day with no data in %s (%s)."
+                     % (prev.short, days_text(prev.missing_days)))
     return lines
 
 
@@ -282,7 +301,7 @@ def _kpi_slide(prs, report: MonthlyReport) -> None:
     rows = [head] + [[k.label, k.current_display, k.previous_display, k.change_display, k.pct_display,
                       _note_text(report, k)] for k in report.kpis]
     _table(slide, Inches(1.6), rows, [3.0, 2.0, 2.0, 1.8, 1.3, 3.7], size=14, row_h=0.58)
-    _footer(slide, ["Source: the store's daily order records.", _definitions(report)])
+    _footer(slide, ["Source: the store's daily order records.", _definitions(report)] + _per_day_definition(report))
 
 
 def _sales_slide(prs, report: MonthlyReport) -> None:
@@ -296,7 +315,7 @@ def _sales_slide(prs, report: MonthlyReport) -> None:
         "Line chart of net sales for each day of %s%s" % (cur.name, ", with %s as a grey line" % prev.name if prev else ""),
         compare=True, top=Inches(1.5), height=Inches(4.9),
     )
-    _footer(slide, _chart_notes(cur, "net sales in %s" % ("dollars" if unit == "$" else unit)))
+    _footer(slide, _chart_notes(cur, "net sales in %s" % ("dollars" if unit == "$" else unit), prev))
 
 
 def _orders_slide(prs, report: MonthlyReport) -> None:
@@ -329,7 +348,7 @@ def _value_slide(prs, report: MonthlyReport) -> None:
 
 def _insights_slide(prs, report: MonthlyReport, insights: Insights) -> None:
     slide = _new_slide(prs, insights_title(report))
-    _text(slide, MARGIN, Inches(1.6), BODY_W, Inches(4.7), list(insights.lines), 20, INK, space_after=12)
+    _text(slide, MARGIN, Inches(1.6), BODY_W, Inches(4.8), list(insights.lines), 18, INK, space_after=8)
     _footer(slide, [NARRATIVE_FOOTER])
 
 

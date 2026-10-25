@@ -61,11 +61,11 @@ def test_the_deck_has_seven_slides_with_the_planned_titles(tmp_path):
     prs, _, _, _ = saved(tmp_path)
     assert [s.shapes.title.text_frame.text for s in prs.slides] == [
         "Monthly performance report",
-        "Net sales rose 50.0% from September (October is missing 2 days)",
+        "October net sales total is 50.0% above September, but October is missing 2 days: per reported day it is up 55.2%",
         "Net sales by day in October",
         "Orders by day in October",
         "Order value, buyers and best days in October",
-        "Refunds moved most, up 200.0% from September (October is missing 2 days)",
+        "October refunds total is 200.0% above September, but October is missing 2 days: per reported day it is up 210.3%",
         "Data health: October is missing 2 of 31 days",
     ]
 
@@ -81,13 +81,25 @@ def test_the_kpi_table_holds_the_hand_computed_figures_and_names_the_month_in_ea
     note = "October partial: 2 days missing"
     assert table_rows(prs.slides[1]) == [
         ["Metric", "October 2026", "September 2026", "Change", "Change %", "Note"],
-        ["Orders", "20", "15", "+5", "+33.3%", note],
-        ["Gross sales", "$240.00", "$150.00", "+$90.00", "+60.0%", note],
-        ["Refunds", "$30.00", "$10.00", "+$20.00", "+200.0%", note],
-        ["Net sales", "$210.00", "$140.00", "+$70.00", "+50.0%", note],
+        ["Orders", "20", "15", "+5", "+33.3%", note + "; per reported day up 37.9%"],
+        ["Gross sales", "$240.00", "$150.00", "+$90.00", "+60.0%", note + "; per reported day up 65.5%"],
+        ["Refunds", "$30.00", "$10.00", "+$20.00", "+200.0%", note + "; per reported day up 210.3%"],
+        ["Net sales", "$210.00", "$140.00", "+$70.00", "+50.0%", note + "; per reported day up 55.2%"],
         ["Average order value", "$12.00", "$10.00", "+$2.00", "+20.0%", note],
         ["Buyers per active day", "8.0", "6.5", "+1.5", "+23.1%", note],
     ]
+
+
+def test_a_complete_month_has_no_per_reported_day_notes_or_definition(tmp_path):
+    prs, _, _, _ = saved(tmp_path, covered=FULL)
+    assert all(row[5] == "" for row in table_rows(prs.slides[1])[1:])
+    assert "reported day" not in slide_text(prs, 2) and "reported day" not in slide_text(prs, 6)
+
+
+def test_the_kpi_slide_defines_per_reported_day_when_it_shows_it(tmp_path):
+    prs, _, _, _ = saved(tmp_path)
+    assert ("Per reported day divides a total by the days with orders plus the days with no orders"
+            in slide_text(prs, 2))
 
 
 def test_the_slides_that_show_buyers_define_it(tmp_path):
@@ -139,15 +151,56 @@ def test_a_day_with_no_data_is_marked_apart_from_a_day_with_no_orders(tmp_path):
     assert marker.name == "Day with no data"
     assert [i for i, v in enumerate(marker.values) if v == 0.0] == [9, 10]
     assert [v for i, v in enumerate(marker.values) if i not in (9, 10)] == [None] * 29
-    october = chart.plots[0].series[0]
-    quiet_points = october._element.xpath("c:dPt")           # one dotted point per day with no orders
-    assert len(quiet_points) == 31 - 2 - 2
+    assert marker._element.xpath("c:marker/c:symbol/@val") == ["x"]
+
+
+def dotted(series):
+    """The point indexes of a chart series that carry their own circle marker."""
+    return [int(i) for i in series._element.xpath("c:dPt[c:marker/c:symbol/@val='circle']/c:idx/@val")]
+
+
+def test_a_day_with_no_orders_is_a_dot_on_both_lines_not_only_the_current_one(tmp_path):
+    prs, report, _, _ = saved(tmp_path)
+    (chart,) = charts(prs.slides[2])
+    october, september = chart.plots[0].series[0], chart.plots[0].series[1]
+    oct_quiet = [d.day - 1 for d in report.current.quiet_days]
+    sept_quiet = [d.day - 1 for d in report.previous.quiet_days]
+    assert len(oct_quiet) == 27 and len(sept_quiet) == 28          # the fixture's days with no orders
+    assert dotted(october) == oct_quiet
+    assert dotted(september) == sept_quiet
+    for index in sept_quiet:
+        assert list(september.values)[index] == 0.0                  # a dot sits on a zero point
+    assert dotted(chart.plots[0].series[2]) == []
+
+
+def test_each_dot_takes_its_own_lines_colour(tmp_path):
+    prs, _, _, _ = saved(tmp_path)
+    (chart,) = charts(prs.slides[2])
+    colours = [[c.get("val") for c in series._element.xpath("c:dPt")[0].xpath("c:marker/c:spPr/a:solidFill/a:srgbClr")]
+               for series in list(chart.plots[0].series)[:2]]
+    assert colours == [["1B7F8C"], ["8A94A0"]]
+
+
+def test_the_orders_chart_has_dots_for_its_one_line(tmp_path):
+    prs, report, _, _ = saved(tmp_path)
+    (chart,) = charts(prs.slides[3])
+    assert dotted(chart.plots[0].series[0]) == [d.day - 1 for d in report.current.quiet_days]
+
+
+def test_a_previous_month_day_with_no_data_gets_its_own_grey_x_and_a_footnote(tmp_path):
+    hole = [(date(2026, 9, 1), date(2026, 9, 9)), (date(2026, 9, 10), date(2026, 11, 1))]
+    prs, _, _, _ = saved(tmp_path, covered=hole)
+    (chart,) = charts(prs.slides[2])
+    series = chart.plots[0].series
+    assert [s.name for s in series] == ["October 2026", "September 2026", "September day with no data"]
+    assert [i for i, v in enumerate(series[2].values) if v == 0.0] == [8]
+    assert "A break in the grey line with a grey X is a day with no data in September (Sep 9)." in slide_text(prs, 3)
 
 
 def test_the_chart_footnote_says_which_marks_are_present_and_how_many_days_are_plotted(tmp_path):
     prs, _, _, _ = saved(tmp_path)
     text = slide_text(prs, 3)
-    assert "A dot on the zero line is a day with no orders." in text
+    assert "A dot on the zero line is a day with no orders, on either line." in text
     assert "a day with no data (Oct 10, Oct 11). 29 of 31 days are plotted." in text
     complete, _, _, _ = saved(tmp_path, covered=FULL)
     assert "no data" not in slide_text(complete, 3)
@@ -185,10 +238,12 @@ def test_the_insights_slide_carries_the_checked_lines_each_with_its_caveat(tmp_p
     paragraphs = [p.text for s in prs.slides[5].shapes if s.has_text_frame for p in s.text_frame.paragraphs if p.text]
     for line in insights.lines:
         assert line in paragraphs
-    changes = [line for line in insights.lines if " from September" in line]
+    changes = [line for line in insights.lines if "September" in line]
     assert len(changes) == 5
     assert all("October is missing 2 days" in line for line in changes)
-    assert any(line.startswith("The biggest move was Refunds, up 200.0% from September") for line in insights.lines)
+    totals = [line for line in changes if "total was" in line]
+    assert len(totals) == 3 and all("per reported day" in line for line in totals)
+    assert any(line.startswith("The biggest move was Refunds, 200.0% above September in total") for line in insights.lines)
 
 
 def test_the_insights_slide_footer_is_neutral_and_the_writer_is_kept_in_the_file_property(tmp_path):
@@ -250,7 +305,7 @@ def test_no_table_has_an_empty_header_cell_and_the_title_slide_names_the_store_a
                                   "Sample report: the orders are invented, not a real store.")
 
 
-def test_no_text_on_any_slide_is_smaller_than_ten_points(tmp_path):
+def test_no_text_on_any_slide_is_smaller_than_eleven_points(tmp_path):
     prs, _, _, _ = saved(tmp_path)
     sizes = []
     for slide in prs.slides:
@@ -260,7 +315,7 @@ def test_no_text_on_any_slide_is_smaller_than_ten_points(tmp_path):
                 frames += [cell.text_frame for row in shape.table.rows for cell in row.cells]
             for frame in frames:
                 sizes += [run.font.size for para in frame.paragraphs for run in para.runs]
-    assert sizes and all(size is not None and size >= Pt(10) for size in sizes)
+    assert sizes and all(size is not None and size >= Pt(11) for size in sizes)
 
 
 # ------------------------------------------------------------ the file itself

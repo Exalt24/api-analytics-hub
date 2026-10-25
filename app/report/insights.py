@@ -46,7 +46,10 @@ from app.report.monthly import (
     largest_move,
     move_phrase,
     partial_clause,
+    per_day_phrase,
     plural,
+    states_total_with_per_day,
+    total_phrase,
 )
 
 #: A report's commentary is a few lines. Past this a reply is an essay, and the more
@@ -112,6 +115,10 @@ def report_facts(report: MonthlyReport) -> dict[str, Any]:
         facts[row.label + " change percent"] = row.pct_display
         if row.note:
             facts[row.label + " note"] = row.note
+        if row.per_day is not None:
+            facts[row.label + " per reported day"] = row.per_day.current_display
+            facts[row.label + " per reported day previous"] = row.per_day.previous_display
+            facts[row.label + " per reported day percent"] = row.per_day.pct_display
     mover = largest_move(report)
     if mover is not None:
         facts["largest move"] = mover.label
@@ -131,28 +138,55 @@ _MONTHS = "|".join(_MONTHS_FULL + tuple(m[:3] for m in _MONTHS_FULL))
 #: A figure is a date (`Oct 14`, `October 2026`) or an amount, count or percentage. Every
 #: part is bounded, the digits may sit against letters (`USD9`, `x5`, `Q4`) because a figure
 #: glued to a letter is still a figure, and a comma only counts inside a valid thousands group.
+#: An amount keeps the currency it was written with.
 _FIGURE_RE = re.compile((
     r"(?P<date>\b(?:@MONTHS@)\.?\s\d{4}\b|\b(?:@MONTHS@)\.?\s\d{1,2}\b)"
-    r"|(?P<num>[+-]?(?P<cur>\$|[A-Z]{3}[ ]?)?(?P<digits>\d{1,3}(?:,\d{3}){1,8}(?:\.\d{1,9})?|\d{1,15}(?:\.\d{1,9})?)(?P<pct>%)?)"
+    r"|(?P<num>[+-]?(?P<cur>\$|\u20ac|\u00a3|[A-Z]{3}[ ]?)?(?P<digits>\d{1,3}(?:,\d{3}){1,8}(?:\.\d{1,9})?|\d{1,15}(?:\.\d{1,9})?)(?P<pct>%)?)"
 ).replace("@MONTHS@", _MONTHS))
+
+#: A symbol and the code it stands for, so "$210.00" and "USD 210.00" are one amount and
+#: "EUR 210.00" is another.
+_CURRENCY_SYMBOLS = {"$": "USD", "\u20ac": "EUR", "\u00a3": "GBP"}
 
 #: A comma between digits that is not a thousands separator: `1,4%`, `6,07`, `1,2000`.
 _BAD_COMMA_RE = re.compile(r"\d,(?=\d)(?!\d{3}(?!\d))")
 
-#: Amounts and changes written as words, whole words only ("one" is not found inside "none").
+#: Amounts, fractions, multipliers and positions written as words, whole words only ("one" is
+#: not found inside "none"). A model that wants a number in words is a model that is not
+#: copying the figure, so the text is refused. Fail closed: a word that might be a number is one.
 NUMBER_WORDS = frozenset((
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
     "fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy "
-    "eighty ninety hundred thousand million billion dozen half twice thrice double doubled "
-    "triple tripled halved hundreds thousands millions dozens").split())
+    "eighty ninety hundred thousand million billion dozen half halves twice thrice double "
+    "doubled triple tripled quadruple quadrupled halved hundreds thousands millions dozens "
+    "third thirds quarter quarters fifth sixth seventh eighth ninth tenth eleventh twelfth "
+    "first second fourth couple pair trio several").split())
+
+#: `twofold`, `tenfold`, `manyfold`: a multiplier is a number.
+_FOLD_WORD_RE = re.compile(
+    r"(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|hundred|thousand|million|many|multi)fold")
 
 #: What a sentence may call a metric. A label not listed here is matched by its own words.
 ALIASES = {
-    "Average order value": ("average order value", "order value", "aov"),
-    "Buyers per active day": ("buyers per active day", "buyers"),
+    "Net sales": ("net sales", "net revenue"),
+    "Gross sales": ("gross sales", "gross revenue"),
+    "Orders": ("orders", "order count", "number of orders", "order volume"),
+    "Refunds": ("refunds", "refunded", "refund"),
+    "Average order value": ("average order value", "order value", "aov", "average basket", "basket size",
+                            "average order size", "average order"),
+    "Buyers per active day": ("buyers per active day", "buyers", "buyer count", "customers", "customer count",
+                              "shoppers", "shopper count"),
 }
 
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z$\d])|\n")
+#: Words for sales that say neither net nor gross: a sentence using one may use either's figures.
+GENERIC_ALIASES = {
+    "sales": ("Net sales", "Gross sales"),
+    "revenue": ("Net sales", "Gross sales"),
+    "takings": ("Net sales", "Gross sales"),
+    "turnover": ("Net sales", "Gross sales"),
+}
+
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z$\u20ac\u00a3\d])|\n")
 _WORD_RE = re.compile(r"[a-z]+")
 
 
@@ -160,8 +194,13 @@ def _canonical(match: re.Match) -> tuple[str, str]:
     if match.group("date"):
         words = match.group("date").replace(".", "").split()
         return "date", "%s %s" % (words[0][:3].title(), words[1])
-    kind = "pct" if match.group("pct") else "money" if match.group("cur") else "num"
-    return kind, match.group("digits").replace(",", "")
+    digits = match.group("digits").replace(",", "")
+    if match.group("pct"):
+        return "pct", digits
+    if match.group("cur"):
+        symbol = match.group("cur").strip()
+        return "money", "%s %s" % (_CURRENCY_SYMBOLS.get(symbol, symbol), digits)
+    return "num", digits
 
 
 def figures(text: str) -> list[tuple[tuple[str, str], str, int]]:
@@ -187,13 +226,22 @@ def _metric_groups(facts: Mapping[str, Any]) -> dict[str, set]:
 
 
 def _mentioned(sentence: str, labels) -> list[str]:
+    """The metrics a sentence names, longest wording first so "net sales" is not also "sales"."""
     low = sentence.lower()
-    found = []
+    by_alias: dict[str, set] = {}
     for label in labels:
         for alias in ALIASES.get(label, (label.lower(),)):
-            if re.search(r"\b%s\b" % re.escape(alias), low):
-                found.append(label)
-                break
+            by_alias.setdefault(alias, set()).add(label)
+    for alias, targets in GENERIC_ALIASES.items():
+        by_alias.setdefault(alias, set()).update(t for t in targets if t in labels)
+    found: list[str] = []
+    used: list[tuple[int, int]] = []
+    for alias in sorted(by_alias, key=len, reverse=True):
+        for m in re.finditer(r"\b%s\b" % re.escape(alias), low):
+            if any(m.start() < end and start < m.end() for start, end in used):
+                continue
+            used.append((m.start(), m.end()))
+            found.extend(label for label in sorted(by_alias[alias]) if label not in found)
     return found
 
 
@@ -201,9 +249,10 @@ def ungrounded_numbers(text: str, facts: Mapping[str, Any]) -> list[str]:
     """Every figure or number word in `text` that the facts do not back, as written in `text`.
 
     Order: the catalogue check first, then number words, malformed separators, and the exact
-    figure check (a figure must be a displayed figure of a fact, a date must be a fact's date,
-    and a figure in a sentence that names a metric must be one of that metric's own, or a
-    count of days).
+    figure check. A figure must be a displayed figure of a fact, in the same currency; a date
+    must be a fact's date; in a report (facts with metrics) a sentence that carries a figure
+    must name a recognised metric and the figure must be that metric's own, and a sentence
+    naming no metric may only carry day counts and dates.
     """
     bad: list[str] = list(verify_grounded(text, facts))
 
@@ -213,7 +262,7 @@ def ungrounded_numbers(text: str, facts: Mapping[str, Any]) -> list[str]:
 
     fact_words = set(_WORD_RE.findall(" ".join(str(v) for v in facts.values()).lower()))
     for word in _WORD_RE.findall(text.lower()):
-        if word in NUMBER_WORDS and word not in fact_words:
+        if (word in NUMBER_WORDS or _FOLD_WORD_RE.fullmatch(word)) and word not in fact_words:
             flag(word)
     for m in _BAD_COMMA_RE.finditer(text):
         flag(text[m.start(): m.end() + 1])
@@ -232,14 +281,17 @@ def ungrounded_numbers(text: str, facts: Mapping[str, Any]) -> list[str]:
 
     for sentence in _SENTENCE_RE.split(text):
         mentioned = _mentioned(sentence, groups)
-        allowed_metric = set().union(*(groups[g] for g in mentioned)) if mentioned else everything
+        allowed_metric = set().union(*(groups[g] for g in mentioned)) if mentioned else set()
         for fig, raw, end in figures(sentence):
             if fig[0] == "date":
                 if fig not in all_dates:
                     flag(raw)
+            elif not groups:
+                if fig not in global_figs:        # facts with no metrics: the figure only has to exist
+                    flag(raw)
             elif fig in allowed_metric:
                 continue
-            elif fig in global_figs and (not mentioned or _DAY_COUNT_RE.match(sentence, end)):
+            elif fig in global_figs and _DAY_COUNT_RE.match(sentence, end):
                 continue
             else:
                 flag(raw)
@@ -258,6 +310,15 @@ def _comparison(row, prev) -> str:
     return ", %s from %s (%s)" % (move_phrase(row), prev.short, row.previous_display)
 
 
+def _total_sentence(report: MonthlyReport, key: str) -> str:
+    """A total in a partial month: the total and its raw relation, then the per reported day change."""
+    row, cur, prev = report.kpi(key), report.current, report.previous
+    return "%s total was %s in %s, %s (%s), but %s: per reported day, %s are %s (%s against %s)." % (
+        row.label, row.current_display, cur.short, total_phrase(row, prev), row.previous_display,
+        partial_clause(report), row.label.lower(), per_day_phrase(row.per_day),
+        row.per_day.current_display, row.per_day.previous_display)
+
+
 def template_lines(report: MonthlyReport) -> list[str]:
     cur, prev = report.current, report.previous
     clause = partial_clause(report)
@@ -266,6 +327,9 @@ def template_lines(report: MonthlyReport) -> list[str]:
         row = report.kpi(key)
         if row.current is None:
             continue
+        if states_total_with_per_day(report, key):
+            lines.append(_total_sentence(report, key))
+            continue
         sentence = "%s %s %s in %s" % (row.label, _VERBS.get(key, "were"), row.current_display, cur.short)
         compare = _comparison(row, prev)
         if compare and clause:
@@ -273,8 +337,12 @@ def template_lines(report: MonthlyReport) -> list[str]:
         lines.append(sentence + compare + ".")
     mover = largest_move(report)
     if mover is not None and prev is not None:
-        sentence = "The biggest move was %s, %s from %s" % (mover.label, move_phrase(mover), prev.short)
-        lines.append(sentence + (", and %s" % clause if clause else "") + ".")
+        if states_total_with_per_day(report, mover.key):
+            lines.append("The biggest move was %s, %s in total, but %s: per reported day it is %s." % (
+                mover.label, total_phrase(mover, prev), clause, per_day_phrase(mover.per_day)))
+        else:
+            sentence = "The biggest move was %s, %s from %s" % (mover.label, move_phrase(mover), prev.short)
+            lines.append(sentence + (", and %s" % clause if clause else "") + ".")
     if report.top_days and report.currency:
         day, value = report.top_days[0]
         lines.append("The best day was %s with net sales of %s." % (fmt_day(day), format_money(value, report.currency)))
@@ -321,9 +389,13 @@ class ReportInsightWriter(CatalogCopyWriter):
 
 
 def check_model_text(text: str, facts: Mapping[str, Any]) -> tuple[list[str], str | None]:
-    """The lines of a model reply, or (empty, the reason it was refused)."""
-    lines = [ln.strip(" \t-*") for ln in clean_text_lines(text)]
-    lines = [ln for ln in lines if ln]
+    """The lines of a model reply, or (empty, the reason it was refused).
+
+    Markdown emphasis and list markers are stripped, and a line that ends with a colon (a
+    preamble such as "Here is the commentary for October:") is dropped, not kept as an insight.
+    """
+    lines = [_plain_line(ln) for ln in clean_text_lines(text)]
+    lines = [ln for ln in lines if ln and not ln.endswith(":")]
     if not lines:
         return [], "the model returned no text"
     if len(lines) > MAX_LINES:
@@ -334,6 +406,15 @@ def check_model_text(text: str, facts: Mapping[str, Any]) -> tuple[list[str], st
     if bad:
         return [], "figures that are not in the computed figures: %s" % ", ".join(bad)
     return lines, None
+
+
+_LIST_MARKER_RE = re.compile(r"^(?:[-*\u2022]\s+|\d{1,2}[.)]\s+)")
+
+
+def _plain_line(line: str) -> str:
+    """One reply line without markdown emphasis, heading marks, quote marks or a list marker."""
+    line = _LIST_MARKER_RE.sub("", line.strip())
+    return re.sub(r"[*_`#>]+", "", line).strip()
 
 
 def clean_text_lines(text: str) -> list[str]:

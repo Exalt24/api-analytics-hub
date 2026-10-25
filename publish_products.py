@@ -20,9 +20,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from app.secret_files import DEV_TOKEN  # noqa: E402
+
 import httpx
 
-SECRETS = Path(r"C:\Projects\Professional\Operations\.secrets\shopify_dev_token.txt")
 API = "2026-07"
 
 PUBLICATIONS = """
@@ -58,7 +59,7 @@ async def gql(client, shop, token, query, variables=None):
 
 
 async def main() -> int:
-    text = io.open(SECRETS, encoding="utf-8").read()
+    text = DEV_TOKEN.read()
     shop = re.search(r"^SHOP=(.+)$", text, re.M).group(1).strip()
     token = re.search(r"^ACCESS_TOKEN=(.+)$", text, re.M).group(1).strip()
 

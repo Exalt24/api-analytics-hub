@@ -8,15 +8,44 @@ delete it and watch something fail.
 Each mutation below targets a decision that is SILENTLY wrong when removed: no
 crash, no error, just a number that is off in a way nobody notices until a client
 queries their own revenue.
+
+THIS EDITS SOURCE FILES IN PLACE. It writes each mutation into the real file, runs the
+tests, and writes the original bytes back. Run it in a COPY of the repository, never in a
+working tree you are editing or that a sync might commit: a killed process (power loss, kill
+-9) can leave a weakened guard in the source, and `git diff` is how to check. A normal exit,
+Ctrl-C and SIGTERM all restore every file first.
+
+    python tests/mutation_check.py --check-targets      only confirm every guard finds its text
+    python tests/mutation_check.py --only report,deck    only the guards aimed at those keys
+    python tests/mutation_check.py --match comma,flat    only the guards whose name holds a word
+    python tests/mutation_check.py                       every guard (about an hour)
+
+An argument it does not know is refused with exit 2, and nothing is edited.
 """
 from __future__ import annotations
 
+import argparse
+import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PY = ROOT / ".venv" / "Scripts" / "python.exe"
+
+
+def venv_python() -> Path:
+    """The repository venv's interpreter: Scripts on Windows, bin elsewhere, else the running one.
+
+    Only the Windows form has been run through the whole harness; the other is the standard
+    layout of a venv made with `python -m venv .venv`.
+    """
+    rel = ("Scripts", "python.exe") if os.name == "nt" else ("bin", "python")
+    candidate = ROOT.joinpath(".venv", *rel)
+    return candidate if candidate.exists() else Path(sys.executable)
+
+
+PY = venv_python()
 
 TARGETS = {
     "aicopy": ROOT / "app" / "ai" / "catalog_copy.py",
@@ -959,14 +988,14 @@ MUTATIONS = [
     (
         "insights",
         "the exact figure check is dropped",
-        "            elif fig in global_figs and (not mentioned or _DAY_COUNT_RE.match(sentence, end)):\n                continue\n            else:\n                flag(raw)",
+        "            elif fig in global_figs and _DAY_COUNT_RE.match(sentence, end):\n                continue\n            else:\n                flag(raw)",
         "            else:\n                continue",
         "a number hiding inside a longer fact must still be refused",
     ),
     (
         "insights",
         "a figure beside a named metric is checked against every metric's figures",
-        "        allowed_metric = set().union(*(groups[g] for g in mentioned)) if mentioned else everything",
+        "        allowed_metric = set().union(*(groups[g] for g in mentioned)) if mentioned else set()",
         "        allowed_metric = everything",
         "net sales must not be allowed the refunds figure",
     ),
@@ -987,8 +1016,8 @@ MUTATIONS = [
     (
         "insights",
         "a day number is accepted in a sentence about a metric",
-        "(not mentioned or _DAY_COUNT_RE.match(sentence, end))",
-        "True",
+        "elif fig in global_figs and _DAY_COUNT_RE.match(sentence, end):",
+        "elif fig in global_figs:",
         "a bare day count must not stand in for a metric figure",
     ),
     (
@@ -1015,8 +1044,8 @@ MUTATIONS = [
     (
         "deck",
         "a day with no data is not marked on the chart",
-        "    if missing_idx:\n        series.append(",
-        "    if False:\n        series.append(",
+        "        if stats is not None and stats.missing_days:",
+        "        if False:",
         "a day with no orders and a day with no data must look different",
     ),
     (
@@ -1068,6 +1097,126 @@ MUTATIONS = [
         "    return datetime.now().date()",
         "the report date must not move with the machine's timezone",
     ),
+    # the per reported day headline, the chart dots, the metric and currency checks, the model's lines
+    (
+        "report",
+        "a total's headline states a direction from the raw totals alone",
+        '    if states_total_with_per_day(report, key):\n        return "%s %s total is %s, but %s: per reported day it is %s" % (',
+        '    if False:\n        return "%s %s total is %s, but %s: per reported day it is %s" % (',
+        "a total over 29 days against one over 30 can fall while every reported day rose",
+    ),
+    (
+        "report",
+        "per reported day divides by the days in the month instead of the days with data",
+        "    c = Decimal(cur.totals[key]) / cur.reported_days",
+        "    c = Decimal(cur.totals[key]) / cur.days_in_month",
+        "the comparison per reported day uses the days a sync looked at",
+    ),
+    (
+        "report",
+        "average order value is truncated instead of rounded half up",
+        '        return int((Decimal(self.totals["gross_sales"]) / orders).quantize(Decimal(1), rounding=ROUND_HALF_UP))',
+        '        return self.totals["gross_sales"] // orders',
+        "1999 cents over two orders is 10.00, not 9.99",
+    ),
+    (
+        "report",
+        "buyers per active day is called unchanged when only the rounded means are equal",
+        "        return self.exact_equal is True",
+        "        return self.change is not None and self.change == 0",
+        "unchanged means the unrounded values are equal",
+    ),
+    (
+        "report",
+        "a zero total in a month with no money row prints n/a",
+        '            return "0" if int(value) == 0 else "n/a"',
+        '            return "n/a"',
+        "a synced month with no orders has a total of zero",
+    ),
+    (
+        "deck",
+        "the Note column drops the per reported day change",
+        '            if row.per_day is not None:\n                parts.append("per reported day %s" % per_day_phrase(row.per_day))',
+        '            if False:\n                parts.append("per reported day %s" % per_day_phrase(row.per_day))',
+        "the table must show the per reported day change beside a raw total in a partial month",
+    ),
+    (
+        "deck",
+        "a day with no orders is a dot on the current line only",
+        "    for s_index, idxs, dot_color in dot_specs:",
+        "    for s_index, idxs, dot_color in dot_specs[:1]:",
+        "the footnote says a dot on the zero line is a day with no orders, on either line",
+    ),
+    (
+        "insights",
+        "the template states a total's direction from the raw totals alone",
+        "        if states_total_with_per_day(report, key):\n            lines.append(_total_sentence(report, key))",
+        "        if False:\n            lines.append(_total_sentence(report, key))",
+        "the narrative must give the per reported day change beside a total in a partial month",
+    ),
+    (
+        "insights",
+        "a sentence naming no metric may carry any existing figure",
+        "        allowed_metric = set().union(*(groups[g] for g in mentioned)) if mentioned else set()",
+        "        allowed_metric = set().union(*(groups[g] for g in mentioned)) if mentioned else everything",
+        "a second sentence must not borrow the metric of the first",
+    ),
+    (
+        "insights",
+        "sales and revenue are not metric words",
+        "    for alias, targets in GENERIC_ALIASES.items():",
+        "    for alias, targets in {}.items():",
+        "Sales rose 33.3% where 33.3% is the orders figure must be refused",
+    ),
+    (
+        "insights",
+        "shoppers is not a word for buyers",
+        '"shoppers", "shopper count"),',
+        '"shopper count"),',
+        "a synonym for a metric names that metric",
+    ),
+    (
+        "insights",
+        "customers is not a word for buyers",
+        '"customers", "customer count",',
+        '"customer count",',
+        "a synonym for a metric names that metric",
+    ),
+    (
+        "insights",
+        "the currency is dropped from an amount's identity",
+        '        return "money", "%s %s" % (_CURRENCY_SYMBOLS.get(symbol, symbol), digits)',
+        '        return "money", digits',
+        "an amount in the wrong currency must be refused",
+    ),
+    (
+        "insights",
+        "spelled fractions, positions and counts are not refused",
+        '    "first second fourth couple pair trio several").split())',
+        '    "").split())',
+        "a third of days is a number written as words",
+    ),
+    (
+        "insights",
+        "multiplier words are not refused",
+        "        if (word in NUMBER_WORDS or _FOLD_WORD_RE.fullmatch(word)) and word not in fact_words:",
+        "        if word in NUMBER_WORDS and word not in fact_words:",
+        "twofold and tenfold are numbers written as words",
+    ),
+    (
+        "insights",
+        "markdown emphasis stays in a model's line",
+        '    return re.sub(r"[*_`#>]+", "", line).strip()',
+        "    return line.strip()",
+        "**Net sales** must not become Net sales** in a slide",
+    ),
+    (
+        "insights",
+        "a preamble ending in a colon is kept as an insight",
+        '    lines = [ln for ln in lines if ln and not ln.endswith(":")]',
+        "    lines = [ln for ln in lines if ln]",
+        "Here is the commentary: is not an insight",
+    ),
 ]
 
 
@@ -1110,61 +1259,89 @@ def missing_targets() -> list[str]:
     return problems
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
+    parser.add_argument("--check-targets", action="store_true",
+                        help="only check that every guard finds its target text, edit nothing")
+    parser.add_argument("--only", help="comma separated target keys, for a quick loop while writing a guard")
+    parser.add_argument("--match", help="comma separated words; only guards whose name holds one run")
+    return parser.parse_args(argv)
+
+
+def _restore_all(snapshot: dict[Path, bytes]) -> None:
+    """Put back every file whose bytes differ from the start of the run, byte for byte."""
+    for path, data in snapshot.items():
+        if path.read_bytes() != data:
+            path.write_bytes(data)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     problems = missing_targets()
     if problems:
         print("update this file before mutating, these guards no longer find their target:\n  " + "\n  ".join(problems))
         return 1
-    if "--check-targets" in sys.argv:
+    if args.check_targets:
         print(f"all {len(MUTATIONS)} guards find their target")
         return 0
-    if run_suite() is not True:
-        print("baseline suite is RED or hung, fix that before mutating")
-        return 1
-    print("baseline: green")
 
-    # `--only m005,changes` runs just the guards aimed at those targets, for a quick loop while writing a new one. A full run is the one that counts.
-    only = set(sys.argv[sys.argv.index("--only") + 1].split(",")) if "--only" in sys.argv else None
+    only = set(args.only.split(",")) if args.only else None
+    match = args.match.split(",") if args.match else None
+    snapshot = {path: path.read_bytes() for path in set(TARGETS.values())}
 
-    # `--match absent,previous` runs only the guards whose name holds one of those words.
-    match = sys.argv[sys.argv.index("--match") + 1].split(",") if "--match" in sys.argv else None
+    def _terminate(signum, frame):  # a SIGTERM must unwind through the finally block below
+        raise SystemExit(128 + signum)
 
-    failures = 0
-    for key, name, old, new, why in MUTATIONS:
-        if only and key not in only:
-            continue
-        if match and not any(word in name for word in match):
-            continue
-        path = TARGETS[key]
-        original = path.read_text(encoding="utf-8")
-        if old not in original:
-            print(f"[SKIP] {name}: mutation target not found, update this file")
-            failures += 1
-            continue
-        try:
-            path.write_text(original.replace(old, new, 1), encoding="utf-8")
-            still_green = run_suite(path=SCOPED_SUITE.get(key, "tests/"))
-        finally:
-            path.write_text(original, encoding="utf-8")
-            assert path.read_text(encoding="utf-8") == original, "RESTORE FAILED"
+    try:
+        signal.signal(signal.SIGTERM, _terminate)
+    except ValueError:  # not the main thread, as under a test runner
+        pass
 
-        if still_green is HUNG_SENTINEL:
-            # Not green, so the guard is tested; and worse than red, because the
-            # mutated code does not terminate at all.
-            print(f"[ok]   {name}: suite HUNG, the guard also prevents an infinite retry")
-        elif still_green:
-            print(f"[FAIL] {name}: suite stayed GREEN, so nothing tests that {why}")
-            failures += 1
-        else:
-            print(f"[ok]   {name}: suite went red as it should")
+    try:
+        if run_suite() is not True:
+            print("baseline suite is RED or hung, fix that before mutating")
+            return 1
+        print("baseline: green")
 
-    print()
-    if run_suite() is not True:
-        print("suite is RED or hung after restoring, a mutation leaked")
-        return 1
-    print("all sources restored, suite green again")
-    print(f"mutation control: {'PASS' if failures == 0 else str(failures) + ' UNTESTED GUARD(S)'}")
-    return 1 if failures else 0
+        failures = 0
+        for key, name, old, new, why in MUTATIONS:
+            if only and key not in only:
+                continue
+            if match and not any(word in name for word in match):
+                continue
+            path = TARGETS[key]
+            original = path.read_text(encoding="utf-8")
+            if old not in original:
+                print(f"[SKIP] {name}: mutation target not found, update this file")
+                failures += 1
+                continue
+            try:
+                path.write_text(original.replace(old, new, 1), encoding="utf-8")
+                still_green = run_suite(path=SCOPED_SUITE.get(key, "tests/"))
+            finally:
+                path.write_bytes(snapshot[path])
+            assert path.read_bytes() == snapshot[path], "RESTORE FAILED"
+
+            if still_green is HUNG_SENTINEL:
+                # Not green, so the guard is tested; and worse than red, because the
+                # mutated code does not terminate at all.
+                print(f"[ok]   {name}: suite HUNG, the guard also prevents an infinite retry")
+            elif still_green:
+                print(f"[FAIL] {name}: suite stayed GREEN, so nothing tests that {why}")
+                failures += 1
+            else:
+                print(f"[ok]   {name}: suite went red as it should")
+
+        print()
+        if run_suite() is not True:
+            print("suite is RED or hung after restoring, a mutation leaked")
+            return 1
+        print("all sources restored, suite green again")
+        print(f"mutation control: {'PASS' if failures == 0 else str(failures) + ' UNTESTED GUARD(S)'}")
+        return 1 if failures else 0
+    finally:
+        _restore_all(snapshot)
 
 
 if __name__ == "__main__":

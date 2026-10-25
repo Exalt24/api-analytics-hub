@@ -159,7 +159,8 @@ def test_the_command_writes_a_deck_and_prints_it_back(world, tmp_path):
                  "--as-of", AS_OF.isoformat(), "--dump"])
     assert done.returncode == 0, done.stderr
     assert out.exists()
-    assert "insights: template" in done.stdout and "Net sales rose 50.0% from September (October is missing 2 days)" in done.stdout
+    assert "insights: template" in done.stdout and ("October net sales total is 50.0% above September, but October is missing 2 days: "
+                                    "per reported day it is up 55.2%") in done.stdout
 
 
 def test_the_command_exits_2_with_the_reason_when_it_cannot_report(world, tmp_path):

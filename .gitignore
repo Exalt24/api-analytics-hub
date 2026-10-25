@@ -8,8 +8,9 @@ web/.next/
 web/out/
 .vercel/
 
-# Secrets never live in the repo. The Shopify token and app credentials sit in
-# Operations/.secrets/, which the workspace root already ignores.
+# Secrets never live in the repo. The scripts read the Shopify token and app credentials from
+# the files named in app/secret_files.py, by default under .secrets/ here.
+.secrets/
 .env
 .env.local
 *.token
