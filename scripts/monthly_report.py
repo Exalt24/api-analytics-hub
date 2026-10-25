@@ -6,7 +6,7 @@
 Reads stored snapshots only, never a vendor API. The narrative is written by a model only
 when GROQ_API_KEY or LLM_API_KEY is set (and --no-model is not); otherwise, or when the
 model's text names a number that is not among the computed figures, a fixed template writes
-it and the insights slide says so. The key is never printed.
+it. The command prints which writer ran and why a refused text was refused; no slide says so. The key is never printed.
 
 Exit 0: the deck was written. Exit 2: the report could not be produced, with the reason.
 """
@@ -70,6 +70,8 @@ async def run(args: argparse.Namespace) -> int:
     finally:
         await db.close()
     print("wrote %s (%s, insights: %s)" % (path, report.current.name, insights.source))
+    if insights.rejected_reason:
+        print("model text not used: %s" % insights.rejected_reason)
     if args.dump:
         print(dump_deck(path))
     return 0

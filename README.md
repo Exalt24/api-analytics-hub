@@ -139,7 +139,7 @@ Its own tests found three defects in the first version: digits inside chemical f
 
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a sales chart and an orders chart, the insights, and a data health slide that names the days with no data. Every number is computed in code. The narrative is a fixed template when no model key is set. When days have no data, a total's headline gives the change per reported day beside the raw total. A model's text is used only if every figure in it is a computed figure, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role; its other known limits are in the docs. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a sales chart and an orders chart, the insights, and a data health slide that names up to ten days with no data and counts the rest. Every number is computed in code. The narrative is a fixed template when no model key is set. When days have no data, a total's headline gives the change per reported day beside the raw total. A model's text is used only if every figure in it is a computed figure, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role; its other known limits are in the docs. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
@@ -152,7 +152,7 @@ Its own tests found three defects in the first version: digits inside chemical f
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 1195 passed, 4 known limits (virtual environment active)
+python -m pytest tests/ -q                # 1213 passed, 4 known limits (virtual environment active)
 python tests/mutation_check.py            # all 161 guards; edits source in place, run it in a copy (--help)
 python live_check.py                      # against the real store
 ```

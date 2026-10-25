@@ -137,7 +137,9 @@ def _reply(content):
 
 def _raise(exc):
     def handler(req):
-        raise exc(exc.__name__, request=req)
+        if issubclass(exc, httpx.HTTPError):
+            raise exc(exc.__name__, request=req)
+        raise exc(exc.__name__)
     return handler
 
 
@@ -149,6 +151,15 @@ PROVIDER = {
     "rate limited": lambda req: httpx.Response(429, text="slow down"),
     "no choices": lambda req: httpx.Response(200, json={"choices": []}),
     "refused figures": _reply("Net sales fell 7% from September."),
+    # 200 with valid JSON of a shape the provider should not send: a skeptic found each of these escaping as an AttributeError
+    "body is a list": lambda req: httpx.Response(200, json=[]),
+    "body is null": lambda req: httpx.Response(200, json=None),
+    "choices is a string": lambda req: httpx.Response(200, json={"choices": "hi"}),
+    "message is a string": lambda req: httpx.Response(200, json={"choices": [{"message": "hi"}]}),
+    "content is a list of parts": lambda req: httpx.Response(200, json={"choices": [{"message": {"content": [{"type": "text", "text": "x"}]}}]}),
+    "content is a number": lambda req: httpx.Response(200, json={"choices": [{"message": {"content": 5}}]}),
+    "usage is a string": lambda req: httpx.Response(200, json={"choices": [{"message": {"content": ""}, "finish_reason": "length"}], "usage": "x"}),
+    "transport raises RuntimeError": _raise(RuntimeError),
 }
 
 
@@ -204,3 +215,14 @@ def test_a_database_that_cannot_be_read_is_still_named_as_the_database(monkeypat
     code = monthly_report.main(["--month", "2026-10", "--tenant", "t", "--out", str(tmp_path / "d.pptx"), "--no-model"])
     err = capsys.readouterr().err
     assert code == 2 and "database could not be read" in err
+
+
+def test_the_command_prints_why_a_model_text_was_not_used(monkeypatch, tmp_path, capsys):
+    code, _ = _run(monkeypatch, tmp_path, _writer(_reply("Net sales fell 7% from September.")))
+    out = capsys.readouterr().out
+    assert code == 0 and "insights: template_fallback" in out and "model text not used:" in out and "7%" in out
+
+
+def test_nothing_extra_is_printed_when_the_model_text_is_used(monkeypatch, tmp_path, capsys):
+    code, _ = _run(monkeypatch, tmp_path, _writer(_reply(GOOD)))
+    assert code == 0 and "model text not used" not in capsys.readouterr().out

@@ -13,7 +13,7 @@ python scripts/monthly_report.py --month 2026-10 --tenant <tenant uuid> --dump
 
 `--connection <uuid>` is needed when a tenant has more than one active connection (two would be added into one doubled total, so the command refuses instead). `--out` names the deck, `--no-model` forces the template narrative, `--data-note` prints a line on the title slide, and `--as-of YYYY-MM-DD` treats that date as today. Without it, today is the UTC date, because the connector buckets every order by its UTC day. Exit 0 means a deck was written. Exit 2 means the report could not be produced, with the reason on stderr.
 
-The narrative is written by a model only when `GROQ_API_KEY` or `LLM_API_KEY` is set in the environment (the provider and model default to the Groq values in `app/ai/catalog_copy.py`) and `--no-model` is absent. With no key the template writes it. Which writer ran, and why a model's text was refused if it was, is printed by the command, kept in the deck file's comments property and shown by `--dump`. It is not printed on any slide.
+The narrative is written by a model only when `GROQ_API_KEY` or `LLM_API_KEY` is set in the environment (the provider and model are the Groq values in `app/ai/catalog_copy.py`, and the command has no flag to change them) and `--no-model` is absent. With no key the template writes it. Which writer ran, and why a model's text was refused if it was, is printed by the command, kept in the deck file's comments property and shown by `--dump`. It is not printed on any slide.
 
 ## The pieces
 
@@ -39,9 +39,9 @@ The three add up to the days in the month (or the days counted so far, for a mon
 
 A total over fewer reported days is smaller for that reason alone, and can even fall while every reported day rose. So when a month has days with no data (or is not over, or its baseline month has days with no data) the report does not state a direction from the raw totals alone. The headline gives the total plainly and the change per reported day next to it ("October net sales total is 1.8% below September, but October is missing 2 days: per reported day it is up 1.6%"), and each total's sentence in the narrative does the same. Per reported day is the total divided by that month's reported days, computed from the exact values. A complete month keeps the plain headline ("Net sales rose 50.0% from September") with no caveat. The averages (average order value, buyers per active day) are not totals and keep the plain form with the caveat after them.
 
-The KPI table keeps the raw totals and their change, and its Note column names the month and, for the four totals, the change per reported day ("October partial: 2 days missing; per reported day up 6.6%"). The charts show a day with no orders as a dot on the zero line on both lines, and a day with no data as a break in the line with an X on the zero line (grey for the previous month), and the footnote says which are present and how many of the days are plotted. A month that is not over only counts the days that are over, and says how many.
+The KPI table keeps the raw totals and their change, and its Note column names the month and, for the four totals, the change per reported day ("October partial: 2 days missing; per reported day up 6.6%"). The charts show a day with no orders as a dot on the zero line on each plotted line, and a day with no data as a break in the line with an X on the zero line (grey for the previous month), and the footnote says which are present and how many of the days are plotted. A month that is not over only counts the days that are over, and says how many.
 
-A previous month that was synced and found nothing is a **zero baseline**: the change in units is shown, the percentage is "n/a". A previous month with no rows and no run is **no previous month**, a different fact. A baseline note and the partial data note are both kept on a figure. A synced month with no orders prints its totals as 0.
+A previous month that was synced and found nothing is a **zero baseline**: the change in units is shown, the percentage is "n/a". A previous month with no rows and no run is **no previous month**, a different fact. A baseline note and the partial data note are both kept on a figure. A synced month with no orders prints its order count as 0, and its money totals as 0 when neither month has a money row, otherwise as a zero amount such as $0.00.
 
 ## The KPI table
 
@@ -85,7 +85,7 @@ Each of these is pinned by a test, so none can change silently.
 
 ## The deck
 
-Seven slides: title, KPI summary table, net sales by day (this month against last month), orders by day, order value and buyers with the three best days, insights, data health. Every table cell and title is a string `monthly.py` formatted; the deck does no arithmetic. The charts are native PowerPoint charts, so the values can be read back with python-pptx. The slides use plain words (days with no data, data pull, daily figures) and no text is smaller than 11 points, which a test enforces. The file's own properties are set: author, a creation time of the build, an application name and slide count in place of the template's, and no template thumbnail.
+Seven slides: title, KPI summary table, net sales by day (this month against last month), orders by day, order value and buyers with the three best days, insights, data health. Every table cell and title is a string `monthly.py` formatted; the deck does no arithmetic. The charts are native PowerPoint charts, so the values can be read back with python-pptx. The slides use plain words (days with no data, data pull, daily figures) and no text box or table cell is smaller than 11 points, which a test enforces (chart text is set to 12 points in `deck.py`). The file's own properties are set: author, a creation time of the build, an application name and slide count in place of the template's, and no template thumbnail.
 
 ## Sample deck
 

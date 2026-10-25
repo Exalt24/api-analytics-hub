@@ -30,7 +30,6 @@ import re
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-import httpx
 
 from app.ai.catalog_copy import (
     CatalogCopyWriter,
@@ -432,8 +431,8 @@ async def write_insights(report: MonthlyReport, writer: ReportInsightWriter | No
         raw = await writer.write(facts)
     except GenerationRejected as exc:
         return _fallback(report, "the model call failed: %s" % str(exc)[:120])
-    except (httpx.HTTPError, ValueError) as exc:
-        # A dropped connection, a timeout or a reply that is not JSON: the class only, a transport error can carry the URL.
+    except Exception as exc:  # noqa: BLE001 - the provider boundary: whatever it does, the report still gets its template
+        # A dropped connection, a timeout, a reply that is not JSON or JSON of an unexpected shape: the class only, a transport error can carry the URL.
         return _fallback(report, "the model call failed: %s" % type(exc).__name__)
     lines, reason = check_model_text(raw, facts)
     if reason:
