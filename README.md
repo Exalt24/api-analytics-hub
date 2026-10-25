@@ -6,13 +6,7 @@
 
 *Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard), with `scripts/record_dashboard.cjs`. The hosted copy is offline, see below. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics hub: a Shopify store synced to Postgres on a schedule and shown on a dashboard. An external API is synced on a
-schedule, normalised, stored in PostgreSQL, served by a backend and shown on a
-dashboard. The dashboard **never** calls a vendor API to render a page; it reads
-snapshots the sync wrote.
-
-Currently one live connector, **Shopify Admin GraphQL**, verified against a real
-development store.
+Multi-tenant analytics hub: an external API (one live connector so far, **Shopify Admin GraphQL**, verified against a real development store) is synced on a schedule, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote.
 
 ## Live
 
@@ -22,7 +16,7 @@ PostgreSQL instance it used expired that day, so the service cannot connect to i
 database and the demo key no longer signs in to anything. Until a database is
 provisioned there is no live demo; run it locally with the steps below.
 
-While it was up, the demo key signed you in as a viewer on a demo tenant holding test orders from a Shopify development store, read through the connector in this repo. Pressing **Sync now** as that viewer returned `403: role viewer may not write:sync`, the role check answering rather than a bug.
+While it was up, the demo key signed in as a viewer on a tenant of test orders, and **Sync now** answered `403: role viewer may not write:sync`, the role check working as designed.
 
 ---
 
@@ -60,7 +54,7 @@ Open the dashboard and paste a key into the box on the page (no console needed).
 
 ### Ports
 
-Postgres is on **5433** and the dashboard on **3100**, both non-default: something is usually already on 5432 and 3000, and that collision shows up as an authentication error against the wrong database.
+Postgres is on **5433** and the dashboard on **3100**, both non-default, because a clash on 5432 or 3000 shows up as an authentication error against the wrong database.
 
 ---
 
@@ -84,11 +78,13 @@ app/
   health.py          stuck-sync gauges and the alert policy
   changes.py         daily snapshot compare, events, company matching, alert outbox
   changes_fake_sink.py  stand-in CRM sinks for tests
+  report/            monthly report: KPI math, grounded narrative, PowerPoint deck
 scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
+scripts/monthly_report.py      builds the monthly deck from stored snapshots
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
 migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection
 web/                 Next.js dashboard
-tests/               545 tests + a mutation harness
+tests/               638 tests + a mutation harness
 ```
 
 ---
@@ -160,45 +156,40 @@ prompt regression or a model swap looks like, the model produced a 99.99% purity
 150 x 100 x 30 mm dimensions from nowhere and the verifier refused all four figures.
 The check holds when the prompt discipline is gone, which is why they are two layers.
 
-Its own tests found three defects in the first version:
-
-- **Digits inside chemical formulas read as quantities.** The 2 and 3 in `Al2O3` were
-  flagged as invented numbers, which fires the guard on every formula and gets it
-  switched off. The number pattern now ignores a digit that follows a letter, and a
-  test keeps `38ohms` written without a space still checked.
-- **A reasoning model spent 158 of its 160 completion tokens on its reasoning trace**
-  and returned empty content with a normal-looking response. The token budget is now
-  larger, the effort is set low, and a truncated empty completion is reported as a
-  truncation instead of a bad description.
-- **Numbers written as words** (`five`, `hundred`) walked straight past a digit-only
-  check, so number words are verified against the facts too.
+Its own tests found three defects in the first version: digits inside chemical formulas read as quantities, a reasoning model spending 158 of its 160 completion tokens on its trace and returning nothing, and numbers written as words walking past a digit only check. What each fix was: [docs/catalogue-copy-defects.md](docs/catalogue-copy-defects.md).
 
 `tests/test_catalog_copy.py` and `tests/test_catalog_copy_transport.py` cover it
 (30 tests), and four of the mutation guards below target it.
 
 ---
 
+## Monthly report
+
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a seven slide PowerPoint deck: a KPI table with the change on the month before, a chart per section, the insights, and a data health slide that names the days with no data. Every number is computed in code. The narrative is written only from numbers that pass the grounding check the catalogue copy uses, by a fixed template when no model key is set. One connector (Shopify), invented sample orders, no live client, and the model path is tested only through a mocked transport. Sample deck and render: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+
+---
+
 ## Change detection on a daily file
 
-`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 on a desktop PC with local Docker Postgres: day 2 (400,200 rows, 0.5 percent changed) took 9.89 s in one transaction (COPY 8.74 s, compare 0.39 s) and raised 2,371 events; the same file again raised 0, and an error raised at each of 7 stages left the tables unchanged. A separate slice: not scheduled, not tenant scoped, not wired into the hub. The data is invented, no regulator file and no CRM was used, and delivery is at least once, so it is once in effect only when the CRM upserts on the key. Numbers, method and limits: [docs/change-detection.md](docs/change-detection.md).
+`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 (desktop PC, local Docker Postgres): day 2 (400,200 rows, 0.5 percent changed) took 9.89 s in one transaction and raised 2,371 events; the same file again raised 0, and an error at each of 7 stages left the tables unchanged. Not scheduled, not tenant scoped, not wired into the hub, invented data, delivery at least once. Numbers, method and limits: [docs/change-detection.md](docs/change-detection.md).
 
 ---
 
 ## Testing
 
 ```bash
-./.venv/Scripts/python.exe -m pytest tests/ -q      # 545 passed, 4 known limits
-./.venv/Scripts/python.exe tests/mutation_check.py  # 121 guards, see below
+./.venv/Scripts/python.exe -m pytest tests/ -q      # 638 passed, 4 known limits
+./.venv/Scripts/python.exe tests/mutation_check.py  # 132 guards, see below
 ./.venv/Scripts/python.exe live_check.py            # against the real store
 ```
 
-Counts are from a run on 2026-10-24. The database tests (the compose Postgres, or the one in
+Counts are from a run on 2026-10-25. The database tests (the compose Postgres, or the one in
 `ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public`
 schema of whatever database they point at, so aim them at a scratch database. The mutation
 harness needs the same Postgres up the whole run, because a guard that only a database test
 catches reads as untested without it.
 
-Of the 121 guards, 41 are older and 80 cover change detection. A full run of all 121 on 2026-10-24 caught every one (exit 0, "mutation control: PASS"). An earlier full run had skipped two guards whose target text had drifted; they are repaired, and the harness now refuses to start when any guard cannot find its target, and CI checks that on every push.
+Of the 132 guards, 41 are older, 80 cover change detection and 11 cover the monthly report. A full run of the first 121 on 2026-10-24 caught every one (exit 0, "mutation control: PASS"). On 2026-10-25 the 11 report guards and the 4 catalogue copy guards were run again and caught every one; the other 117 were not rerun. The harness refuses to start when a guard cannot find its target, and CI checks that on every push.
 
 The mutation harness is the part worth reading. It breaks each load-bearing guard
 in turn and asserts the suite goes red, because a green suite is not evidence. It
@@ -212,7 +203,7 @@ constant using that same constant, so mutating the constant moved the test with 
 This is a lab build, not a production service. Honest list, in the order I would
 actually do it.
 
-1. **The deployment is down and was never hardened.** The free Render Postgres expired on 2026-09-19 and took the API with it (see Live). There is no managed Postgres with backups and no uptime monitoring.
+1. **The deployment is down and was never hardened** (see Live): no managed Postgres with backups, no uptime monitoring.
 2. **The scheduler is a runner without a clock.** `sync/runner.py` claims, leases,
    heartbeats and resumes correctly, and something still has to *call* it on a
    cadence. The schedule table and jitter column exist; the daemon does not.
