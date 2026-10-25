@@ -251,7 +251,7 @@ class CatalogCopyWriter:
         self._temperature = temperature
         self._client = client or httpx.AsyncClient(timeout=60.0)
 
-    async def _complete(self, facts_text: str) -> str:
+    async def _complete(self, facts_text: str, system_prompt: str = SYSTEM_PROMPT) -> str:
         r = await self._client.post(
             self._base + "/chat/completions",
             headers={"Authorization": "Bearer " + self._key,
@@ -262,7 +262,7 @@ class CatalogCopyWriter:
                 "max_tokens": MAX_COMPLETION_TOKENS,
                 "reasoning_effort": REASONING_EFFORT,
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": "Facts:\n" + facts_text},
                 ],
             }),
