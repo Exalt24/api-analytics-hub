@@ -25,7 +25,6 @@ from pathlib import Path
 from pptx import Presentation
 
 from app.db import Database
-from app.report.insights import Insights
 from app.report.monthly import MonthlyReport, ReportError
 from app.report.service import generate
 

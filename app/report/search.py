@@ -30,7 +30,6 @@ from app.report.monthly import (
     KpiRow,
     MonthlyReport,
     MonthStats,
-    ReportError,
     format_count,
     month_stats,
     previous_month,

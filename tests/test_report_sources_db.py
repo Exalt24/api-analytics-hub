@@ -338,3 +338,117 @@ def test_the_search_sync_command_runs_against_the_stand_in_and_never_prints_the_
     failed = _cli(["sync_gsc.py", "--tenant", str(world["a"]), "--connection", str(world["a_search"]), "--days", "3", "--end", "2026-09-04"],
                   {**env, "GSC_ACCESS_TOKEN": "wrong-one"})
     assert failed.returncode == 1 and "error auth_expired" in failed.stdout and "wrong-one" not in failed.stdout + failed.stderr
+
+
+# ---------------------------------------------------------------- the last survivors of the derived guards
+
+def test_two_stores_and_no_name_are_refused_with_the_count_and_the_flag_and_naming_one_works(world):
+    with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("select set_config('app.tenant_id', %s, false)", (str(world["c"]),))
+        second = connect_row(cur, world["c"], "shopify", "second-store.example", "c second store")
+    try:
+        with pytest.raises(ReportError) as exc:
+            run(_inputs(world, "c"))
+        assert str(exc.value) == "this tenant has 2 active connections, name one with --connection"
+        named = run(_inputs(world, "c", connection_id=str(world["c_shop"])))
+        assert named.label == "tenant-c store"
+    finally:
+        with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
+            cur.execute("select set_config('app.tenant_id', %s, false)", (str(world["c"]),))
+            cur.execute("delete from platform_connection where id = %s", (second,))
+
+
+def test_a_deck_that_cannot_be_written_says_where_and_why_and_names_the_error_type_only(world, tmp_path):
+    (tmp_path / "a-file").write_text("not a folder", encoding="utf-8")
+    missing = tmp_path / "a-file" / "deck.pptx"          # a folder that is really a file: the deck cannot go there
+
+    async def go():
+        db = Database(DSN, max_size=2)
+        await db.connect()
+        try:
+            return await generate(db, str(world["a"]), 2026, 10, missing, as_of=AS_OF)
+        finally:
+            await db.close()
+    with pytest.raises(ReportError) as exc:
+        run(go())
+    text = str(exc.value)
+    assert text.startswith("the deck could not be saved to %s (" % missing) and text.endswith("); close it if it is open")
+    assert "Error)" in text and "Traceback" not in text
+
+
+# ---------------------------------------------------------------- the shared sync command body, argument by argument
+
+def _gsc_env(gsc):
+    return {"GSC_SITE_URL": SITE, "GSC_ACCESS_TOKEN": TOKEN, "GSC_API_BASE_URL": gsc.url}
+
+
+def test_the_sync_commands_explain_their_arguments_and_need_a_tenant_and_a_connection(world):
+    helped = _cli(["sync_gsc.py", "--help"])
+    assert helped.returncode == 0
+    words = " ".join(helped.stdout.split())
+    assert "--tenant TENANT tenant uuid" in words and "--connection CONNECTION the gsc connection uuid" in words
+    assert "how many days back from the end (default 30)" in words and "first day NOT pulled, YYYY-MM-DD" in words
+    no_tenant = _cli(["sync_gsc.py", "--connection", str(world["a_search"])])
+    assert no_tenant.returncode == 2 and "--tenant" in no_tenant.stderr and "required" in no_tenant.stderr
+    no_connection = _cli(["sync_gsc.py", "--tenant", str(world["a"])])
+    assert no_connection.returncode == 2 and "--connection" in no_connection.stderr and "required" in no_connection.stderr
+
+
+def test_the_window_defaults_to_thirty_days_and_days_must_be_one_to_3650(world, servers):
+    _, gsc = servers
+    base = ["sync_gsc.py", "--tenant", str(world["a"]), "--connection", str(world["a_search"]), "--end", "2026-09-04", "--top", "0"]
+    default = _cli(base, _gsc_env(gsc))
+    assert default.returncode == 0 and "window 2026-08-05 to 2026-09-04" in default.stdout, default.stdout + default.stderr
+    for bad in ("0", "3651", "-5"):
+        refused = _cli(base + ["--days", bad], _gsc_env(gsc))
+        assert refused.returncode == 2 and "--days must be 1 to 3650" in refused.stderr, bad
+    for edge, start in (("1", "2026-09-03"), ("3650", "2016-09-06")):
+        ok = _cli(base + ["--days", edge], _gsc_env(gsc))
+        assert ok.returncode == 0 and "window %s to 2026-09-04" % start in ok.stdout, (edge, ok.stdout + ok.stderr)
+
+
+def test_without_a_database_url_or_with_an_unreachable_database_the_command_says_so_and_exits_two(world, servers):
+    _, gsc = servers
+    args = ["sync_gsc.py", "--tenant", str(world["a"]), "--connection", str(world["a_search"]), "--days", "3", "--end", "2026-09-04"]
+    env = dict(os.environ, **_gsc_env(gsc))
+    env.pop("DATABASE_URL", None)
+    nodb = subprocess.run([sys.executable, str(ROOT / "scripts" / args[0]), *args[1:]], capture_output=True, text=True,
+                          encoding="utf-8", timeout=90, env=env, cwd=ROOT)
+    assert nodb.returncode == 2 and nodb.stderr.startswith("no sync: ") and "DATABASE_URL" in nodb.stderr and "Traceback" not in nodb.stderr
+    env["DATABASE_URL"] = "postgresql://analytics:analytics@127.0.0.1:1/analytics"
+    down = subprocess.run([sys.executable, str(ROOT / "scripts" / args[0]), *args[1:]], capture_output=True, text=True,
+                          encoding="utf-8", timeout=90, env=env, cwd=ROOT)
+    assert down.returncode == 2 and "no sync: the database could not be used (" in down.stderr
+    assert "Traceback" not in down.stderr and "127.0.0.1" not in down.stderr and "analytics:analytics" not in down.stderr
+
+
+@pytest.mark.parametrize("outcome_kwargs,code,words", [
+    ({"claimed": False}, 1, "another sync holds this connection, nothing was run"),
+    ({"claimed": True, "status": "partial", "rows_written": 4, "api_calls": 2, "throttle_waits": 1}, 0, "sync partial: window 2026-09-01 to 2026-09-04, 4 rows written, 2 api calls, 1 waits"),
+    ({"claimed": True, "status": "succeeded"}, 0, "sync succeeded: window"),
+    ({"claimed": True, "status": "failed", "error_code": "auth_expired", "error_detail": "the token ended"}, 1, "error auth_expired: the token ended"),
+])
+def test_the_exit_code_and_the_line_printed_say_what_the_run_did(world, servers, monkeypatch, capsys, outcome_kwargs, code, words):
+    import argparse
+    from datetime import date as _date
+    import app.sync.cli as cli
+    from app.sync.runner import RunOutcome
+
+    class Closes:
+        closed = False
+
+        async def aclose(self):
+            Closes.closed = True
+
+    class FakeRunner:
+        def __init__(self, db):
+            pass
+
+        async def run_once(self, **kw):
+            return RunOutcome("run-1", **outcome_kwargs)
+    monkeypatch.setenv("DATABASE_URL", DSN)
+    monkeypatch.setattr(cli, "SyncRunner", FakeRunner)
+    args = argparse.Namespace(tenant=str(world["a"]), connection=str(world["a_search"]), days=3, end=_date(2026, 9, 4))
+    got = run(cli.run_connection_sync(args, platform="gsc", connector=Closes(), default_end=_date(2026, 1, 1)))
+    assert got == code and Closes.closed, "the connector is closed whatever happened"
+    assert words in capsys.readouterr().out

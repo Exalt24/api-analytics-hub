@@ -485,3 +485,110 @@ def test_over_random_sequences_of_calls_a_key_builds_once_replays_the_same_bytes
     for t in ("a", "b"):
         assert builds.count(str(seeded["tenants"][t])) == sum(1 for (tt, _) in runs_model if tt == t), (seed, t)
     assert builds.count(str(seeded["tenants"]["c"])) == failed_attempts, seed
+
+
+# ---------------------------------------------------------------- the last survivors of the derived guards
+
+def _db(client):
+    from app.api.main import app as fastapi_app
+    return fastapi_app.state.db
+
+
+def _drive(client, coro):
+    return client[0].run_until_complete(coro)
+
+
+def _insert_running(seeded, key, age):
+    with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("select set_config('app.tenant_id', %s, false)", (str(seeded["tenants"]["a"]),))
+        cur.execute("insert into report_run (tenant_id, idempotency_key, month, status, started_at) "
+                    "values (%s, %s, '2026-10', 'running', now() - %s * interval '1 second')", (seeded["tenants"]["a"], key, age))
+
+
+def test_a_running_run_is_taken_over_only_after_fifteen_minutes(client, seeded):
+    from app.report.runs import STALE_SECONDS
+    assert STALE_SECONDS == 900
+    _insert_running(seeded, "almost-stale-key-0001", 899.0)
+    assert build(client, seeded, key="almost-stale-key-0001").status_code == 409
+    _insert_running(seeded, "just-stale-key-00001", 900.5)
+    assert build(client, seeded, key="just-stale-key-00001").status_code == 200
+
+
+def test_claiming_names_who_builds_who_waits_and_a_key_for_another_month(client, seeded):
+    from app.report.runs import KeyReused, RunInProgress, claim, mark_delivered, parse_month
+    import app.report.runs as runs
+    tenant, db = str(seeded["tenants"]["a"]), _db(client)
+    key = "claim-direct-key-0001"
+    assert _drive(client, claim(db, tenant, key, "2026-10")) == ("owner", None)
+    with pytest.raises(RunInProgress) as busy:
+        _drive(client, claim(db, tenant, key, "2026-10"))
+    assert str(busy.value) == "a request with this key is still building the report"
+    with pytest.raises(KeyReused) as other:
+        _drive(client, claim(db, tenant, key, "2026-09"))
+    assert str(other.value) == "this key was used for 2026-10"
+    _drive(client, runs._fail(db, tenant, key, "x" * 600))
+    error = sql("select error from report_run where idempotency_key = %s", (key,))[0][0]
+    assert error == "x" * 500, "a reason is cut to 500 characters"
+    assert _drive(client, claim(db, tenant, key, "2026-10")) == ("owner", None), "a failed run is claimed again by the next caller"
+    assert parse_month("2026-10") == (2026, 10)
+    assert _drive(client, mark_delivered(db, tenant, "1999-01")) == (False, False), "nothing was built for that month"
+    assert _drive(client, runs.latest_deck(db, tenant, "1999-01")) is None
+
+
+def test_a_stored_run_cannot_be_changed_and_the_sources_of_a_report_are_named_in_a_fixed_order():
+    import dataclasses
+    from types import SimpleNamespace
+    from app.report.runs import StoredRun, _sources
+    run_ = StoredRun("1", "2026-10", "done", b"", "00", 1, [], [], None, False)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        run_.status = "failed"
+    some = object()
+    assert _sources(SimpleNamespace(web=None, paid=None, search=None)) == ["store"]
+    assert _sources(SimpleNamespace(web=some, paid=None, search=None)) == ["store", "website"]
+    assert _sources(SimpleNamespace(web=None, paid=some, search=None)) == ["store", "ads"]
+    assert _sources(SimpleNamespace(web=some, paid=some, search=some)) == ["store", "website", "ads", "search"]
+
+
+def test_the_deck_and_delivered_calls_refuse_a_month_that_is_not_a_month_and_say_when_none_was_built(client, seeded):
+    for bad in ("2026-13", "abc", "2026-1"):
+        assert call(client, "get", "/api/reports/monthly/%s/deck" % bad, seeded["keys"]["a_operator"]).status_code == 400, bad
+        assert call(client, "post", "/api/reports/monthly/%s/delivered" % bad, seeded["keys"]["a_operator"]).status_code == 400, bad
+    deck = call(client, "get", "/api/reports/monthly/2025-01/deck", seeded["keys"]["a_operator"])
+    assert deck.status_code == 404 and deck.json() == {"detail": "no report has been built for that month"}
+    done = call(client, "post", "/api/reports/monthly/2025-01/delivered", seeded["keys"]["a_operator"])
+    assert done.status_code == 404 and done.json() == {"detail": "no report has been built for that month"}
+
+
+def test_each_connection_named_in_the_body_is_looked_up_and_an_unknown_one_is_refused_not_ignored(client, seeded):
+    stranger = str(uuid.uuid4())
+    for field_name in ("connection_id", "web_connection_id", "paid_connection_id", "search_connection_id"):
+        r = build(client, seeded, key="named-%s-0001" % field_name.replace("_", "-"), **{field_name: stranger})
+        assert r.status_code == 422, (field_name, r.status_code, r.text)
+    ok = build(client, seeded, key="named-search-ok-0001", search_connection_id=str(seeded["a_search"]))
+    assert ok.status_code == 200 and "search" in ok.json()["sources"]
+
+
+def test_an_unexpected_failure_is_logged_with_its_event_name_under_the_hub_logger(client, seeded, monkeypatch, caplog):
+    import logging
+    import app.report.runs as runs
+
+    async def broken(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(runs, "generate", broken)
+    with caplog.at_level(logging.ERROR, logger="hub"):
+        r = build(client, seeded, key="logged-failure-key-01")
+    assert r.status_code == 500
+    records = [x for x in caplog.records if x.getMessage() == "monthly report failed"]
+    assert len(records) == 1 and records[0].name == "hub" and getattr(records[0], "event", None) == "report_failed"
+    assert getattr(records[0], "tenant_id", None) == str(seeded["tenants"]["a"])
+    assert records[0].exc_info is not None, "the traceback is logged, never returned"
+
+
+def test_the_published_schema_names_the_idempotency_header_and_describes_the_month(client, seeded):
+    spec = call(client, "get", "/openapi.json")
+    assert spec.status_code == 200, "the schema is the contract a caller reads"
+    post = spec.json()["paths"]["/api/reports/monthly"]["post"]
+    assert "Idempotency-Key" in [p["name"] for p in post.get("parameters", [])]
+    body = spec.json()["components"]["schemas"]["MonthlyRequest"]["properties"]["month"]
+    assert body["description"] == "YYYY-MM, the month to report"
