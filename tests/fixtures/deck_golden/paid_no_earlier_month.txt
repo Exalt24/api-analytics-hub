@@ -1,0 +1,272 @@
+## text of every slide
+--- slide 1: Monthly performance report
+Example Outfitters, October 2026
+--- slide 2: October net sales total is 50.0% above September, but October is missing 2 days: per reported day it is up 55.2%
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Orders | 20 | 15 | +5 | +33.3% | October partial: 2 days missing; per reported day up 37.9%
+Gross sales | $240.00 | $150.00 | +$90.00 | +60.0% | October partial: 2 days missing; per reported day up 65.5%
+Refunds | $30.00 | $10.00 | +$20.00 | +200.0% | October partial: 2 days missing; per reported day up 210.3%
+Net sales | $210.00 | $140.00 | +$70.00 | +50.0% | October partial: 2 days missing; per reported day up 55.2%
+Average order value | $12.00 | $10.00 | +$2.00 | +20.0% | October partial: 2 days missing
+Buyers per active day | 8.0 | 6.5 | +1.5 | +23.1% | October partial: 2 days missing
+Ad spend | EUR 180.00 | EUR 0.00 | +EUR 180.00 | n/a | September was zero; October: 2 days missing; per reported day up
+Return on ad spend | 4.50 | n/a | n/a | n/a | no September figure; October: 2 days missing; on 1 of 29 days
+Search clicks | 20 | 0 | +20 | n/a | September was zero; October: 2 days missing; per reported day up
+Average position | 6.0 | n/a | n/a | n/a | no September figure; October: 2 days missing
+Source: the store's daily order records.
+Ad rows: Meta, in the ad account's currency (EUR), purchases in a 7 day click window. Search rows: Search Console, Pacific time, a lower position is nearer the top.
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+Per reported day divides a total by the days with orders plus the days with no orders, so months with different numbers of days with data can be compared.
+--- slide 3: Net sales by day in October
+chart series 'October 2026' (31 points): [150.0, 60.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [90.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Day of the month across, net sales in dollars up.
+A dot on the zero line is a day with no orders, on either line.
+A break in the line with an X on the zero line is a day with no data (Oct 10, Oct 11). 29 of 31 days are plotted.
+--- slide 4: Orders by day in October
+chart series 'October 2026' (31 points): [12.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Day of the month across, orders up.
+A dot on the zero line is a day with no orders, on either line.
+A break in the line with an X on the zero line is a day with no data (Oct 10, Oct 11). 29 of 31 days are plotted.
+--- slide 5: Order value, buyers and best days in October
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Average order value | $12.00 | $10.00 | +$2.00 | +20.0% | October partial: 2 days missing
+Buyers per active day | 8.0 | 6.5 | +1.5 | +23.1% | October partial: 2 days missing
+Best days by net sales
+Rank | Day | Net sales
+1 | Oct 1 | $150.00
+2 | Oct 2 | $60.00
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 6: Ad spend came to EUR 180.00 in October, up EUR 180.00 from September (October is missing 2 days of ad data)
+Metric | October | September | Change %
+Ad spend | EUR 180.00 | EUR 0.00 | n/a
+Impressions | 1,600 | 0 | n/a
+Clicks | 70 | 0 | n/a
+Click through rate | 4.38% | n/a | n/a
+Cost per click | EUR 2.57 | n/a | n/a
+Purchases | 6 | n/a | n/a
+Purchase value | EUR 540.00 | n/a | n/a
+Return on ad spend | 4.50 | n/a | n/a
+chart series 'October 2026' (31 points): [120.0, 60.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+chart series 'October 2026' (31 points): [60.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Source: Meta Marketing API, in the ad account's currency (EUR) and time zone; store days follow UTC. Purchases are Meta's own count in a 7 day click window, not the store's orders.
+Day of the month across. Top chart: ad spend. Bottom chart: clicks. The grey line is the month before. A dot on the zero line is a day with no ad delivery, on either line; a break with an X is a day with no data (Oct 10, Oct 11).
+Per reported day divides a total by the days with ad delivery plus the days with none.
+--- slide 7: Search clicks came to 20 in October, up 20 from September (October is missing 2 days of search data)
+chart series 'October 2026' (31 points): [12.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+chart series 'October 2026' (31 points): [150.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, None, None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'Day with no data' (31 points): [None, None, None, None, None, None, None, None, None, 0.0, 0.0, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+Search figures
+Metric | Oct | Sep | Chg %
+Search clicks | 20 | 0 | n/a
+Search impressions | 200 | 0 | n/a
+Search click through rate | 10.00% | n/a | n/a
+Average position | 6.0 | n/a | n/a
+Top queries
+Query | Clicks | Impr. | Pos.
+shoes | 9 | 80 | 5.5
+socks | 5 | 30 | 4.0
+boots | 4 | 40 | 10.0
+Top pages
+Page | Clicks | Impr. | Pos.
+/a | 14 | 140 | 6.7
+/b | 4 | 10 | 2.0
+Source: Google Search Console. Search days are Pacific time, store days follow UTC. A lower average position is nearer the top of the results.
+Day of the month across. Left: search clicks. Right: search impressions. The grey line is the month before. A dot on the zero line is a day with no search traffic, on either line; a break with an X is a day with no data (Oct 10, Oct 11).
+Top queries and pages add up each day's top rows over 2 days, so a key outside a day's top rows is not counted: they are lower bounds, not totals.
+--- slide 8: October refunds total is 200.0% above September, but October is missing 2 days: per reported day it is up 210.3%
+Net sales total was $210.00 in October, 50.0% above September ($140.00), but October is missing 2 days: per reported day, net sales are up 55.2% ($7.24 against $4.67).
+Orders total was 20 in October, 33.3% above September (15), but October is missing 2 days: per reported day, orders are up 37.9% (0.69 against 0.50).
+The biggest move was Refunds, 200.0% above September in total, but October is missing 2 days: per reported day it is up 210.3%.
+The best day was Oct 1 with net sales of $150.00.
+2 days have no data (Oct 10, Oct 11), so the totals are understated.
+Ad spend was EUR 180.00 in October, up EUR 180.00 from September (EUR 0.00), and October is missing 2 days of ad data.
+Return on ad spend was 4.50 in October.
+2 days have no ad data (Oct 10, Oct 11), so the ad totals are understated.
+Search clicks were 20 in October, up 20 from September (0), and October is missing 2 days of search data.
+Average position was 6.0 in October.
+2 days have no search data (Oct 10, Oct 11), so the search totals are understated.
+Narrative written from the computed figures on the previous slides.
+--- slide 9: Data health: October is missing days of store, ads and search data
+Source, October | Days with data | Days with nothing to report | Days with no data | Days that may still change | Stored daily figures used
+Store | 2 | 27 | 2 | n/a | 12
+Ads | 2 | 27 | 2 | 0 | 8
+Search | 2 | 27 | 2 | 0 | 6
+Days with no data in October, store: Oct 10, Oct 11.
+Days with no data in October, ads: Oct 10, Oct 11.
+Days with no data in October, search: Oct 10, Oct 11.
+A month with days missing is understated, so its changes are marked partial.
+For each source, days with data, days with nothing to report and days with no data add up to the days in the month.
+A day with nothing to report is one where a data pull ran and found none. A day with no data is one no data pull covered. A day that may still change is one close to the report date: purchases and search figures are restated for a few days.
+--- provenance (file property, not on a slide): Written by a fixed template from the computed figures (no model key is set). No model was used.
+## notes
+## facts the narrative check holds a model to
+{
+ "Ad spend": "EUR 180.00",
+ "Ad spend change": "+EUR 180.00",
+ "Ad spend change percent": "n/a",
+ "Ad spend note": "zero baseline; partial data",
+ "Ad spend per reported day": "EUR 6.21",
+ "Ad spend per reported day percent": "n/a",
+ "Ad spend per reported day previous": "EUR 0.00",
+ "Ad spend previous": "EUR 0.00",
+ "Average order value": "$12.00",
+ "Average order value change": "+$2.00",
+ "Average order value change percent": "+20.0%",
+ "Average order value note": "partial data",
+ "Average order value previous": "$10.00",
+ "Average position": "6.0",
+ "Average position change": "n/a",
+ "Average position change percent": "n/a",
+ "Average position note": "no previous value; partial data",
+ "Average position previous": "n/a",
+ "Buyers per active day": "8.0",
+ "Buyers per active day change": "+1.5",
+ "Buyers per active day change percent": "+23.1%",
+ "Buyers per active day note": "partial data",
+ "Buyers per active day previous": "6.5",
+ "Click through rate": "4.38%",
+ "Click through rate change": "n/a",
+ "Click through rate change percent": "n/a",
+ "Click through rate note": "no previous value; partial data",
+ "Click through rate previous": "n/a",
+ "Clicks": "70",
+ "Clicks change": "+70",
+ "Clicks change percent": "n/a",
+ "Clicks note": "zero baseline; partial data",
+ "Clicks per reported day": "2.41",
+ "Clicks per reported day percent": "n/a",
+ "Clicks per reported day previous": "0.00",
+ "Clicks previous": "0",
+ "Cost per click": "EUR 2.57",
+ "Cost per click change": "n/a",
+ "Cost per click change percent": "n/a",
+ "Cost per click note": "no previous value; partial data",
+ "Cost per click previous": "n/a",
+ "Gross sales": "$240.00",
+ "Gross sales change": "+$90.00",
+ "Gross sales change percent": "+60.0%",
+ "Gross sales note": "partial data",
+ "Gross sales per reported day": "$8.28",
+ "Gross sales per reported day percent": "+65.5%",
+ "Gross sales per reported day previous": "$5.00",
+ "Gross sales previous": "$150.00",
+ "Impressions": "1,600",
+ "Impressions change": "+1,600",
+ "Impressions change percent": "n/a",
+ "Impressions note": "zero baseline; partial data",
+ "Impressions per reported day": "55.17",
+ "Impressions per reported day percent": "n/a",
+ "Impressions per reported day previous": "0.00",
+ "Impressions previous": "0",
+ "Net sales": "$210.00",
+ "Net sales change": "+$70.00",
+ "Net sales change percent": "+50.0%",
+ "Net sales note": "partial data",
+ "Net sales on the best day": "$150.00",
+ "Net sales per reported day": "$7.24",
+ "Net sales per reported day percent": "+55.2%",
+ "Net sales per reported day previous": "$4.67",
+ "Net sales previous": "$140.00",
+ "Orders": "20",
+ "Orders change": "+5",
+ "Orders change percent": "+33.3%",
+ "Orders note": "partial data",
+ "Orders per reported day": "0.69",
+ "Orders per reported day percent": "+37.9%",
+ "Orders per reported day previous": "0.50",
+ "Orders previous": "15",
+ "Purchase value": "EUR 540.00",
+ "Purchase value change": "n/a",
+ "Purchase value change percent": "n/a",
+ "Purchase value note": "no previous value; partial data",
+ "Purchase value previous": "n/a",
+ "Purchases": "6",
+ "Purchases change": "n/a",
+ "Purchases change percent": "n/a",
+ "Purchases note": "no previous value; partial data",
+ "Purchases previous": "n/a",
+ "Refunds": "$30.00",
+ "Refunds change": "+$20.00",
+ "Refunds change percent": "+200.0%",
+ "Refunds note": "partial data",
+ "Refunds per reported day": "$1.03",
+ "Refunds per reported day percent": "+210.3%",
+ "Refunds per reported day previous": "$0.33",
+ "Refunds previous": "$10.00",
+ "Return on ad spend": "4.50",
+ "Return on ad spend change": "n/a",
+ "Return on ad spend change percent": "n/a",
+ "Return on ad spend note": "no previous value; partial data",
+ "Return on ad spend previous": "n/a",
+ "Search click through rate": "10.00%",
+ "Search click through rate change": "n/a",
+ "Search click through rate change percent": "n/a",
+ "Search click through rate note": "no previous value; partial data",
+ "Search click through rate previous": "n/a",
+ "Search clicks": "20",
+ "Search clicks change": "+20",
+ "Search clicks change percent": "n/a",
+ "Search clicks note": "zero baseline; partial data",
+ "Search clicks per reported day": "0.69",
+ "Search clicks per reported day percent": "n/a",
+ "Search clicks per reported day previous": "0.00",
+ "Search clicks previous": "0",
+ "Search impressions": "200",
+ "Search impressions change": "+200",
+ "Search impressions change percent": "n/a",
+ "Search impressions note": "zero baseline; partial data",
+ "Search impressions per reported day": "6.90",
+ "Search impressions per reported day percent": "n/a",
+ "Search impressions per reported day previous": "0.00",
+ "Search impressions previous": "0",
+ "ad account currency": "EUR",
+ "best day": "Oct 1",
+ "dates with no ad data": "Oct 10, Oct 11",
+ "dates with no data": "Oct 10, Oct 11",
+ "dates with no search data": "Oct 10, Oct 11",
+ "days counted": 31,
+ "days in the month": 31,
+ "days with ad data": 2,
+ "days with no ad data": 2,
+ "days with no ad delivery": 27,
+ "days with no data": 2,
+ "days with no orders": 27,
+ "days with no search data": 2,
+ "days with no search traffic": 27,
+ "days with orders": 2,
+ "days with search data": 2,
+ "largest move": "Refunds",
+ "previous period": "September",
+ "previous period days with no ad data": 0,
+ "previous period days with no data": 0,
+ "previous period days with no search data": 0,
+ "purchase attribution window": "7 day click",
+ "report period": "October",
+ "store": "Example Outfitters"
+}
+## exact xml, one hash for each slide and each chart
+slide 1 5a2f95fb30827af4
+slide 2 2d1a672a1fa2a974
+slide 3 12f14e94bf79fe5d
+slide 3 chart Chart 2 0c19789c7f32091b
+slide 4 556767c777ada1e7
+slide 4 chart Chart 2 ccda486c91a43afb
+slide 5 b8fec3ba8844b08f
+slide 6 0a61b8ce28f8d888
+slide 6 chart Chart 3 9bb74ad2f0104bd8
+slide 6 chart Chart 4 ae668b0d3f14eff1
+slide 7 ab3c326e9ad6a7b5
+slide 7 chart Chart 2 2e8c66ba79075a09
+slide 7 chart Chart 3 5f8b23a1222b5393
+slide 8 6a0871f117920f79
+slide 9 0c4fa0ce0736004f

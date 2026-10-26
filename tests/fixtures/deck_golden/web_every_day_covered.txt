@@ -1,0 +1,154 @@
+## text of every slide
+--- slide 1: Monthly performance report
+Example Outfitters, October 2026
+--- slide 2: Net sales rose 50.0% from September
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Orders | 20 | 15 | +5 | +33.3% | 
+Gross sales | $240.00 | $150.00 | +$90.00 | +60.0% | 
+Refunds | $30.00 | $10.00 | +$20.00 | +200.0% | 
+Net sales | $210.00 | $140.00 | +$70.00 | +50.0% | 
+Average order value | $12.00 | $10.00 | +$2.00 | +20.0% | 
+Buyers per active day | 8.0 | 6.5 | +1.5 | +23.1% | 
+Source: the store's daily order records.
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 3: Net sales by day in October
+chart series 'October 2026' (31 points): [150.0, 60.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [90.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Day of the month across, net sales in dollars up.
+A dot on the zero line is a day with no orders, on either line.
+--- slide 4: Sessions and orders by day in October
+chart series 'October 2026' (31 points): [250.0, 160.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [200.0, 100.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'October 2026' (31 points): [12.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [10.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Day of the month across. Left: website sessions. Right: orders. The grey line is the month before.
+Sessions: a dot on the zero line is a day with no sessions reported.
+Orders: a dot on the zero line is a day with no orders.
+--- slide 5: Order value, buyers and best days in October
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Average order value | $12.00 | $10.00 | +$2.00 | +20.0% | 
+Buyers per active day | 8.0 | 6.5 | +1.5 | +23.1% | 
+Best days by net sales
+Rank | Day | Net sales
+1 | Oct 1 | $150.00
+2 | Oct 2 | $60.00
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 6: Sessions rose 36.7% from September
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Sessions | 410 | 300 | +110 | +36.7% | 
+Users per active day | 150.0 | 115.0 | +35.0 | +30.4% | 
+Page views | 1,100 | 850 | +250 | +29.4% | 
+Key events | 20 | 15 | +5 | +33.3% | 
+Order rate | 4.9% | 5.0% | -0.1 pts | -2.4% | 31 days in both
+Sessions against orders by week
+Week | Days counted | Sessions | Orders | Order rate
+Oct 1 to 7 | 7 of 7 | 410 | 20 | 4.9%
+Oct 8 to 14 | 7 of 7 | 0 | 0 | n/a
+Oct 15 to 21 | 7 of 7 | 0 | 0 | n/a
+Oct 22 to 28 | 7 of 7 | 0 | 0 | n/a
+Oct 29 to 31 | 3 of 3 | 0 | 0 | n/a
+Source: the website's Google Analytics 4 daily figures. Website days follow the property's own time zone, store days follow UTC.
+Users per active day is the average of each day's distinct users. Order rate is orders divided by sessions over the days both sources reported, not a Google Analytics conversion rate.
+--- slide 7: Refunds moved most, up 200.0% from September
+Net sales were $210.00 in October, up 50.0% from September ($140.00).
+Orders were 20 in October, up 33.3% from September (15).
+Average order value was $12.00 in October, up 20.0% from September ($10.00).
+Refunds were $30.00 in October, up 200.0% from September ($10.00).
+The biggest move was Refunds, up 200.0% from September.
+The best day was Oct 1 with net sales of $150.00.
+Sessions were 410 in October, up 36.7% from September (300).
+Key events were 20 in October, up 33.3% from September (15).
+Order rate was 4.9% in October, down 2.4% from September (5.0%).
+Narrative written from the computed figures on the previous slides.
+--- slide 8: Data health: every day of October is covered in both sources
+Count | Store, October | Store, September | Website, October | Website, September
+Days in the month | 31 | 30 | 31 | 30
+Days with data | 2 | 2 | 2 | 2
+Days with nothing to report | 29 | 28 | 29 | 28
+Days with no data | 0 | 0 | 0 | 0
+Stored daily figures used | 12 | 12 | 8 | 8
+Days with no data in October, store: none.
+Days with no data in October, website: none.
+Days with no data in September, store: none.
+Days with no data in September, website: none.
+For each source, days with data, days with nothing to report and days with no data add up to the days in the month.
+A day with nothing to report is one where a data pull ran and found none. A day with no data is one no data pull covered.
+--- provenance (file property, not on a slide): Written by a fixed template from the computed figures (no model key is set). No model was used.
+## notes
+## facts the narrative check holds a model to
+{
+ "Average order value": "$12.00",
+ "Average order value change": "+$2.00",
+ "Average order value change percent": "+20.0%",
+ "Average order value previous": "$10.00",
+ "Buyers per active day": "8.0",
+ "Buyers per active day change": "+1.5",
+ "Buyers per active day change percent": "+23.1%",
+ "Buyers per active day previous": "6.5",
+ "Gross sales": "$240.00",
+ "Gross sales change": "+$90.00",
+ "Gross sales change percent": "+60.0%",
+ "Gross sales previous": "$150.00",
+ "Key events": "20",
+ "Key events change": "+5",
+ "Key events change percent": "+33.3%",
+ "Key events previous": "15",
+ "Net sales": "$210.00",
+ "Net sales change": "+$70.00",
+ "Net sales change percent": "+50.0%",
+ "Net sales on the best day": "$150.00",
+ "Net sales previous": "$140.00",
+ "Order rate": "4.9%",
+ "Order rate change": "-0.1 pts",
+ "Order rate change percent": "-2.4%",
+ "Order rate previous": "5.0%",
+ "Orders": "20",
+ "Orders change": "+5",
+ "Orders change percent": "+33.3%",
+ "Orders previous": "15",
+ "Page views": "1,100",
+ "Page views change": "+250",
+ "Page views change percent": "+29.4%",
+ "Page views previous": "850",
+ "Refunds": "$30.00",
+ "Refunds change": "+$20.00",
+ "Refunds change percent": "+200.0%",
+ "Refunds previous": "$10.00",
+ "Sessions": "410",
+ "Sessions change": "+110",
+ "Sessions change percent": "+36.7%",
+ "Sessions previous": "300",
+ "Users per active day": "150.0",
+ "Users per active day change": "+35.0",
+ "Users per active day change percent": "+30.4%",
+ "Users per active day previous": "115.0",
+ "best day": "Oct 1",
+ "dates with no data": "none",
+ "dates with no website data": "none",
+ "days counted": 31,
+ "days in the month": 31,
+ "days with no data": 0,
+ "days with no orders": 29,
+ "days with no website data": 0,
+ "days with no website traffic": 29,
+ "days with orders": 2,
+ "days with website data": 2,
+ "largest move": "Refunds",
+ "previous period": "September",
+ "previous period days with no data": 0,
+ "previous period days with no website data": 0,
+ "report period": "October",
+ "store": "Example Outfitters"
+}
+## exact xml, one hash for each slide and each chart
+slide 1 5a2f95fb30827af4
+slide 2 e25f0b5e678cf92c
+slide 3 ccc1d9207d294516
+slide 3 chart Chart 2 cd05adcecd278e60
+slide 4 14deef7e50c8704d
+slide 4 chart Chart 2 c046eac077453aa9
+slide 4 chart Chart 3 015b090e952310c2
+slide 5 0abd2e2f31156050
+slide 6 353bf220477361cc
+slide 7 de1f97a544ad0144
+slide 8 6ea66e048d9ca277

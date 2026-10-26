@@ -1,0 +1,167 @@
+## text of every slide
+--- slide 1: Monthly performance report
+Example Outfitters, October 2026
+--- slide 2: Net sales rose 50.0% from September
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Orders | 20 | 15 | +5 | +33.3% | 
+Gross sales | $240.00 | $150.00 | +$90.00 | +60.0% | 
+Refunds | $30.00 | $10.00 | +$20.00 | +200.0% | 
+Net sales | $210.00 | $140.00 | +$70.00 | +50.0% | 
+Average order value | $12.00 | $10.00 | +$2.00 | +20.0% | 
+Buyers per active day | 8.0 | 6.5 | +1.5 | +23.1% | 
+Ad spend | 0 | 0 | 0 | n/a | September was zero
+Return on ad spend | n/a | n/a | n/a | n/a | not reported
+Source: the store's daily order records.
+Ad rows: Meta, in the ad account's currency, purchases in a 7 day click window.
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 3: Net sales by day in October
+chart series 'October 2026' (31 points): [150.0, 60.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [90.0, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Day of the month across, net sales in dollars up.
+A dot on the zero line is a day with no orders, on either line.
+--- slide 4: Orders by day in October
+chart series 'October 2026' (31 points): [12.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Day of the month across, orders up.
+A dot on the zero line is a day with no orders, on either line.
+--- slide 5: Order value, buyers and best days in October
+Metric | October 2026 | September 2026 | Change | Change % | Note
+Average order value | $12.00 | $10.00 | +$2.00 | +20.0% | 
+Buyers per active day | 8.0 | 6.5 | +1.5 | +23.1% | 
+Best days by net sales
+Rank | Day | Net sales
+1 | Oct 1 | $150.00
+2 | Oct 2 | $60.00
+Change % is the change over September's figure, n/a when that was zero. Buyers per active day is the average of each day's distinct buyers, over days with orders. Average order value is gross sales divided by orders.
+--- slide 6: Ad spend did not change from September
+Metric | October | September | Change %
+Ad spend | 0 | 0 | n/a
+Impressions | 0 | 0 | n/a
+Clicks | 0 | 0 | n/a
+Click through rate | n/a | n/a | n/a
+Cost per click | n/a | n/a | n/a
+Purchases | n/a | n/a | n/a
+Purchase value | n/a | n/a | n/a
+Return on ad spend | n/a | n/a | n/a
+chart series 'October 2026' (31 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'October 2026' (31 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+chart series 'September 2026' (30 points): [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+Source: Meta Marketing API, in the ad account's currency and time zone; store days follow UTC. Purchases are Meta's own count in a 7 day click window, not the store's orders.
+Day of the month across. Top chart: ad spend. Bottom chart: clicks. The grey line is the month before. A dot on the zero line is a day with no ad delivery, on either line.
+--- slide 7: Refunds moved most, up 200.0% from September
+Net sales were $210.00 in October, up 50.0% from September ($140.00).
+Orders were 20 in October, up 33.3% from September (15).
+The biggest move was Refunds, up 200.0% from September.
+The best day was Oct 1 with net sales of $150.00.
+Ad spend was 0 in October, unchanged from September (0).
+Narrative written from the computed figures on the previous slides.
+--- slide 8: Data health: every day of October is covered in all 2 sources
+Source, October | Days with data | Days with nothing to report | Days with no data | Days that may still change | Stored daily figures used
+Store | 2 | 29 | 0 | n/a | 12
+Ads | 0 | 31 | 0 | 0 | 0
+Days with no data in October, store: none.
+Days with no data in October, ads: none.
+For each source, days with data, days with nothing to report and days with no data add up to the days in the month.
+A day with nothing to report is one where a data pull ran and found none. A day with no data is one no data pull covered. A day that may still change is one close to the report date: purchases and search figures are restated for a few days.
+--- provenance (file property, not on a slide): Written by a fixed template from the computed figures (no model key is set). No model was used.
+## notes
+## facts the narrative check holds a model to
+{
+ "Ad spend": "0",
+ "Ad spend change": "0",
+ "Ad spend change percent": "n/a",
+ "Ad spend note": "zero baseline",
+ "Ad spend previous": "0",
+ "Average order value": "$12.00",
+ "Average order value change": "+$2.00",
+ "Average order value change percent": "+20.0%",
+ "Average order value previous": "$10.00",
+ "Buyers per active day": "8.0",
+ "Buyers per active day change": "+1.5",
+ "Buyers per active day change percent": "+23.1%",
+ "Buyers per active day previous": "6.5",
+ "Click through rate": "n/a",
+ "Click through rate change": "n/a",
+ "Click through rate change percent": "n/a",
+ "Click through rate note": "not available",
+ "Click through rate previous": "n/a",
+ "Clicks": "0",
+ "Clicks change": "0",
+ "Clicks change percent": "n/a",
+ "Clicks note": "zero baseline",
+ "Clicks previous": "0",
+ "Cost per click": "n/a",
+ "Cost per click change": "n/a",
+ "Cost per click change percent": "n/a",
+ "Cost per click note": "not available",
+ "Cost per click previous": "n/a",
+ "Gross sales": "$240.00",
+ "Gross sales change": "+$90.00",
+ "Gross sales change percent": "+60.0%",
+ "Gross sales previous": "$150.00",
+ "Impressions": "0",
+ "Impressions change": "0",
+ "Impressions change percent": "n/a",
+ "Impressions note": "zero baseline",
+ "Impressions previous": "0",
+ "Net sales": "$210.00",
+ "Net sales change": "+$70.00",
+ "Net sales change percent": "+50.0%",
+ "Net sales on the best day": "$150.00",
+ "Net sales previous": "$140.00",
+ "Orders": "20",
+ "Orders change": "+5",
+ "Orders change percent": "+33.3%",
+ "Orders previous": "15",
+ "Purchase value": "n/a",
+ "Purchase value change": "n/a",
+ "Purchase value change percent": "n/a",
+ "Purchase value note": "not available",
+ "Purchase value previous": "n/a",
+ "Purchases": "n/a",
+ "Purchases change": "n/a",
+ "Purchases change percent": "n/a",
+ "Purchases note": "not available",
+ "Purchases previous": "n/a",
+ "Refunds": "$30.00",
+ "Refunds change": "+$20.00",
+ "Refunds change percent": "+200.0%",
+ "Refunds previous": "$10.00",
+ "Return on ad spend": "n/a",
+ "Return on ad spend change": "n/a",
+ "Return on ad spend change percent": "n/a",
+ "Return on ad spend note": "not available",
+ "Return on ad spend previous": "n/a",
+ "ad account currency": "none",
+ "best day": "Oct 1",
+ "dates with no ad data": "none",
+ "dates with no data": "none",
+ "days counted": 31,
+ "days in the month": 31,
+ "days with ad data": 0,
+ "days with no ad data": 0,
+ "days with no ad delivery": 31,
+ "days with no data": 0,
+ "days with no orders": 29,
+ "days with orders": 2,
+ "largest move": "Refunds",
+ "previous period": "September",
+ "previous period days with no ad data": 0,
+ "previous period days with no data": 0,
+ "purchase attribution window": "7 day click",
+ "report period": "October",
+ "store": "Example Outfitters"
+}
+## exact xml, one hash for each slide and each chart
+slide 1 5a2f95fb30827af4
+slide 2 817f7659ad9751b7
+slide 3 ccc1d9207d294516
+slide 3 chart Chart 2 cd05adcecd278e60
+slide 4 20baea18317a167d
+slide 4 chart Chart 2 f3325c4fd48f0e00
+slide 5 0abd2e2f31156050
+slide 6 8a654fefe8ce4dc8
+slide 6 chart Chart 3 fea462584c14138f
+slide 6 chart Chart 4 c2cc9bc006c6bd23
+slide 7 632c273a8ad07522
+slide 8 68895eb081c244d5
