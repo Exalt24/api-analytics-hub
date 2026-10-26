@@ -278,3 +278,36 @@ def test_row_level_security_keeps_each_tenants_search_rows_apart(world, server):
 def test_applying_the_migration_a_second_time_is_safe(world):
     sql((ROOT / "migrations" / "008_search_metrics.sql").read_text(encoding="utf-8"))
     assert sql("select count(*) from metric where key like 'search\\_%%'")[0][0] == 3
+
+
+def test_the_search_metrics_are_registered_with_their_unit_and_kind_and_the_new_table_forces_row_level_security(world):
+    got = {r[0]: (r[1], r[2]) for r in sql("select key, unit, kind from metric where key in "
+                                          "('search_clicks', 'search_impressions', 'search_position')")}
+    assert got == {"search_clicks": ("count", "delta"), "search_impressions": ("count", "delta"), "search_position": ("ratio", "gauge")}, \
+        "a position is an average, so it is a gauge and is never summed"
+    assert sql("select relrowsecurity, relforcerowsecurity from pg_class where relname = 'search_top_row'") == [(True, True)]
+    assert sql("select count(*) from pg_policies where tablename = 'search_top_row'")[0][0] == 2
+
+
+def test_the_dimension_writer_returns_what_the_database_wrote_and_zero_for_nothing(world):
+    from app.connectors.base import DimensionRow
+
+    async def go():
+        db = Database(DSN, max_size=2, role="sync_worker")
+        await db.connect()
+        try:
+            runner = SyncRunner(db)
+            tenant, connection = str(world["a"]), str(world["a_gsc"])
+            empty = await runner._write_dimension_rows(tenant, connection, [])
+            day = date(2026, 9, 20)                          # a day no fixture uses, so the stored rows of the others stay as they were
+            wrote = await runner._write_dimension_rows(tenant, connection, [
+                DimensionRow(day, "query", "sandals", 7, 70, 4000), DimensionRow(day, "page", "/s", 7, 70, 4000)])
+            return empty, wrote
+        finally:
+            await db.close()
+    try:
+        empty, wrote = run(go())
+        assert empty == 0 and wrote == 2
+    finally:
+        sql("delete from search_top_row where connection_id = %s and observed_on = '2026-09-20'", (world["a_gsc"],))
+    assert counts(world["a_gsc"]) == (9, 6)

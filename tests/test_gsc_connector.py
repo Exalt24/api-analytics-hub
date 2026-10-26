@@ -16,8 +16,6 @@ control first.
 from __future__ import annotations
 
 import asyncio
-import json
-import math
 import random
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -678,3 +676,247 @@ def test_over_random_worlds_every_day_arrives_once_with_the_right_figures_and_th
                 assert len([r for r in rows if r.observed_on == d and r.dimension == dim]) <= top_n
         assert all(r[2] == "Bearer " + TOKEN and r[0] == SITE for r in server.requests)
         assert pages[-1].cursor is None and all(p.cursor for p in pages[:-1])
+
+
+# ---------------------------------------------------------------- a day that is still running is never pulled
+
+def test_the_default_window_of_the_sync_command_ends_twelve_hours_behind_utc_as_for_every_source():
+    from app.connectors import ga4, gsc
+    assert gsc.settled_window_end is ga4.settled_window_end
+    source = (Path(__file__).resolve().parents[1] / "scripts" / "sync_gsc.py").read_text(encoding="utf-8")
+    assert "settled_window_end(datetime.now(timezone.utc))" in source and "date.today()" not in source
+    assert gsc.settled_window_end(datetime.fromisoformat("2026-11-01T00:30:00+00:00")) == date(2026, 10, 31), \
+        "a Pacific day that is still running on Oct 31 is not in the window"
+
+
+# ---------------------------------------------------------------- the error body reader, field by field
+
+def test_an_oauth_style_string_error_keeps_its_name_and_a_description_cut_to_150_and_a_name_cut_to_60():
+    from app.connectors.gsc import _read_error
+    err = _read_error({"error": "x" * 80, "error_description": "d" * 200}, 400)
+    assert err.reason == "x" * 60 and err.message == "d" * 150 and err.code is None and err.status is None and err.http == 400
+    short = _read_error({"error": "invalid_grant", "error_description": "Token has been expired or revoked."}, 400)
+    assert (short.reason, short.message) == ("invalid_grant", "Token has been expired or revoked.")
+    assert _read_error({"error": "invalid_grant"}, 400).message == ""
+
+
+def test_an_error_that_is_neither_a_string_nor_an_object_is_kept_as_text_cut_to_120():
+    from app.connectors.gsc import _read_error
+    err = _read_error({"error": ["y" * 200]}, 500)
+    assert err.message.startswith("['yyy") and len(err.message) == 120 and err.reason is None and err.code is None and err.http == 500
+
+
+def test_an_error_object_gives_code_reason_status_and_a_message_cut_to_150_and_a_bad_field_is_dropped_not_guessed():
+    from app.connectors.gsc import _read_error
+    err = _read_error({"error": {"code": 403, "message": "m" * 200, "status": "PERMISSION_DENIED",
+                                 "errors": [{"reason": "r" * 80, "message": "x"}]}}, 403)
+    assert (err.code, err.status, err.http) == (403, "PERMISSION_DENIED", 403)
+    assert err.reason == "r" * 60 and err.message == "m" * 150
+    odd = _read_error({"error": {"code": True, "message": None, "status": 5, "errors": [{"reason": 7}]}}, 500)
+    assert (odd.code, odd.reason, odd.status, odd.message, odd.effective) == (None, None, None, "", 500)
+    assert _read_error({"error": {"code": "403"}}, 500).code is None
+    assert _read_error({"error": {"errors": []}}, 500).reason is None
+    assert _read_error({"error": {"status": "RESOURCE_EXHAUSTED"}}, 500).status == "RESOURCE_EXHAUSTED"
+    assert _read_error([{"error": {"code": 401}}], 200).code == 401        # a list holding the error object
+    assert _read_error([], 200) is None and _read_error({"rows": []}, 200) is None and _read_error("text", 200) is None
+
+
+def test_a_retry_after_of_zero_is_honoured_as_zero_and_a_negative_or_missing_one_is_not():
+    from app.connectors.gsc import GSCConnector as C
+
+    def of(value):
+        headers = {} if value is None else {"Retry-After": value}
+        return C._retry_after(httpx.Response(429, headers=headers))
+    assert of("0") == 0.0 and of("2.5") == 2.5 and of("-1") is None and of(None) is None and of("soon") is None
+
+
+def test_the_throttle_waits_of_a_page_count_each_sleep_once(server):
+    server.faults.extend([Fault(429, throttled("rateLimitExceeded", 429), {"Retry-After": "1"})] * 2)
+    pages = run(collect(make(server, Sleeps(), max_attempts=4)))
+    assert pages[0].throttle_waits == 2 and pages[0].api_calls == 3
+
+
+def test_the_connector_closes_a_client_it_made_and_leaves_one_it_was_given_open():
+    async def go():
+        given = httpx.AsyncClient(trust_env=False)
+        conn = GSCConnector(site_url=SITE, base_url="http://127.0.0.1:1", client=given, access_token=TOKEN)
+        await conn.aclose()
+        assert not given.is_closed
+        await given.aclose()
+        own = GSCConnector(site_url=SITE, base_url="http://127.0.0.1:1", access_token=TOKEN)
+        await own.aclose()
+        assert own._client.is_closed
+    run(go())
+
+
+# ---------------------------------------------------------------- constants, messages and bookkeeping, pinned with a scripted transport
+
+def scripted(handler, **kw):
+    """A connector whose HTTP answers come from `handler(body, call number) -> (status, json or text)`, recording each body."""
+    import json as _json
+    seen: list[dict] = []
+
+    def transport(request: httpx.Request) -> httpx.Response:
+        body = _json.loads(request.content)
+        seen.append(body)
+        status, content = handler(body, len(seen))
+        if isinstance(content, str):
+            return httpx.Response(status, content=content.encode(), headers={"content-type": "text/html"})
+        return httpx.Response(status, json=content)
+    kw.setdefault("sleep", Sleeps())
+    kw.setdefault("clock", lambda: datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc))
+    client = httpx.AsyncClient(transport=httpx.MockTransport(transport))
+    return GSCConnector(site_url=SITE, base_url="http://stand-in.invalid", client=client, access_token=TOKEN, **kw), seen
+
+
+def day_row(day="2026-10-01", clicks=1, impressions=10, position=2.0):
+    return {"keys": [day], "clicks": clicks, "impressions": impressions, "position": position}
+
+
+def key_row(key, clicks=1, impressions=10, position=2.0):
+    return {"keys": [key], "clicks": clicks, "impressions": impressions, "position": position}
+
+
+def broken(coro_factory):
+    with pytest.raises(UpstreamBroken) as exc:
+        run(coro_factory())
+    return str(exc.value)
+
+
+def one_day(conn):
+    return collect(conn, start=date(2026, 10, 1), end=date(2026, 10, 2))
+
+
+def test_the_defaults_are_the_documented_ones():
+    from app.connectors import gsc
+    assert gsc.BASE_URL == "https://www.googleapis.com"
+    assert gsc.SCOPE == "https://www.googleapis.com/auth/webmasters.readonly"
+    assert gsc.DEFAULT_TOP_N == 10
+    conn = GSCConnector(site_url=SITE, access_token=TOKEN)
+    assert conn._base == "https://www.googleapis.com" and conn._top_n == 10
+    run(conn.aclose())
+
+
+def test_a_count_of_the_largest_stored_integer_is_taken_and_one_more_is_refused():
+    from app.connectors.gsc import _count
+    assert _count(2 ** 63 - 1, "x") == 2 ** 63 - 1 and _count(str(2 ** 63 - 1), "x") == 2 ** 63 - 1
+    with pytest.raises(UpstreamBroken, match="larger than any count"):
+        _count(2 ** 63, "x")
+
+
+@pytest.mark.parametrize("reason", ["rateLimitExceeded", "userRateLimitExceeded", "dailyLimitExceeded",
+                                    "rateLimitExceededUnreg", "userRateLimitExceededUnreg", "dailyLimitExceededUnreg"])
+def test_every_quota_reason_the_page_lists_is_a_throttle_not_a_revoked_login(reason):
+    from app.connectors.gsc import _GoogleError
+    assert _GoogleError(403, reason, None, "", 403).throttled()
+    conn, _ = scripted(lambda body, n: (403, error_body(403, reason, "quota")), max_attempts=1)
+    with pytest.raises(RateLimited):
+        run(one_day(conn))
+
+
+def test_constructor_refusals_say_the_range_they_enforce_and_one_attempt_is_allowed():
+    from app.connectors.gsc import MAX_ROW_LIMIT
+    with pytest.raises(ValueError) as exc:
+        GSCConnector(site_url=SITE, access_token=TOKEN, page_size=0)
+    assert str(exc.value) == "page_size must be 1 to %d" % MAX_ROW_LIMIT
+    with pytest.raises(ValueError) as exc:
+        GSCConnector(site_url=SITE, access_token=TOKEN, top_n=MAX_ROW_LIMIT + 1)
+    assert str(exc.value) == "top_n must be 0 to %d" % MAX_ROW_LIMIT
+    with pytest.raises(ValueError) as exc:
+        GSCConnector(site_url=SITE, access_token=TOKEN, max_attempts=0)
+    assert str(exc.value) == "max_attempts must be at least 1"
+    GSCConnector(site_url=SITE, access_token=TOKEN, page_size=MAX_ROW_LIMIT, top_n=MAX_ROW_LIMIT, max_attempts=1)
+    GSCConnector(site_url=SITE, access_token=TOKEN, page_size=1, top_n=0)
+
+
+def test_from_env_builds_a_connector_of_the_same_type_and_the_repr_names_the_class():
+    conn = GSCConnector.from_env({"GSC_SITE_URL": SITE, "GSC_ACCESS_TOKEN": TOKEN})
+    assert type(conn) is GSCConnector and repr(conn).startswith("GSCConnector(") and TOKEN not in repr(conn)
+    run(conn.aclose())
+
+
+def test_a_200_that_is_not_an_object_says_what_it_was():
+    conn, _ = scripted(lambda body, n: (200, "<html>maintenance</html>"))
+    assert "a body that is not JSON" in broken(lambda: one_day(conn))
+    conn, _ = scripted(lambda body, n: (200, [1, 2]))
+    assert "with list, not an object" in broken(lambda: one_day(conn))
+    conn, _ = scripted(lambda body, n: (200, 7))
+    assert "with int, not an object" in broken(lambda: one_day(conn))
+
+
+def test_rows_that_are_not_a_list_and_rows_with_missing_or_bad_numbers_are_named():
+    conn, _ = scripted(lambda body, n: (200, {"rows": "none"}))
+    assert broken(lambda: one_day(conn)) == "rows is not a list"
+    for field_name, bad in (("clicks", "many"), ("impressions", None), ("position", "top")):
+        row = day_row()
+        row[field_name] = bad
+        conn, _ = scripted(lambda body, n, row=row: (200, {"rows": [row]}))
+        assert broken(lambda: one_day(conn)).startswith(field_name + " "), field_name
+    row = day_row()
+    del row["position"]
+    conn, _ = scripted(lambda body, n: (200, {"rows": [row]}))
+    assert "has no position" in broken(lambda: one_day(conn))
+    conn, _ = scripted(lambda body, n: (200, {"rows": [{"keys": [], "clicks": 1, "impressions": 1, "position": 1}]}))
+    assert "(date)" in broken(lambda: one_day(conn))
+
+
+def test_a_long_key_is_cut_to_forty_characters_in_the_message_that_names_it():
+    long = "q" * 40 + "OVERFLOW"
+
+    def make_handler(rows):
+        def handler(body, n):
+            if body["dimensions"] == ["date"]:
+                return 200, ({"rows": [day_row()]} if body["startRow"] == 0 else {})
+            if body["dimensions"] == ["query"]:
+                return 200, {"rows": rows}
+            return 200, {}
+        return handler
+    conn, _ = scripted(make_handler([key_row(long), key_row(long)]))
+    message = broken(lambda: one_day(conn))
+    assert repr("q" * 40) in message and "OVERFLOW" not in message and "2026-10-01" in message
+    conn, _ = scripted(make_handler([key_row(long, clicks="x")]))
+    message = broken(lambda: one_day(conn))
+    assert repr("q" * 40) in message and "OVERFLOW" not in message and message.startswith("clicks the query row")
+
+
+def test_verify_asks_for_the_ten_days_before_today_from_row_zero_with_a_hundred_rows():
+    conn, seen = scripted(lambda body, n: (200, {"rows": [day_row("2026-10-30")]}))
+    text = run(conn.verify())
+    assert "newest data 2026-10-30" in text
+    assert seen[0]["startDate"] == "2026-10-23" and seen[0]["endDate"] == "2026-11-01"
+    assert seen[0]["startRow"] == 0 and seen[0]["rowLimit"] == 100 and seen[0]["dimensions"] == ["date"]
+    run(conn.aclose())
+
+
+def test_the_top_row_pages_count_both_of_their_calls_and_every_wait():
+    def handler(body, n):
+        if body["dimensions"] == ["date"]:
+            return 200, ({"rows": [day_row()]} if body["startRow"] == 0 else {})
+        if n == 3:                                             # the first top query of the day is throttled once
+            return 429, error_body(429, "rateLimitExceeded", "slow down")
+        return 200, {"rows": [key_row("shoes")]}
+    conn, seen = scripted(handler)
+    top = [p for p in run(one_day(conn)) if p.rows]
+    assert len(top) == 1
+    assert top[0].api_calls == 3 and top[0].throttle_waits == 1, "two dimensions and one retry make three calls and one wait"
+
+    def clean_handler(body, n):
+        if body["dimensions"] == ["date"]:
+            return 200, ({"rows": [day_row()]} if body["startRow"] == 0 else {})
+        return 200, {"rows": [key_row("shoes")]}
+    clean, _ = scripted(clean_handler)
+    top = [p for p in run(one_day(clean)) if p.rows]
+    assert top[0].api_calls == 2 and top[0].throttle_waits == 0
+
+
+def test_a_dimension_row_refuses_anything_but_whole_counts_of_at_least_zero_and_needs_a_dimension_and_a_key():
+    day = date(2026, 10, 1)
+    DimensionRow(day, "query", "k", 0, 0, 0)                                     # zero is a count
+    for name in ("clicks", "impressions", "position_milli"):
+        for bad in (True, 1.5, -1, "5", None):
+            figures = {"clicks": 1, "impressions": 2, "position_milli": 3, name: bad}
+            with pytest.raises(UpstreamBroken, match="^%s must be a whole number of at least 0" % name):
+                DimensionRow(day, "query", "k", **figures)
+    for dimension, key in (("", "k"), ("query", ""), ("", "")):
+        with pytest.raises(UpstreamBroken, match="a dimension row needs a dimension and a key"):
+            DimensionRow(day, dimension, key, 1, 2, 3)
