@@ -5,7 +5,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Monthly report for each tenant\nRuns on the 1st of the month at 06:00 UTC and asks the hub for last month's deck, once for each tenant in `HUB_TENANTS_JSON`. Asking twice for a month gives the same deck and sends nothing twice.\n**Needs** `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` and the variables in n8n/README.md. Slack and email are **off** until `DELIVER_SLACK` or `DELIVER_EMAIL` is `true`.",
+        "content": "## Monthly report for each tenant\nRuns on the 1st of the month at 13:00 UTC and asks the hub for last month's deck, once for each tenant in `HUB_TENANTS_JSON`. Asking twice for a month gives the same deck and sends nothing twice.\n**Needs** `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` and the variables in n8n/README.md. Slack and email are **off** until `DELIVER_SLACK` or `DELIVER_EMAIL` is `true`.",
         "height": 230,
         "width": 560,
         "color": 4
@@ -25,13 +25,13 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 6 1 * *"
+              "expression": "0 13 1 * *"
             }
           ]
         }
       },
       "id": "020e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7a",
-      "name": "Schedule, 1st of the month 06:00 UTC",
+      "name": "Schedule, 1st of the month 13:00 UTC",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -146,7 +146,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.as_of ? { month: $json.month, as_of: $json.as_of } : { month: $json.month }) }}"
+        "jsonBody": "={{ JSON.stringify(Object.assign({ month: $json.month }, $json.as_of ? { as_of: $json.as_of } : {}, Object.fromEntries(Object.entries($json.tenant).filter(e => ['connection_id', 'web_connection_id', 'paid_connection_id', 'search_connection_id'].includes(e[0]) && e[1])))) }}"
       },
       "id": "060e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7e",
       "name": "Build the report",
@@ -887,7 +887,7 @@
     }
   ],
   "connections": {
-    "Schedule, 1st of the month 06:00 UTC": {
+    "Schedule, 1st of the month 13:00 UTC": {
       "main": [
         [
           {

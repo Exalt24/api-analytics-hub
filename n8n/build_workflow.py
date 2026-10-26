@@ -13,7 +13,7 @@ Settings come from environment variables, which n8n only lets expressions read w
 THE SHAPE, per tenant (n8n runs each node over every tenant before the next node, and a tenant that fails goes down the error
 output of its node, so it never stops the others):
 
-  Schedule (1st of the month, 06:00 UTC) or Run now -> Settings -> one item per tenant -> Build the report
+  Schedule (1st of the month, 13:00 UTC) or Run now -> Settings -> one item per tenant -> Build the report
     Build ok     -> already delivered?  yes: skip
                                         no:  any delivery switched on?  no: built, delivery off
                                                                         yes: Slack?  -> post it   (failure: result "failed")
@@ -36,7 +36,17 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parent / "monthly_report.workflow.json"
 WORKFLOW_ID = "hubMonthlyReport01"
-CRON = "0 6 1 * *"
+#: 13:00 UTC on the 1st. The ads, search and website syncs end their default window twelve hours behind UTC (settled_window_end), so
+#: 31 October is stored only by a sync that runs at or after 12:00 UTC on 1 November. Any hour from 12:00 to 23:59 gives the same
+#: window end (the 1st, which is exclusive: the whole of the month and none of the next); 13:00 leaves an hour after the edge for that
+#: sync to finish. A schedule before 12:00 builds a deck one day short for those three sources and its key can never replace it.
+CRON = "0 13 1 * *"
+
+#: The four optional connection ids a tenant entry of HUB_TENANTS_JSON may carry into the request (app/api/reports.py MonthlyRequest). A client with
+#: two active ad accounts is refused with 422 "name one" unless the request names one; an id the entry does not carry is left out of the body.
+CONNECTION_ID_FIELDS = ("connection_id", "web_connection_id", "paid_connection_id", "search_connection_id")
+CONNECTION_IDS = ("Object.fromEntries(Object.entries($json.tenant).filter(e => [" + ", ".join("'%s'" % f for f in CONNECTION_ID_FIELDS)
+                  + "].includes(e[0]) && e[1]))")
 
 TENANT = "$('One item per tenant').item.json.tenant"
 SETTINGS = "$('Settings').first().json"
@@ -91,13 +101,13 @@ def build() -> dict:
     _ids.clear()
     node("Notes", "n8n-nodes-base.stickyNote", 1, -400, -260, {
         "content": ("## Monthly report for each tenant\n"
-                    "Runs on the 1st of the month at 06:00 UTC and asks the hub for last month's deck, once for each tenant in "
+                    "Runs on the 1st of the month at 13:00 UTC and asks the hub for last month's deck, once for each tenant in "
                     "`HUB_TENANTS_JSON`. Asking twice for a month gives the same deck and sends nothing twice.\n"
                     "**Needs** `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` and the variables in n8n/README.md. "
                     "Slack and email are **off** until `DELIVER_SLACK` or `DELIVER_EMAIL` is `true`."),
         "height": 230, "width": 560, "color": 4})
 
-    node("Schedule, 1st of the month 06:00 UTC", "n8n-nodes-base.scheduleTrigger", 1.2, -400, 0,
+    node("Schedule, 1st of the month 13:00 UTC", "n8n-nodes-base.scheduleTrigger", 1.2, -400, 0,
          {"rule": {"interval": [{"field": "cronExpression", "expression": CRON}]}})
     node("Run now", "n8n-nodes-base.manualTrigger", 1, -400, 160, {})
 
@@ -115,7 +125,7 @@ def build() -> dict:
     http("Build the report", 400, 80, "POST", "{{ $json.hub_url }}/api/reports/monthly",
          [("Authorization", "{{ 'Bearer ' + $json.tenant.api_key }}"), ("Idempotency-Key", "{{ " + KEY_EXPR + " }}"),
           ("Content-Type", "application/json")],
-         "{{ JSON.stringify($json.as_of ? { month: $json.month, as_of: $json.as_of } : { month: $json.month }) }}",
+         "{{ JSON.stringify(Object.assign({ month: $json.month }, $json.as_of ? { as_of: $json.as_of } : {}, " + CONNECTION_IDS + ")) }}",
          retries=3)
 
     if_node("Already delivered?", 680, -40, "$json.delivered")
@@ -192,7 +202,7 @@ def build() -> dict:
             main.append([])
         main[output].append({"node": dst, "type": "main", "index": 0})
 
-    link("Schedule, 1st of the month 06:00 UTC", "Settings")
+    link("Schedule, 1st of the month 13:00 UTC", "Settings")
     link("Run now", "Settings")
     link("Settings", "One item per tenant")
     link("One item per tenant", "Build the report")

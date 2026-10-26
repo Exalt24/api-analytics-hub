@@ -62,7 +62,7 @@ def test_every_connection_runs_between_nodes_that_exist_and_to_an_output_the_sou
 
 def test_every_node_but_the_note_is_reachable_from_a_trigger_and_nothing_is_left_dangling():
     triggers = [n for n, node in FLOW.items() if node["type"].endswith("Trigger")]
-    assert sorted(triggers) == ["Run now", "Schedule, 1st of the month 06:00 UTC"]
+    assert sorted(triggers) == ["Run now", "Schedule, 1st of the month 13:00 UTC"]
     seen, stack = set(triggers), list(triggers)
     while stack:
         for branch in WF["connections"].get(stack.pop(), {}).get("main", []):
@@ -74,7 +74,7 @@ def test_every_node_but_the_note_is_reachable_from_a_trigger_and_nothing_is_left
 
 
 def test_the_two_ways_in_both_lead_to_the_same_settings_node():
-    for trigger in ("Run now", "Schedule, 1st of the month 06:00 UTC"):
+    for trigger in ("Run now", "Schedule, 1st of the month 13:00 UTC"):
         assert WF["connections"][trigger]["main"] == [[{"node": "Settings", "type": "main", "index": 0}]]
 
 
@@ -124,17 +124,17 @@ def cron_matches(expression: str, when: datetime) -> bool:
     return all(spec == "*" or int(spec) == value for spec, value in fields)
 
 
-def test_the_schedule_fires_at_six_on_the_first_of_every_month_and_at_no_other_time():
-    rule = NODES["Schedule, 1st of the month 06:00 UTC"]["parameters"]["rule"]["interval"]
+def test_the_schedule_fires_at_one_in_the_afternoon_on_the_first_of_every_month_and_at_no_other_time():
+    rule = NODES["Schedule, 1st of the month 13:00 UTC"]["parameters"]["rule"]["interval"]
     assert len(rule) == 1 and rule[0]["field"] == "cronExpression"
     expression = rule[0]["expression"]
-    assert expression == "0 6 1 * *"
+    assert expression == "0 13 1 * *"
     when, end, fires = datetime(2026, 10, 26), datetime(2027, 2, 2), []
     while when < end:
         if cron_matches(expression, when):
             fires.append(when)
         when += timedelta(minutes=1)
-    assert fires == [datetime(2026, 11, 1, 6), datetime(2026, 12, 1, 6), datetime(2027, 1, 1, 6), datetime(2027, 2, 1, 6)]
+    assert fires == [datetime(2026, 11, 1, 13), datetime(2026, 12, 1, 13), datetime(2027, 1, 1, 13), datetime(2027, 2, 1, 13)]
 
 
 def test_the_month_defaults_to_the_one_before_the_run_and_can_be_named_for_a_backfill():

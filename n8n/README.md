@@ -13,7 +13,7 @@ The workflow reads its settings from environment variables, and n8n only lets an
 | Variable | Meaning |
 |---|---|
 | `HUB_BASE_URL` | where the hub API is, for example `https://hub.example.com` |
-| `HUB_TENANTS_JSON` | the tenants to report on: `[{"name": "Example Outfitters", "api_key": "..."}]`. The key decides the tenant, the hub never takes a tenant from the request. Give each key the operator role |
+| `HUB_TENANTS_JSON` | the tenants to report on: `[{"name": "Example Outfitters", "api_key": "..."}]`. The key decides the tenant, the hub never takes a tenant from the request. Give each key the operator role. An entry may also carry `connection_id`, `web_connection_id`, `paid_connection_id` and `search_connection_id`, each optional, which go into the request body as written: a client with two active ad accounts needs `paid_connection_id`, or the hub answers 422 and that client gets no deck. An entry without them sends the body it always sent |
 | `HUB_REPORT_MONTH` | optional `YYYY-MM`, for a backfill. Default: the month before the run |
 | `HUB_AS_OF` | optional `YYYY-MM-DD`, treated as today when the report is built (a backfill or a demo) |
 | `DELIVER_SLACK` | `true` posts a summary for each tenant to Slack. Anything else leaves Slack off |
@@ -27,7 +27,7 @@ It uses no Code node and no Execute Command node. n8n 2.x disables the Execute C
 
 ## What it does
 
-The Schedule Trigger fires on `0 6 1 * *`, 06:00 UTC on the first of every month. Run now does the same by hand. Then:
+The Schedule Trigger fires on `0 13 1 * *`, 13:00 UTC on the first of every month. Run now does the same by hand. The hour is chosen for the data: the ads, search and website syncs end their default window twelve hours behind UTC, so 31 October is stored only by a sync that runs at or after 12:00 UTC on 1 November. From 12:00 to 23:59 the sync ends on the 1st, the whole of the month and none of the next one, and 13:00 leaves an hour after that edge. A schedule before 12:00 builds a deck a day short for those three sources, and because the deck is kept under its key it is never replaced. So run each source's sync after 12:00 UTC on the 1st and before 13:00, or the deck is built without that last day and says so. Then:
 
 1. Settings works out the month and reads the variables, and Split Out makes one item for each tenant.
 2. Build the report calls `POST /api/reports/monthly` for each tenant with that tenant's key and an `Idempotency-Key` of `monthly-report:<tenant name>:<month>`. It retries three times, which is safe because of the key. A tenant whose call fails, because its report cannot be built or its key is wrong, goes down the node's error output and becomes a result of "failed" while the next tenant carries on.

@@ -294,8 +294,8 @@ def verify(image: str, dsn: str, summary: list[str]) -> int:
         (staged / "workflow.json").write_text(render(), encoding="utf-8", newline="\n")
         fires = schedule_fires(image, staged)
         summary.append("Schedule Trigger, next fires by n8n's own cron library: " + ", ".join(fires))
-        checks.ok(len(fires) == 6 and all(f.endswith("-01T06:00:00.000Z") for f in fires) and fires[0] == "2026-11-01T06:00:00.000Z",
-                  "the schedule fires at 06:00 UTC on the first of every month, by n8n's cron library")
+        checks.ok(len(fires) == 6 and all(f.endswith("-01T13:00:00.000Z") for f in fires) and fires[0] == "2026-11-01T13:00:00.000Z",
+                  "the schedule fires at 13:00 UTC on the first of every month, by n8n's cron library")
         tenant, _store, website, ads, search = sample.seed(scratch_dsn)
         asyncio.run(sample.sync_website(scratch_dsn, tenant, website))
         asyncio.run(sample.sync_ads_and_search(scratch_dsn, tenant, ads, search))
