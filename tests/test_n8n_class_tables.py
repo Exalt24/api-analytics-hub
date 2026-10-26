@@ -28,11 +28,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+sys.path.insert(0, str(ROOT / "n8n"))
+
 import app.connectors as connectors  # noqa: E402
-from test_n8n_workflow import NODES, WF  # noqa: E402
+import build_workflow  # noqa: E402
+from test_n8n_workflow import NODES, TEXT, WF  # noqa: E402
 
 SCHEDULE = "Schedule, 1st of the month 13:00 UTC"
 SCHEDULE_YEARS = (2024, 2026, 2027, 2028)      # 2026 and 2027 in full, and the leap years 2024 and 2028 for a 29 day February
+
+
+def test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file():
+    """So a change to the generator that the committed JSON does not carry (or the reverse) turns the tables red, not green on a stale file."""
+    assert TEXT.replace("\r\n", "\n") == build_workflow.render()
 
 
 def _sources_with_a_settled_window_end() -> list[str]:
