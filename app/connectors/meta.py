@@ -274,6 +274,11 @@ class MetaConnector(Connector):
     def __repr__(self) -> str:
         return "MetaConnector(account_id=%r, base_url=%r)" % (self.account_id, self._base)
 
+    @property
+    def external_account(self) -> str:
+        """The ad account as a connection stores it, so a sync can check it is the one the connection holds."""
+        return "act_" + self.account_id
+
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()

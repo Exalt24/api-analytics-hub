@@ -197,6 +197,11 @@ class GA4Connector(Connector):
     def __repr__(self) -> str:
         return "GA4Connector(property_id=%r, base_url=%r)" % (self.property_id, self._base)
 
+    @property
+    def external_account(self) -> str:
+        """The property as a connection stores it, so a sync can check it is the one the connection holds."""
+        return self.property_id
+
     async def aclose(self) -> None:
         """Close the HTTP client this connector made. A client handed in is the caller's to close."""
         if self._owns_client:

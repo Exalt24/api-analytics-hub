@@ -231,6 +231,11 @@ class GSCConnector(Connector):
     def __repr__(self) -> str:
         return "GSCConnector(site_url=%r, base_url=%r)" % (self.site_url, self._base)
 
+    @property
+    def external_account(self) -> str:
+        """The property as a connection stores it, so a sync can check it is the one the connection holds."""
+        return self.site_url
+
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()
