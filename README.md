@@ -132,7 +132,7 @@ reaper turns a silently dead worker into a visible failure.
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 4,694 tests: 4,689 passed, 5 known limits (virtual environment active)
+python -m pytest tests/ -q                # 4,696 tests: 4,691 passed, 5 known limits (the run of 2026-10-26 had 4,694; two link guard tests came after it)
 python tests/mutation_check.py            # all 229 hand matched guards; edits source in place, run it in a copy (--help)
 python live_check.py                      # against the real store
 ```
