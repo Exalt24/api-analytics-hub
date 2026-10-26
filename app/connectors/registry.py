@@ -196,6 +196,7 @@ def _register_builtin() -> None:
     """Registered here rather than at import of each module, so the set of
     available platforms is one readable list instead of scattered side effects."""
     from .ga4 import GA4Connector
+    from .gsc import GSCConnector
     from .meta import MetaConnector
     from .shopify import ShopifyConnector
     from .shopify_scopes import DEFAULT_ORDER_HISTORY_DAYS
@@ -269,6 +270,31 @@ def _register_builtin() -> None:
                 "the 7 day click window named in every request. Utilisation headers (a percent of the app and the "
                 "ad account limit) pace the pages, and errors 4, 17, 32, 341 and 613 are retried with a bound. "
                 "Never run against a live account: no account is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="gsc",
+            label="Google Search Console",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=GSCConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("site_url", "Property", secret=False,
+                                hint="sc-domain:example.com for a Domain property, or the full URL of a URL-prefix property"),
+                CredentialField("access_token", "OAuth 2.0 access token",
+                                hint="a token for the webmasters.readonly scope; it lasts about an hour"),
+            ),
+            factory=GSCConnector,
+            # The pages read give no history limit; the 16 months of the Search Console UI are not on them.
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Daily clicks, impressions and average position from searchAnalytics.query, plus the top queries "
+                "and pages of each day in their own table. Dates are Pacific time. The newest days are "
+                "provisional (dataState all, first_incomplete_date) and are rewritten by the next sync. "
+                "Never run against a live property: none is held."
             ),
         )
     )

@@ -110,6 +110,10 @@ class SyncRunner:
                     rows += await self._write_points(
                         tenant_id, connection_id, page.points
                     )
+                if page.rows:
+                    rows += await self._write_dimension_rows(
+                        tenant_id, connection_id, page.rows
+                    )
                 # Record the cursor BEFORE the next request, so a failure resumes
                 # from here rather than from the top of the window.
                 await self._record_cursor(run_id, token, page.cursor, calls, waits, rows)
@@ -178,6 +182,31 @@ class SyncRunner:
         async with self._db.unscoped() as conn:
             written = await conn.fetchval(
                 "select upsert_snapshots($1::jsonb)", json.dumps(payload)
+            )
+        return int(written or 0)
+
+    async def _write_dimension_rows(self, tenant_id, connection_id, rows) -> int:
+        """The per-query and per-page rows of a connector that has them, each (connection, day) replaced as a set.
+
+        Its own table and function because the snapshot key has no room for a dimension, and because a later
+        sync that returns a different top list must replace the day's rows, not sit beside them.
+        """
+        payload = [
+            {
+                "tenant_id": str(tenant_id),
+                "connection_id": str(connection_id),
+                "observed_on": r.observed_on.isoformat(),
+                "dimension": r.dimension,
+                "key": r.key,
+                "clicks": int(r.clicks),
+                "impressions": int(r.impressions),
+                "position_milli": int(r.position_milli),
+            }
+            for r in rows
+        ]
+        async with self._db.unscoped() as conn:
+            written = await conn.fetchval(
+                "select upsert_search_rows($1::jsonb)", json.dumps(payload)
             )
         return int(written or 0)
 

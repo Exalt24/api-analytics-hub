@@ -115,11 +115,38 @@ class CanonicalPoint:
 MONEY_METRICS = frozenset({"gross_sales", "refunds", "net_sales", "avg_order_value", "ad_spend", "ad_purchase_value"})
 
 
+@dataclass(frozen=True)
+class DimensionRow:
+    """One day's figures for one value of one dimension, such as one search query or one page.
+
+    The snapshot table has no room for a dimension (its key is connection, metric and day), so a
+    connector that has per-query or per-page rows hands them back beside its points. `position_milli`
+    is an average position in thousandths, an integer for the same reason money is.
+    """
+
+    observed_on: date
+    dimension: str
+    key: str
+    clicks: int
+    impressions: int
+    position_milli: int
+
+    def __post_init__(self) -> None:
+        for name in ("clicks", "impressions", "position_milli"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise UpstreamBroken(f"{name} must be a whole number of at least 0, got {value!r}")
+        if not self.key or not self.dimension:
+            raise UpstreamBroken("a dimension row needs a dimension and a key")
+
+
 @dataclass
 class FetchResult:
     """What one page of a fetch produced, plus how to resume."""
 
     points: Sequence[CanonicalPoint] = field(default_factory=list)
+    #: Per-dimension rows (search queries and pages), for a connector that has them. Stored apart from the points.
+    rows: Sequence[DimensionRow] = field(default_factory=list)
     #: Opaque continuation token. Stored on the sync run so a rate limit halfway
     #: through a window resumes rather than discarding completed work.
     cursor: str | None = None

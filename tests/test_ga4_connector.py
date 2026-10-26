@@ -492,7 +492,7 @@ def test_nonsense_settings_are_refused(server, kw):
 def test_ga4_is_registered_next_to_shopify_with_nothing_else_changed():
     spec = registry.get("ga4")
     assert spec.supported_metrics == frozenset({"sessions", "users", "page_views", "key_events"})
-    assert registry.platforms() == sorted(["ga4", "meta", "shopify"])
+    assert registry.platforms() == sorted(["ga4", "gsc", "meta", "shopify"])
     assert registry.platforms_supporting("sessions") == ["ga4"] and registry.platforms_supporting("orders") == ["shopify"]
     from app.connectors.registry import MetricNotSupported
     with pytest.raises(MetricNotSupported):
