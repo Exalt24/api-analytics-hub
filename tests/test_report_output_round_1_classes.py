@@ -25,11 +25,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.report.insights import template_insights  # noqa: E402
-from app.report.monthly import LOWER_IS_BETTER, build_report, change_verb, move_phrase  # noqa: E402
+from app.report.monthly import LOWER_IS_BETTER, build_report, change_verb, claim_title, move_phrase  # noqa: E402
 from app.report.paid import PAID_ORDER, attach_paid, paid_claim_title  # noqa: E402
 from app.report.search import KEY_TAIL, KEY_WIDTH, SEARCH_ORDER, _cut, attach_search, search_claim_title  # noqa: E402
-from report_fixtures import AS_OF, COVERED, both_months  # noqa: E402
+from app.report.web import attach_web, web_claim_title  # noqa: E402
+from report_fixtures import AS_OF, COVERED, both_months, day_rows  # noqa: E402
 from sources_fixtures import paid_day, search_day  # noqa: E402
+from test_report_web import web_day  # noqa: E402
 
 # ---------------------------------------------------------------- CLASS-TABLE 1: different keys print differently
 
@@ -110,12 +112,27 @@ SEPT_DAYS = [date(2026, 9, 1) + timedelta(days=i) for i in range(30)]
 OCT_DAYS = [date(2026, 10, 1) + timedelta(days=i) for i in range(31)]
 FULL = [(date(2026, 9, 1), date(2026, 11, 1))]
 
-#: the two values (September, October) for a rise, a fall, no change and a change too small to show, for each source's figure
-POSITION = {"rise": (6000, 9000), "fall": (9000, 6000), "equal": (6000, 6000), "flat": (6000, 6001)}
+MOVES = ("rise", "fall", "equal", "flat", "small_rise", "small_fall")
+
+#: the two values (September, October) for each move of a figure. A small move is half a percent: shown as +0.5%, which is not flat.
+#: A ratio is the same every day (position, cost per click). A total is over the days, and September has 30 days and October 31, so
+#: 31 a day against 30 a day is the same total, and the small moves are 0.5% of that.
+POSITION = {"rise": (6000, 9000), "fall": (9000, 6000), "equal": (6000, 6000), "flat": (6000, 6001), "small_rise": (60000, 60300), "small_fall": (60000, 59700)}
 #: cost per click is spend over clicks: the same spend and fewer clicks is a rise
-CLICKS = {"rise": (50, 25), "fall": (25, 50), "equal": (50, 50), "flat": (50000, 50001)}
-#: search clicks are a total over the days, and September has 30 days and October 31: 31 a day against 30 a day is the same total
-CLICKS_CONTROL = {"rise": (10, 20), "fall": (20, 10), "equal": (31, 30), "flat": (31000, 30001)}
+CLICKS = {"rise": (50, 25), "fall": (25, 50), "equal": (50, 50), "flat": (50000, 50001), "small_rise": (200, 199), "small_fall": (199, 200)}
+TOTAL = {"rise": (10, 20), "fall": (20, 10), "equal": (31, 30), "flat": (31000, 30001), "small_rise": (31000, 30150),
+         "small_fall": (31000, 29850)}
+
+
+def _store_only(sept: int, octo: int):
+    rows = [r for d in SEPT_DAYS for r in day_rows(d, 10, sept, 0, 8)] + [r for d in OCT_DAYS for r in day_rows(d, 10, octo, 0, 8)]
+    return build_report(rows, 2026, 10, label="Store", covered=FULL, as_of=AS_OF)
+
+
+def _web_report(sept: int, octo: int):
+    rows = [r for d in SEPT_DAYS for r in web_day(d, sept, 100, 300, 5)] + [r for d in OCT_DAYS for r in web_day(d, octo, 100, 300, 5)]
+    report = build_report(both_months(), 2026, 10, label="Store", covered=COVERED, as_of=AS_OF)
+    return attach_web(report, rows, label="Site", covered=FULL, as_of=AS_OF)
 
 
 def _search_report(sept: int, octo: int):
@@ -125,7 +142,7 @@ def _search_report(sept: int, octo: int):
 
 
 def _paid_report(sept: int, octo: int):
-    rows = [r for d in SEPT_DAYS for r in paid_day(d, 10000, 1000, sept)] + [r for d in OCT_DAYS for r in paid_day(d, 10000, 1000, octo)]
+    rows = [r for d in SEPT_DAYS for r in paid_day(d, 1000000, 1000, sept)] + [r for d in OCT_DAYS for r in paid_day(d, 1000000, 1000, octo)]
     report = build_report(both_months(), 2026, 10, label="Store", covered=COVERED, as_of=AS_OF)
     return attach_paid(report, rows, label="Ads", covered=FULL, as_of=AS_OF)
 
@@ -136,17 +153,24 @@ def _search_clicks_report(sept: int, octo: int):
     return attach_search(report, rows, [], label="Search", covered=FULL, as_of=AS_OF)
 
 
+def _store_title(report, key):
+    return claim_title(report, key)
+
+
 FIGURES = {
-    # figure -> (table of values, report builder, the source of the row, key, claim title function)
+    # figure -> (table of values, report builder, the source of the row, key, claim title function): the two lower-is-better figures, then a
+    # control for every source's headline wording (the store, the website, ads and search) that must keep rose, fell, up and down
     "position": (POSITION, _search_report, lambda r: r.search, "position", search_claim_title),
     "cpc": (CLICKS, _paid_report, lambda r: r.paid, "cpc", paid_claim_title),
-    "search_clicks": (CLICKS_CONTROL, _search_clicks_report, lambda r: r.search, "search_clicks", search_claim_title),
+    "search_clicks": (TOTAL, _search_clicks_report, lambda r: r.search, "search_clicks", search_claim_title),
+    "net_sales": (TOTAL, _store_only, lambda r: r, "net_sales", _store_title),
+    "sessions": (TOTAL, _web_report, lambda r: r.web, "sessions", web_claim_title),
 }
 WORDS_WITH_NO_RIGHT_TO_A_RANKING = re.compile(r"\b(up|down|rose|fell|rise|fall)\b", re.I)
 
 
-# CLASS-TABLE: every figure the report prints with a lower-is-better meaning (and a control that keeps up and down) x rise, fall, equal, flat
-@pytest.mark.parametrize("figure, move", list(itertools.product(FIGURES, ("rise", "fall", "equal", "flat"))))
+# CLASS-TABLE: every figure the report prints with a lower-is-better meaning, and a control for each source's headline, x six moves
+@pytest.mark.parametrize("figure, move", list(itertools.product(FIGURES, MOVES)))
 def test_a_move_of_a_figure_is_worded_the_way_that_figure_reads(figure, move):
     values, build, source, key, title = FIGURES[figure]
     report = build(*values[move])
@@ -155,22 +179,25 @@ def test_a_move_of_a_figure_is_worded_the_way_that_figure_reads(figure, move):
     phrase = move_phrase(row)
     headline = title(src, key)
     if move == "equal":
-        assert phrase == "unchanged" and "did not change" in headline
+        assert phrase == "unchanged" and headline == "%s did not change from September" % row.label
         return
     if move == "flat":
-        assert phrase.startswith("essentially flat") and "stayed essentially flat" in headline
+        assert phrase.startswith("essentially flat") and headline.startswith("%s stayed essentially flat" % row.label)
         return
+    rise = move in ("rise", "small_rise")
+    amount = row.pct_display.lstrip("+-")
+    assert row.pct_display == ("+" if rise else "-") + amount
     if figure in LOWER_IS_BETTER:
         worse, better = LOWER_IS_BETTER[figure]
-        word, meaning = ("worse", worse) if move == "rise" else ("better", better)
-        assert phrase == "%s by %s (%s)" % (word, row.pct_display.lstrip("+-"), meaning)
-        assert change_verb(row) == ("worsened" if move == "rise" else "improved")
-        assert "%s %s" % (row.label, change_verb(row)) in headline
+        assert phrase == "%s by %s (%s)" % ("worse" if rise else "better", amount, worse if rise else better)
+        assert change_verb(row) == ("worsened" if rise else "improved")
+        assert headline == "%s %s %s from September" % (row.label, "worsened" if rise else "improved", amount)
         assert not WORDS_WITH_NO_RIGHT_TO_A_RANKING.search(phrase) and not WORDS_WITH_NO_RIGHT_TO_A_RANKING.search(headline)
     else:
-        assert phrase == "%s %s" % ("up" if move == "rise" else "down", row.pct_display.lstrip("+-"))
-        assert change_verb(row) == ("rose" if move == "rise" else "fell")
-        assert ("%s %s" % (row.label, change_verb(row))) in headline
+        assert phrase == "%s %s" % ("up" if rise else "down", amount)
+        assert change_verb(row) == ("rose" if rise else "fell")
+        assert headline == "%s %s %s from September" % (row.label, "rose" if rise else "fell", amount)
+
 
 
 @pytest.mark.parametrize("move", ("rise", "fall", "equal", "flat"))
@@ -219,9 +246,12 @@ def test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too():
     from app.report.monthly import KpiRow
     base = dict(label="Cost per click", current=Decimal(2), previous=Decimal(0), current_display="2", previous_display="0", pct=None,
                 pct_display="n/a", exact_equal=False)
-    assert move_phrase(KpiRow(key="cpc", change=Decimal(2), change_display="+2", **base)) == "worse by 2 (each click costs more)"
-    assert move_phrase(KpiRow(key="roas", change=Decimal(2), change_display="+2", **base)) == "up 2"
-    assert move_phrase(KpiRow(key="cpc", change=Decimal(-2), change_display="-2", **base)) == "better by 2 (each click costs less)"
+    for amount in (1, 2):
+        shown = "+%d" % amount
+        assert move_phrase(KpiRow(key="cpc", change=Decimal(amount), change_display=shown, **base)) == "worse by %d (each click costs more)" % amount
+        assert move_phrase(KpiRow(key="roas", change=Decimal(amount), change_display=shown, **base)) == "up %d" % amount
+        assert move_phrase(KpiRow(key="cpc", change=Decimal(-amount), change_display="-%d" % amount, **base)) == "better by %d (each click costs less)" % amount
+        assert move_phrase(KpiRow(key="roas", change=Decimal(-amount), change_display="-%d" % amount, **base)) == "down %d" % amount
 
 
 def test_the_prompt_that_writes_the_narrative_tells_the_model_the_same_rule_for_the_figures_where_a_lower_number_is_better():
