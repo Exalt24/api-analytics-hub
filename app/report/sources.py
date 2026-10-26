@@ -20,6 +20,7 @@ from app.report.monthly import (
     KpiRow,
     MonthStats,
     _per_day,
+    change_verb,
     format_pct,
     move_phrase,
     pct_change,
@@ -158,5 +159,5 @@ def claim_title(src: Any, key: str, noun: str, total_keys: frozenset[str], unava
     if row.pct is None:
         return "%s came to %s in %s, %s from %s%s" % (
             row.label, row.current_display, cur.short, move_phrase(row), prev.short, suffix)
-    return "%s %s %s from %s%s" % (row.label, "rose" if row.pct > 0 else "fell", row.pct_display.lstrip("+-"),
+    return "%s %s %s from %s%s" % (row.label, change_verb(row), row.pct_display.lstrip("+-"),
                                    prev.short, suffix)

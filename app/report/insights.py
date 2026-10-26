@@ -72,7 +72,9 @@ Rules, in order of importance:
    Never compute, round, add, subtract or estimate, and never write a number that is not in
    the facts. Never write a year. Never write a number as a word.
 2. Put a figure only next to the metric it belongs to. Say up when a change is positive and
-   down when it is negative, as the facts say.
+   down when it is negative, as the facts say. The exception is average position and cost per
+   click, where a lower number is better: a positive change in either is worse and a negative
+   one is better, so never write up or down for those two.
 3. Give no cause and no forecast. Do not say why a number moved.
 4. If the facts say days have no data, say the totals are understated and name no cause.
 5. Three to five lines, one sentence per line, plain declarative English, no bullets,

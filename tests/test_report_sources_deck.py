@@ -283,7 +283,7 @@ def test_a_long_query_is_cut_in_the_cell_and_whole_in_the_stored_figures(tmp_pat
     long_key = "a very long query that people really did type into a search box one day"
     prs, report, *_ = saved(tmp_path, paid=False, tops=[top(date(2026, 10, 1), "query", long_key, 5, 9, 4000)])
     cell = tables(prs.slides[5])[1][1][0]
-    assert cell.endswith("...") and len(cell) <= 30 and report.search.top_queries[0].key == long_key
+    assert cell == "a very long...rch box one day" and len(cell) <= 30 and report.search.top_queries[0].key == long_key
 
 
 # ---------------------------------------------------------------- the data health slide
@@ -379,7 +379,7 @@ def test_every_line_the_template_writes_about_ads_and_search_is_made_of_computed
     assert "Ad spend total was EUR 180.00 in October, 20.0% above September (EUR 150.00)" in joined
     assert "Return on ad spend was 4.50 in October, up 35.0% from September (3.33)" in joined
     assert "Search clicks total was 20 in October, 33.3% below September (30)" in joined
-    assert "Average position was 6.0 in October, down 7.7% from September (6.5)" in joined
+    assert "Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5)" in joined
     assert "2 days have no ad data (Oct 10, Oct 11), so the ad totals are understated." in joined
     assert "2 days have no search data (Oct 10, Oct 11), so the search totals are understated." in joined
 
@@ -416,7 +416,7 @@ def test_provisional_dates_are_facts_only_when_there_are_provisional_days():
     "Search clicks were 20 in October, down 33.3% from September (30).",
     "Search impressions were 200 in October.",
     "Search click through rate was 10.00% in October.",
-    "Average position was 6.0 in October, down 7.7% from September (6.5).",
+    "Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5).",
     "Purchases for Oct 10 may still rise.",
 ])
 def test_a_new_figure_beside_its_own_metric_in_its_own_currency_passes(sentence):
@@ -460,7 +460,7 @@ GOOD_MODEL = "\n".join([
     "Ad spend was EUR 180.00 in October, up 20.0% from September (EUR 150.00).",
     "Return on ad spend was 4.50 in October, up 35.0% from September (3.33).",
     "Search clicks were 20 in October, down 33.3% from September (30).",
-    "Average position was 6.0 in October, down 7.7% from September (6.5).",
+    "Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5).",
     "2 days have no ad data, so the ad totals are understated.",
 ])
 
@@ -517,7 +517,7 @@ def test_the_narrative_lines_for_ads_and_search_are_these_exact_sentences_in_a_p
         "2 days have no ad data (Oct 10, Oct 11), so the ad totals are understated.",
         "Search clicks total was 20 in October, 33.3% below September (30), but October is missing 2 days of search data: "
         "per reported day, search clicks are down 31.0% (0.69 against 1.00).",
-        "Average position was 6.0 in October, down 7.7% from September (6.5), and October is missing 2 days of search data.",
+        "Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5), and October is missing 2 days of search data.",
         "2 days have no search data (Oct 10, Oct 11), so the search totals are understated.",
     ]
 

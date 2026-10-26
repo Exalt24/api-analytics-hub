@@ -156,7 +156,7 @@ def test_the_list_is_cut_to_five_and_a_long_key_is_cut_to_fit_without_changing_t
     rows.append(top(d, "query", "line\nbreak   and  spaces", 15, 100, 1000))
     got = top_rows(rows, search().current, "query")
     assert TOP_SHOWN == 5 and len(got) == 5
-    assert got[0].key.startswith("a very long query") and len(got[0].shown_key) == KEY_WIDTH and got[0].shown_key.endswith("...")
+    assert got[0].key.startswith("a very long query") and got[0].shown_key == "a very long...rch box one day" and len(got[0].shown_key) <= KEY_WIDTH
     assert got[0].clicks == 20 and got[1].shown_key == "line break and spaces" and "\n" not in got[1].shown_key
 
 

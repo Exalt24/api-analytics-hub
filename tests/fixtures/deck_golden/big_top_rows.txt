@@ -69,7 +69,7 @@ The biggest move was Refunds, 200.0% above September in total, but October is mi
 The best day was Oct 1 with net sales of $150.00.
 2 days have no data (Oct 10, Oct 11), so the totals are understated.
 Search clicks total was 20 in October, 33.3% below September (30), but October is missing 2 days of search data: per reported day, search clicks are down 31.0% (0.69 against 1.00).
-Average position was 6.0 in October, down 7.7% from September (6.5), and October is missing 2 days of search data.
+Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5), and October is missing 2 days of search data.
 2 days have no search data (Oct 10, Oct 11), so the search totals are understated.
 Narrative written from the computed figures on the previous slides.
 --- slide 8: Data health: October is missing days of store and search data
@@ -183,5 +183,5 @@ slide 5 b8fec3ba8844b08f
 slide 6 7f94ba2b031913ab
 slide 6 chart Chart 2 c6991a34439a0daa
 slide 6 chart Chart 3 cf0f228b53c61bc2
-slide 7 c40656da35b5b99c
+slide 7 64511aaf61dd37af
 slide 8 65e3d36a85cccaa1

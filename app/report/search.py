@@ -14,7 +14,8 @@ THE FIGURES
 THE TOP QUERIES AND PAGES. Search Console returns the top rows of a day, "not all data rows". The report adds a
 query's or a page's daily top rows over the month. So a query that is never among a day's top rows is not
 counted at all, and the figures here are a lower bound for each key and never a total of the month. The slide
-says so. A key is shown cut to fit; the figures are exact.
+says so. A key is shown cut to fit, its start and its end with "..." between, because the end of a page address or a long
+query is where one differs from the next; the figures are exact.
 
 PROVISIONAL DAYS. Search Console data takes a few days to settle, so the last `LAG_DAYS` days before the report
 date are marked provisional (see `sources.provisional_days`). Days are Pacific days, which the page states.
@@ -62,6 +63,10 @@ LAG_DAYS = 3
 #: Rows shown for each of the top queries and the top pages, and the longest key printed before it is cut.
 TOP_SHOWN = 5
 KEY_WIDTH = 30
+#: A key longer than KEY_WIDTH keeps its first KEY_HEAD and its last KEY_TAIL characters. Five pages of one site share their first
+#: 30 characters, so a cut that keeps only the start prints them as one text; the last 15 are where they differ.
+KEY_TAIL = 15
+KEY_HEAD = KEY_WIDTH - KEY_TAIL - 3
 
 
 @dataclass
@@ -108,7 +113,7 @@ class TopRow:
 
 def _cut(key: str) -> str:
     one_line = " ".join(key.split())
-    return one_line if len(one_line) <= KEY_WIDTH else one_line[: KEY_WIDTH - 3].rstrip() + "..."
+    return one_line if len(one_line) <= KEY_WIDTH else one_line[:KEY_HEAD].rstrip() + "..." + one_line[-KEY_TAIL:]
 
 
 def top_rows(rows: Iterable[Mapping], stats: SearchMonth, dimension: str, limit: int = TOP_SHOWN) -> list[TopRow]:

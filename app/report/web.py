@@ -34,6 +34,7 @@ from app.report.monthly import (
     MonthlyReport,
     MonthStats,
     _per_day,
+    change_verb,
     fmt_day,
     format_count,
     format_pct,
@@ -291,5 +292,5 @@ def web_claim_title(web: WebReport, key: str = "sessions") -> str:
     if row.pct is None:
         return "%s came to %s in %s, %s from %s%s" % (
             row.label, row.current_display, cur.short, move_phrase(row), prev.short, suffix)
-    return "%s %s %s from %s%s" % (row.label, "rose" if row.pct > 0 else "fell", row.pct_display.lstrip("+-"),
+    return "%s %s %s from %s%s" % (row.label, change_verb(row), row.pct_display.lstrip("+-"),
                                    prev.short, suffix)

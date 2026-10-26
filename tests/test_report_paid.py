@@ -351,7 +351,7 @@ def test_a_figure_the_month_before_did_not_report_says_there_is_no_previous_valu
 
 def _stub(*, previous, pct, change, per_day=None, missing=(), unchanged=False, flat=False):
     from types import SimpleNamespace
-    row = SimpleNamespace(label="Clicks", current=5, current_display="5", change=change, per_day=per_day, pct=pct,
+    row = SimpleNamespace(key="clicks", label="Clicks", current=5, current_display="5", change=change, per_day=per_day, pct=pct,
                           pct_display=("+" if pct is not None and pct > 0 else "") + str(pct), unchanged=unchanged, flat=flat)
     cur = SimpleNamespace(short="Oct", missing_days=list(missing), complete=True, days_expected=31, days_in_month=31)
     prev = None if previous is None else SimpleNamespace(short="Sep", missing_days=[])

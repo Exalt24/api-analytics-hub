@@ -89,7 +89,7 @@ The best day was Oct 1 with net sales of $150.00.
 Ad spend total was EUR 180.00 in October, 20.0% above September (EUR 150.00), but September is missing 2 days of ad data: per reported day, ad spend is up 8.4% (EUR 5.81 against EUR 5.36).
 Return on ad spend was 4.50 in October, up 35.0% from September (3.33), and September is missing 2 days of ad data.
 Search clicks total was 20 in October, 33.3% below September (30), but September is missing 2 days of search data: per reported day, search clicks are down 39.8% (0.65 against 1.07).
-Average position was 6.0 in October, down 7.7% from September (6.5), and September is missing 2 days of search data.
+Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5), and September is missing 2 days of search data.
 Narrative written from the computed figures on the previous slides.
 --- slide 9: Data health: every day of October is covered in all 3 sources
 Source, October | Days with data | Days with nothing to report | Days with no data | Days that may still change | Stored daily figures used
@@ -266,5 +266,5 @@ slide 6 chart Chart 4 bfcdb8e657ddacc2
 slide 7 ce1725a0a9ca7837
 slide 7 chart Chart 2 cc0a077a60c35591
 slide 7 chart Chart 3 b5d5df750faf6994
-slide 8 9ca7aa009bd01840
+slide 8 079d0cd4b7682d05
 slide 9 5ae97e6995df44af

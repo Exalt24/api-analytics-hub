@@ -81,7 +81,7 @@ The best day was Oct 1 with net sales of $150.00.
 Ad spend was EUR 180.00 in October, up 20.0% from September (EUR 150.00).
 Return on ad spend was 4.50 in October, up 35.0% from September (3.33).
 Search clicks were 20 in October, down 33.3% from September (30).
-Average position was 6.0 in October, down 7.7% from September (6.5).
+Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5).
 Narrative written from the computed figures on the previous slides.
 --- slide 9: Data health: every day of October is covered in all 3 sources
 Source, October | Days with data | Days with nothing to report | Days with no data | Days that may still change | Stored daily figures used
@@ -209,5 +209,5 @@ slide 6 chart Chart 4 5d041e90ced15fc3
 slide 7 8d1683b6f121d04a
 slide 7 chart Chart 2 4b5fd9770f31c4df
 slide 7 chart Chart 3 c06dcd7dc36522fb
-slide 8 444159ef57551a55
+slide 8 23369788a26dc697
 slide 9 1c8c1c8f40c7ee4a

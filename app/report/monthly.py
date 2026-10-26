@@ -526,11 +526,28 @@ def largest_move(report: MonthlyReport) -> KpiRow | None:
     return max(movers, key=lambda k: abs(k.pct), default=None)
 
 
+#: A figure where a lower number is the better one, and what a rise and a fall of it mean in words: key -> (a rise, a fall).
+#: "Up" about an average position of 9.0 after 6.0 reads as a ranking gain, so these never get up, down, rose or fell.
+LOWER_IS_BETTER = {
+    "position": ("further from the top", "nearer the top"),
+    "cpc": ("each click costs more", "each click costs less"),
+}
+
+
+def change_verb(row: KpiRow) -> str:
+    """`rose` or `fell` for a figure where more is better, `worsened` or `improved` where a lower number is better."""
+    rising = row.pct > 0
+    if row.key in LOWER_IS_BETTER:
+        return "worsened" if rising else "improved"
+    return "rose" if rising else "fell"
+
+
 def move_phrase(row: KpiRow) -> str:
     """`up 8.4%`, `down 12.4%`, `unchanged`, `essentially flat (+$4.00)`, or `up 20` from a zero base.
 
     `unchanged` is only said when the two exact values are equal. A change that merely
-    rounds to 0.0% is flat, and says by how much.
+    rounds to 0.0% is flat, and says by how much. Where a lower number is better the
+    words are `worse by 50.0% (further from the top)` or `better by 12.5% (nearer the top)`.
     """
     if row.change is None:
         return ""
@@ -538,9 +555,11 @@ def move_phrase(row: KpiRow) -> str:
         return "unchanged"
     if row.flat:
         return "essentially flat (%s)" % row.flat_detail
-    if row.pct is None:
-        return "%s %s" % ("up" if row.change > 0 else "down", row.change_display.lstrip("+-"))
-    return "%s %s" % ("up" if row.pct > 0 else "down", row.pct_display.lstrip("+-"))
+    rising = row.change > 0 if row.pct is None else row.pct > 0
+    amount = (row.change_display if row.pct is None else row.pct_display).lstrip("+-")
+    if row.key in LOWER_IS_BETTER:
+        return "%s by %s (%s)" % ("worse" if rising else "better", amount, LOWER_IS_BETTER[row.key][0 if rising else 1])
+    return "%s %s" % ("up" if rising else "down", amount)
 
 
 def total_phrase(row: KpiRow, prev: MonthStats) -> str:
@@ -594,7 +613,7 @@ def claim_title(report: MonthlyReport, key: str) -> str:
         return "%s stayed %s from %s%s" % (row.label, move, prev.short, suffix)
     if row.pct is None:
         return "%s came to %s in %s, %s from %s%s" % (row.label, row.current_display, cur.short, move, prev.short, suffix)
-    return "%s %s %s from %s%s" % (row.label, "rose" if row.pct > 0 else "fell", row.pct_display.lstrip("+-"), prev.short, suffix)
+    return "%s %s %s from %s%s" % (row.label, change_verb(row), row.pct_display.lstrip("+-"), prev.short, suffix)
 
 
 def insights_title(report: MonthlyReport) -> str:

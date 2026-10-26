@@ -122,7 +122,7 @@ Ad spend total was EUR 180.00 in October, 20.0% above September (EUR 150.00), bu
 Return on ad spend was 4.50 in October, up 35.0% from September (3.33), and October is missing 17 days of ad data and only 19 of 31 days of October are counted and September is missing 28 days of ad data.
 17 days have no ad data (Oct 3, Oct 4, Oct 5, Oct 6, Oct 7, Oct 8, Oct 9, Oct 10, Oct 11, Oct 12 and others), so the ad totals are understated.
 Search clicks total was 20 in October, 33.3% below September (30), but October is missing 17 days of search data and only 19 of 31 days of October are counted and September is missing 28 days of search data: per reported day, search clicks are down 33.3% (10.00 against 15.00).
-Average position was 6.0 in October, down 7.7% from September (6.5), and October is missing 17 days of search data and only 19 of 31 days of October are counted and September is missing 28 days of search data.
+Average position was 6.0 in October, better by 7.7% (nearer the top) from September (6.5), and October is missing 17 days of search data and only 19 of 31 days of October are counted and September is missing 28 days of search data.
 17 days have no search data (Oct 3, Oct 4, Oct 5, Oct 6, Oct 7, Oct 8, Oct 9, Oct 10, Oct 11, Oct 12 and others), so the search totals are understated.
 Narrative written from the computed figures on the previous slides.
 --- slide 10: Data health: October is missing days of store, website, ads and search data
@@ -344,5 +344,5 @@ slide 7 chart Chart 4 e985d009b8eb14c3
 slide 8 b1682fa3ea4ef2fe
 slide 8 chart Chart 2 be2c32ccc4bd6568
 slide 8 chart Chart 3 4628eae4c70b449b
-slide 9 2890509398a03685
+slide 9 b4f88c5e6da80c3c
 slide 10 cf158af3c50a7e45
