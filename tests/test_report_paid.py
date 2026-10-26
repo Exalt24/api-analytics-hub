@@ -263,8 +263,10 @@ def test_over_random_months_every_figure_equals_an_independent_exact_oracle(seed
             truth["pdays"] += 1
         if val is not None:
             truth["val"] += val
+        if val is not None or pur == 0:
+            # a day with no purchases has a value of 0 though Meta leaves it out; a count above 0 with no value row stays out
             truth["jspend"] += spend
-            truth["jval"] += val
+            truth["jval"] += val or 0
     p = paid(rows, covered=[(date(2026, 10, 1), date(2026, 11, 1))])
     cur = p.current
     assert (cur.totals["ad_spend"], cur.totals["ad_impressions"], cur.totals["ad_clicks"]) == (truth["spend"], truth["imp"], truth["clk"])
