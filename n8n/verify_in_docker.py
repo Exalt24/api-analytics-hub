@@ -10,9 +10,10 @@ What it does, and tears down at the end (every container, database and server it
      second store, a tenant with no store (its report cannot be built: 422) and a tenant whose API key is wrong (401);
   2. starts the hub API (uvicorn) on the loopback address against that database, and a stand-in Slack webhook that records what it
      is sent;
-  3. runs the workflow in `n8nio/n8n` with `n8n import:workflow` and `n8n execute`, one throwaway container for each of six runs:
+  3. runs the workflow in `n8nio/n8n` with `n8n import:workflow` and `n8n execute`, one throwaway container for each of seven runs:
      delivery off; the same again (the same deck, built nothing, sent nothing); Slack on; Slack on again (no second message);
      only the tenants that work (the execution succeeds); email on without an SMTP credential (the delivery step fails and says so);
+     tenant entries that carry a paid_connection_id (the id reaches the request body: a real one builds the deck, an unknown one is refused by name);
   4. reads the execution JSON that `n8n execute` prints, node by node: how many items left each output of each node, what the result
      nodes say, whether the report endpoint was called and what it answered, and whether the failure branch fired; checks the
      database and the Slack stand-in against what each run should have done; and writes a summary.
@@ -401,6 +402,19 @@ def verify(image: str, dsn: str, summary: list[str]) -> int:
             checks.ok(ran(e6, "Stop and Error") and not ran(e6, "Mark delivered"), "run 6: the execution is an error and nothing was marked delivered")
             sep = [r for r in report_rows() if r[2] == "2026-09"]
             checks.ok(len(sep) == 2 and not any(r[4] for r in sep), "run 6: the September decks exist and are not delivered")
+
+            # ---- run 7: tenant entries that carry a paid_connection_id (the sample tenant's real ad connection, and one the hub does not know)
+            named = [{"name": "Ads Named Co", "api_key": world["Example Outfitters"]["key"], "paid_connection_id": str(ads)},
+                     {"name": "Ads Wrong Id Co", "api_key": world["Example Outfitters"]["key"], "paid_connection_id": str(uuid.uuid4())}]
+            e7 = run_n8n(image, staged, base(named), "7")
+            summary += ["", "RUN 7: tenant entries that carry a paid_connection_id, one real and one unknown"] + describe(e7)
+            build7 = items(e7, "Build the report", 0)
+            r7 = results(e7)
+            checks.ok(len(build7) == 1 and build7[0]["status"] == "created" and build7[0]["slides"] == 10,
+                      "run 7: the entry that names the real ad connection was built by the hub (the id reached the request body)")
+            checks.ok(r7.get("Ads Wrong Id Co", ("",))[0] == "failed" and "no active paid media connection found with that id" in r7["Ads Wrong Id Co"][1],
+                      "run 7: the entry that names an unknown ad connection was refused with the hub's reason, so its id was in the body too")
+            checks.ok(r7.get("Ads Named Co", ("",))[0] == "built, delivery off", "run 7: the real one is a result of 'built, delivery off'")
 
         summary += ["", "%d checks passed, %d failed" % (checks.passed, len(checks.failures))] + ["FAILED: " + f for f in checks.failures]
         return 0 if not checks.failures else 1

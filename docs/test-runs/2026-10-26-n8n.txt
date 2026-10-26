@@ -1,9 +1,9 @@
 n8n 2.44.6, image n8nio/n8n:2.44.6, workflow hubMonthlyReport01, month 2026-10
-Schedule Trigger, next fires by n8n's own cron library: 2026-11-01T06:00:00.000Z, 2026-12-01T06:00:00.000Z, 2027-01-01T06:00:00.000Z, 2027-02-01T06:00:00.000Z, 2027-03-01T06:00:00.000Z, 2027-04-01T06:00:00.000Z
+Schedule Trigger, next fires by n8n's own cron library: 2026-11-01T13:00:00.000Z, 2026-12-01T13:00:00.000Z, 2027-01-01T13:00:00.000Z, 2027-02-01T13:00:00.000Z, 2027-03-01T13:00:00.000Z, 2027-04-01T13:00:00.000Z
 
 RUN 1: delivery off, four tenants (two work, one cannot be built, one has a wrong key)
-status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
-  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+status error, finished None, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
   Settings                           outputs (items) 1
   One item per tenant                outputs (items) 4
   Build the report                   outputs (items) 2+2
@@ -18,13 +18,13 @@ status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 
   Stop and Error                     outputs (items) 
     build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
     build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
-    built, delivery off | Example Outfitters | built, delivery off | deck 29e121d307da, 10 slides, nothing sent
-    built, delivery off | Second Store | built, delivery off | deck 3d95b5bdb91c, 7 slides, nothing sent
+    built, delivery off | Example Outfitters | built, delivery off | deck 4383bb6ce576, 10 slides, nothing sent
+    built, delivery off | Second Store | built, delivery off | deck 4ec57ed58472, 7 slides, nothing sent
   execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
 
 RUN 2: the same month again, delivery off
-status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
-  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+status error, finished None, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
   Settings                           outputs (items) 1
   One item per tenant                outputs (items) 4
   Build the report                   outputs (items) 2+2
@@ -39,13 +39,13 @@ status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 
   Stop and Error                     outputs (items) 
     build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
     build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
-    built, delivery off | Example Outfitters | built, delivery off | deck 29e121d307da, 10 slides, nothing sent
-    built, delivery off | Second Store | built, delivery off | deck 3d95b5bdb91c, 7 slides, nothing sent
+    built, delivery off | Example Outfitters | built, delivery off | deck 4383bb6ce576, 10 slides, nothing sent
+    built, delivery off | Second Store | built, delivery off | deck 4ec57ed58472, 7 slides, nothing sent
   execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
 
 RUN 3: Slack on
-status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
-  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+status error, finished None, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
   Settings                           outputs (items) 1
   One item per tenant                outputs (items) 4
   Build the report                   outputs (items) 2+2
@@ -70,8 +70,8 @@ status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 
   execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
 
 RUN 4: Slack on, the same month again
-status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
-  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+status error, finished None, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
   Settings                           outputs (items) 1
   One item per tenant                outputs (items) 4
   Build the report                   outputs (items) 2+2
@@ -84,15 +84,15 @@ status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 
   Alert on Slack?                    outputs (items) 1+0
   Post the alert to Slack            outputs (items) 1
   Stop and Error                     outputs (items) 
-    already delivered | Example Outfitters | skipped, already delivered | deck 29e121d307da, sent before
-    already delivered | Second Store | skipped, already delivered | deck 3d95b5bdb91c, sent before
+    already delivered | Example Outfitters | skipped, already delivered | deck 4383bb6ce576, sent before
+    already delivered | Second Store | skipped, already delivered | deck 4ec57ed58472, sent before
     build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
     build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
   execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
 
 RUN 5: only the tenants that work
-status success, finished True, mode cli, trigger Schedule, 1st of the month 06:00 UTC
-  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+status success, finished True, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
   Settings                           outputs (items) 1
   One item per tenant                outputs (items) 2
   Build the report                   outputs (items) 2+0
@@ -102,12 +102,12 @@ status success, finished True, mode cli, trigger Schedule, 1st of the month 06:0
   Summary                            outputs (items) 1
   Any failed?                        outputs (items) 0+1
   All done                           outputs (items) 1
-    already delivered | Example Outfitters | skipped, already delivered | deck 29e121d307da, sent before
-    already delivered | Second Store | skipped, already delivered | deck 3d95b5bdb91c, sent before
+    already delivered | Example Outfitters | skipped, already delivered | deck 4383bb6ce576, sent before
+    already delivered | Second Store | skipped, already delivered | deck 4ec57ed58472, sent before
 
 RUN 6: email on with no SMTP credential, another month
-status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
-  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+status error, finished None, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
   Settings                           outputs (items) 1
   One item per tenant                outputs (items) 2
   Build the report                   outputs (items) 2+0
@@ -128,4 +128,23 @@ status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 
     email failed | Second Store | failed | the deck was built but the email was not sent: the mail server accepted no recipient
   execution error: Monthly report failed for Example Outfitters (the deck was built but the email was not sent: the mail server accepted no recipient); Second Store (the deck was built but the email was not sent: the mail server accepted no recipient)
 
-33 checks passed, 0 failed
+RUN 7: tenant entries that carry a paid_connection_id, one real and one unknown
+status error, finished None, mode cli, trigger Schedule, 1st of the month 13:00 UTC
+  Schedule, 1st of the month 13:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 2
+  Build the report                   outputs (items) 1+1
+  Already delivered?                 outputs (items) 0+1
+  Any delivery on?                   outputs (items) 0+1
+  Result: built, delivery off        outputs (items) 1
+  Result: build failed               outputs (items) 1
+  All results                        outputs (items) 2
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 1+0
+  Alert on Slack?                    outputs (items) 0+1
+  Stop and Error                     outputs (items) 
+    build failed | Ads Wrong Id Co | failed | 422 - "{\"detail\":\"no active paid media connection found with that id\"}"
+    built, delivery off | Ads Named Co | built, delivery off | deck 339d5ad293f9, 10 slides, nothing sent
+  execution error: Monthly report failed for Ads Wrong Id Co (422 - "{\"detail\":\"no active paid media connection found with that id\"}")
+
+36 checks passed, 0 failed

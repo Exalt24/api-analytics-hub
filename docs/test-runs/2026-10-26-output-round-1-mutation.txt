@@ -1,0 +1,106 @@
+Derived mutation guards on the output round 1 fixes (tests/derived_guards.py with mutate_ast.py), 2026-10-26.
+
+Only the lines changed since 0e30795 were mutated (the lines come from `git diff -U0 0e30795`, the mutants from the syntax tree). A mutant counts as killed only when one of
+the class table tests or one of the three corpus replays goes red; the existing tests were not part of the run. The 300 month fuzz case of the monthly run corpus was left out of the
+runs (44 s each). The first round of survivors named four lines no table pinned (the generator was not tied to the committed workflow the tables read; the exact 12 and 15 character
+split; a small rise read as a fall; the store, website and search headlines and a zero base change) and each got a test, then the files were run again; the results below are of that last run.
+
+file                          sites  killed  survived  tests that had to go red
+n8n/build_workflow.py            24      24         0  test_n8n_class_tables, test_run_corpus_blind_1, test_meta_corpus_blind_1
+app/report/search.py             10      10         0  test_report_output_round_1_classes, test_search_corpus_blind_1
+app/report/monthly.py            46      46         0  all four files
+app/report/sources.py             4       4         0  all four files
+app/report/web.py                 4       4         0  all four files
+app/report/insights.py         the prompt rule is inside one string constant outside the changed lines: 0 mutants; pinned by a test of the prompt text
+
+total 88 mutants, 88 killed, 0 survived
+
+every verdict and the first test that went red for it:
+  build_workflow.py:43  string '0 13 1 * *' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:47  string 'connection_id' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:47  string 'web_connection_id' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:47  string 'paid_connection_id' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:47  string 'search_connection_id' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:48  Add -> Sub  [(module)]  killed  <- tests/test_n8n_class_tables.py
+  build_workflow.py:48  Add -> Sub  [(module)]  killed  <- tests/test_n8n_class_tables.py
+  build_workflow.py:48  string 'Object.fromEntries(Objec' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:48  string ', ' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:48  Mod -> Mult  [(module)]  killed  <- tests/test_n8n_class_tables.py
+  build_workflow.py:48  string "'%s'" -> ''  [(module)]  killed  <- tests/test_n8n_class_tables.py
+  build_workflow.py:49  string '].includes(e[0]) && e[1]' -> ''  [(module)]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:110  delete the call statement  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:110  string 'Schedule, 1st of the mon' -> ''  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:110  string 'n8n-nodes-base.scheduleT' -> ''  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:110  0 -> 1  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:110  400 -> 401  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:128  Add -> Sub  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:128  Add -> Sub  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:128  string ')) }}' -> ''  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:128  string '{{ JSON.stringify(Object' -> ''  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:205  delete the call statement  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:205  string 'Schedule, 1st of the mon' -> ''  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  build_workflow.py:205  string 'Settings' -> ''  [build]  killed  <- test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  search.py:68  15 -> 16  [(module)]  killed  <- test_the_cut_of_the_finding_keys_is_exactly_this_so_the_split_of_30_characters_is_pinned
+  search.py:69  Sub -> Add  [(module)]  killed  <- test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched[page-31]
+  search.py:69  Sub -> Add  [(module)]  killed  <- test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched[page-31]
+  search.py:69  3 -> 4  [(module)]  killed  <- test_the_cut_of_the_finding_keys_is_exactly_this_so_the_split_of_30_characters_is_pinned
+  search.py:116  return value -> None  [_cut]  killed  <- test_two_keys_that_differ_in_their_last_12_characters_never_print_the_same[page-22]
+  search.py:116  negate the condition  [_cut]  killed  <- test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched[page-22]
+  search.py:116  LtE -> Gt  [_cut]  killed  <- test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched[page-22]
+  search.py:116  Add -> Sub  [_cut]  killed  <- test_two_keys_that_differ_in_their_last_12_characters_never_print_the_same[page-30]
+  search.py:116  Add -> Sub  [_cut]  killed  <- test_two_keys_that_differ_in_their_last_12_characters_never_print_the_same[page-30]
+  search.py:116  string '...' -> ''  [_cut]  killed  <- test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched[page-31]
+  monthly.py:532  string 'further from the top' -> ''  [(module)]  killed  <- test_the_narrative_line_for_average_position_names_the_direction_in_words_that_are_right[r
+  monthly.py:532  string 'nearer the top' -> ''  [(module)]  killed  <- test_the_narrative_line_for_average_position_names_the_direction_in_words_that_are_right[f
+  monthly.py:533  string 'each click costs more' -> ''  [(module)]  killed  <- test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+  monthly.py:533  string 'each click costs less' -> ''  [(module)]  killed  <- test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+  monthly.py:539  Gt -> LtE  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:539  0 -> 1  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-small_rise]
+  monthly.py:540  negate the condition  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:540  In -> NotIn  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:541  return value -> None  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:541  negate the condition  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:541  string 'worsened' -> ''  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:541  string 'improved' -> ''  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-fall]
+  monthly.py:542  return value -> None  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:542  negate the condition  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:542  string 'rose' -> ''  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:542  string 'fell' -> ''  [change_verb]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-fall]
+  monthly.py:558  negate the condition  [move_phrase]  killed  <- test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+  monthly.py:558  Is -> IsNot  [move_phrase]  killed  <- test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+  monthly.py:558  Gt -> LtE  [move_phrase]  killed  <- test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+  monthly.py:558  Gt -> LtE  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:558  0 -> 1  [move_phrase]  killed  <- test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+  monthly.py:558  0 -> 1  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-small_rise]
+  monthly.py:559  string '+-' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:559  negate the condition  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:559  Is -> IsNot  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:560  negate the condition  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:560  In -> NotIn  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  return value -> None  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  Mod -> Mult  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  string '%s by %s (%s)' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  negate the condition  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  string 'worse' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  string 'better' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-fall]
+  monthly.py:561  negate the condition  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  0 -> 1  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  monthly.py:561  1 -> 2  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-fall]
+  monthly.py:562  return value -> None  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:562  Mod -> Mult  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:562  string '%s %s' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:562  negate the condition  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:562  string 'up' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-rise]
+  monthly.py:562  string 'down' -> ''  [move_phrase]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[search_clicks-fall]
+  monthly.py:616  return value -> None  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[net_sales-rise]
+  monthly.py:616  Mod -> Mult  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[net_sales-rise]
+  monthly.py:616  string '%s %s %s from %s%s' -> ''  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[net_sales-rise]
+  monthly.py:616  string '+-' -> ''  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[net_sales-rise]
+  sources.py:162  return value -> None  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  sources.py:162  Mod -> Mult  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  sources.py:162  string '%s %s %s from %s%s' -> ''  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  sources.py:162  string '+-' -> ''  [claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[position-rise]
+  web.py:295  return value -> None  [web_claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[sessions-rise]
+  web.py:295  Mod -> Mult  [web_claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[sessions-rise]
+  web.py:295  string '%s %s %s from %s%s' -> ''  [web_claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[sessions-rise]
+  web.py:295  string '+-' -> ''  [web_claim_title]  killed  <- test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[sessions-rise]

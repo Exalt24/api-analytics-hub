@@ -1,0 +1,62 @@
+Failures of the output round 1 tests against the code as it was at 0e30795 (the run before the fixes), 2026-10-26.
+
+The new test files and the three corpora were copied into a checkout of 0e30795 (the 300 month fuzz case was left out of both runs). The F2 and F3 tests import three names the fixes add
+(LOWER_IS_BETTER, change_verb, KEY_TAIL), so those three were added to the old copy as stand-ins that behave as the old code did, to let the assertions run. The F1 tables read the
+schedule from the workflow's own node, so in run B the old workflow's node was renamed to the new name and kept its old cron `0 6 1 * *`; the one test that says the generator writes the
+committed file fails there too, for the rename. Errors in run A are the corpus replay of the run, which cannot find the new schedule node in the old workflow.
+
+RUN A: old code, old workflow as committed: 306 failed, 195 passed, 1 deselected, 36 errors in 5.10s
+  144 x test_n8n_class_tables.py::test_the_sync_end_at_the_schedule_time_covers_the_last_day_of_the_month_it_reports_and_no_more
+    1 x test_n8n_class_tables.py::test_the_table_reaches_a_leap_february_a_month_ending_on_sunday_and_every_month_of_2026_and_2027
+    2 x test_n8n_class_tables.py::test_each_id_a_tenant_carries_reaches_the_body_and_nothing_else_does
+    1 x test_n8n_class_tables.py::test_the_body_expression_names_exactly_the_fields_the_endpoint_accepts
+    1 x test_n8n_class_tables.py::test_the_readme_names_the_four_optional_ids_and_the_schedule_hour
+   68 x test_report_output_round_1_classes.py::test_two_keys_that_differ_in_their_last_12_characters_never_print_the_same
+   68 x test_report_output_round_1_classes.py::test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched
+    1 x test_report_output_round_1_classes.py::test_the_five_page_addresses_and_the_three_long_queries_of_the_finding_print_as_eight_different_texts
+    1 x test_report_output_round_1_classes.py::test_the_cut_of_the_finding_keys_is_exactly_this_so_the_split_of_30_characters_is_pinned
+    1 x test_report_output_round_1_classes.py::test_a_key_with_runs_of_blanks_or_line_breaks_is_one_line_and_text_is_never_dropped_from_the_end
+    8 x test_report_output_round_1_classes.py::test_a_move_of_a_figure_is_worded_the_way_that_figure_reads
+    2 x test_report_output_round_1_classes.py::test_the_narrative_line_for_average_position_names_the_direction_in_words_that_are_right
+    1 x test_report_output_round_1_classes.py::test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too
+    1 x test_report_output_round_1_classes.py::test_the_prompt_that_writes_the_narrative_tells_the_model_the_same_rule_for_the_figures_where_a_lower_number_is_better
+    1 x test_meta_corpus_blind_1.py::test_case_35_the_deck_the_schedule_builds_holds_every_day_of_the_ad_month
+    1 x test_search_corpus_blind_1.py::test_case_35_five_page_addresses_of_one_site_print_as_five_different_texts
+    1 x test_search_corpus_blind_1.py::test_case_36_three_long_queries_that_start_alike_print_as_three_different_texts_and_the_short_one_whole
+    1 x test_search_corpus_blind_1.py::test_case_37_the_narrative_says_a_position_that_went_from_6_to_9_got_worse
+    1 x test_search_corpus_blind_1.py::test_case_38_the_saved_deck_shows_five_different_page_cells
+    1 x test_run_corpus_blind_1.py::test_case_22_the_body_names_the_ad_account_the_tenant_entry_carries
+
+  first assertion: test_each_id_a_tenant_carries_reaches_the_body_and_nothing_else_does[]  =>  AssertionError: ('connection_id',)
+  first assertion: test_the_body_expression_names_exactly_the_fields_the_endpoint_accepts  =>  assert False
+  first assertion: test_the_readme_names_the_four_optional_ids_and_the_schedule_hour  =>  assert False
+  first assertion: test_a_cut_key_fits_the_cell_and_a_short_key_is_untouched[page-31]  =>  AssertionError: assert (30 <= 30 and '...' in 'https://www.acmeroofing.com...' and False)
+  first assertion: test_a_move_of_a_figure_is_worded_the_way_that_figure_reads[cpc-rise]  =>  AssertionError: assert 'up 100.0%' == 'worse by 100...k costs more)'
+  first assertion: test_a_zero_base_rise_of_a_lower_is_better_figure_is_worded_too  =>  AssertionError: assert 'up 1' == 'worse by 1 (...k costs more)'
+  first assertion: test_case_38_the_saved_deck_shows_five_different_page_cells  =>  AssertionError: ['https://www.acmeroofing.com...', 'https://www.acmeroofing.com...', 'https://www.acmeroofing.com...', 'https://www.acmeroofing.com...', 'https://www.acmeroofing.com...']
+  first assertion: test_case_22_the_body_names_the_ad_account_the_tenant_entry_carries  =>  AssertionError: assert {'month': '2026-10'} == {'month': '20...ection uuid>'}
+
+RUN B: old code, the old cron `0 6 1 * *` under the new node name: 156 failed, 126 passed, 1 deselected in 5.13s
+    1 x test_n8n_class_tables.py::test_the_tables_read_the_committed_workflow_and_the_generator_writes_exactly_that_file
+  144 x test_n8n_class_tables.py::test_the_sync_end_at_the_schedule_time_covers_the_last_day_of_the_month_it_reports_and_no_more
+    2 x test_n8n_class_tables.py::test_each_id_a_tenant_carries_reaches_the_body_and_nothing_else_does
+    1 x test_n8n_class_tables.py::test_the_body_expression_names_exactly_the_fields_the_endpoint_accepts
+    1 x test_n8n_class_tables.py::test_the_readme_names_the_four_optional_ids_and_the_schedule_hour
+    1 x test_run_corpus_blind_1.py::test_the_endpoint_gives_the_outcome_the_corpus_expects
+    1 x test_run_corpus_blind_1.py::test_the_recorded_actual_still_holds
+    1 x test_run_corpus_blind_1.py::test_case_17_the_deck_the_schedule_builds_counts_the_month_in_full_for_ads_and_search
+    1 x test_run_corpus_blind_1.py::test_case_18_asking_again_replays_the_same_deck_and_that_deck_has_no_missing_day
+    1 x test_run_corpus_blind_1.py::test_case_22_the_body_names_the_ad_account_the_tenant_entry_carries
+    1 x test_run_corpus_blind_1.py::test_case_22_the_hub_builds_the_deck_from_that_body
+    1 x test_meta_corpus_blind_1.py::test_case_35_the_deck_the_schedule_builds_holds_every_day_of_the_ad_month
+
+  first assertion: test_each_id_a_tenant_carries_reaches_the_body_and_nothing_else_does[]  =>  AssertionError: ('connection_id',)
+  first assertion: test_the_body_expression_names_exactly_the_fields_the_endpoint_accepts  =>  assert False
+  first assertion: test_the_readme_names_the_four_optional_ids_and_the_schedule_hour  =>  assert False
+  first assertion: test_the_endpoint_gives_the_outcome_the_corpus_expects[13]  =>  AssertionError: case 13 (pass): The operator names the main ad account and retries the same key; a refusal would leave the client with no deck. | got 422 this tenant has 2 active paid media connections, name one with --paid-connec
+  first assertion: test_the_recorded_actual_still_holds[13]  =>  AssertionError: assert '422 this ten...id-connection' == '200 created,...livered False'
+  first assertion: test_case_22_the_body_names_the_ad_account_the_tenant_entry_carries  =>  AssertionError: assert {'month': '2026-10'} == {'month': '20...ection uuid>'}
+  first assertion: test_case_22_the_hub_builds_the_deck_from_that_body  =>  assert (5 == 12)
+
+Run A shows the 144 schedule rows as failures too, but with a KeyError: the old workflow has no node of the new name. Run B shows the assertion each of the 144 rows fails on:
+  AssertionError: ga4 synced at 2024-01-01T06:00:00+00:00 ends 2023-12-31: 2023-12-31 is never stored   (assert date(2026, 1, 31) > date(2026, 1, 31) for the same row of 2026)
