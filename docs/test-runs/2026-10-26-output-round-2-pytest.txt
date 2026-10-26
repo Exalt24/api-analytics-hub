@@ -1,0 +1,12 @@
+Full suite after the output round 2 fixes, 2026-10-26, scratch database hub_wr_2 (dropped afterwards), run in two foreground parts that together name all 56 test files.
+
+Part 1 (the first 40 test files, alphabetical): 4312 passed, 5 xfailed in 167.75s (0:02:47)
+Part 2 (the other 16 files, test_report_service_db.py to test_tokens.py): 377 passed in 74.75s (0:01:14)
+
+Total: 4,689 passed, 5 expected failures, 0 failed (round 1 ended at 3,146 passed, 5 expected failures). The new files hold 1,454 tests (test_output_round_2_classes.py) and 89 (test_hub_corpus_blind_2.py).
+
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case24] - an empty bytes source raises ValueError instead of LoadRefused (nothing is written either way); KNOWN_LIMIT, score 1
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case39] - a changed insurer with no filing id is keyed by an empty reference, so only the first change alerts; KNOWN_LIMIT, sc
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case41] - a trailing non-breaking space (U+00A0) is not removed by the regular expression class for white space; KNOWN_LIMIT, 
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case42] - in absent mode a day with many carriers back counts them as moved rows against the 25 percent ceiling, so the operat
+XFAIL tests/test_ga4_sync_db.py::test_a_day_google_later_leaves_out_keeps_its_old_figures_which_is_the_known_limit - known limit: a day Google later reports as all zero sends no row, so the old figures stay

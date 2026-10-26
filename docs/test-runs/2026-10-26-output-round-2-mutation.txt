@@ -1,0 +1,51 @@
+Derived mutation guards on the output round 2 fixes (tests/derived_guards.py with mutate_ast.py), 2026-10-26.
+
+Only the functions this change wrote or changed were mutated (paid_month and _purchase_value, and in app/sync/cli.py account_key, previous_month_start, window_start,
+add_arguments, check_days and run_connection_sync, the three external_account properties of the connectors, and the whole of scripts/sync_ga4.py, which now runs the shared body).
+A mutant counts as killed only when one of the CLASS-TABLE tests of tests/test_output_round_2_classes.py or the corpus replay tests/test_hub_corpus_blind_2.py goes red; the existing
+tests were not part of the run. Each worker had its own scratch database. The first round of survivors named lines no table pinned (the day count of purchases, the 1 to 3650 bounds
+of --days, the help text, the missing token exit of the website script) and each got a table row, then the files were run again; the results below are of that last run.
+
+Totals: 113 mutants, 103 killed, 10 survived. The survivors, each read:
+  paid.py:103 and :121, BitOr to BitAnd: a `|` in a type annotation, never evaluated under `from __future__ import annotations` (equivalent).
+  sync_ga4.py:52, the '__main__' string emptied: the module is imported by the tests, not run as a file (equivalent here, the existing subprocess tests run it as a file).
+  cli.py:48, timedelta(days=1) to days=2 in previous_month_start: the day two before the 1st is still in the previous month, so the result is the same (equivalent).
+  cli.py:56 and :57, required=True to False for --tenant and --connection, cli.py:56 the help text 'tenant uuid' emptied, cli.py:76 return 2 to 3 and to None (no DATABASE_URL),
+  cli.py:95 return None (the database could not be used): lines this change did not touch; tests/test_report_sources_db.py pins them (a missing tenant or connection, no database, an unreachable one).
+
+app/report/paid.py: 26 mutants judged (26 sites, 0 did not compile), 24 killed, 2 survived
+  _purchase_value                     12 sites   11 killed    1 survived
+  paid_month                          14 sites   13 killed    1 survived
+SURVIVED paid.py:103  BitOr -> BitAnd
+SURVIVED paid.py:121  BitOr -> BitAnd
+
+app/sync/cli.py: 67 mutants judged (67 sites, 0 did not compile), 60 killed, 7 survived
+  account_key                          3 sites    3 killed    0 survived
+  add_arguments                       15 sites   12 killed    3 survived
+  check_days                          10 sites   10 killed    0 survived
+  previous_month_start                 5 sites    4 killed    1 survived
+  run_connection_sync                 30 sites   27 killed    3 survived
+  window_start                         4 sites    4 killed    0 survived
+SURVIVED cli.py:48  1 -> 2
+SURVIVED cli.py:56  True -> False
+SURVIVED cli.py:56  string 'tenant uuid' -> ''
+SURVIVED cli.py:57  True -> False
+SURVIVED cli.py:76  2 -> 3
+SURVIVED cli.py:76  return value -> None
+SURVIVED cli.py:95  return value -> None
+
+app/connectors/meta.py: 3 mutants judged (3 sites, 0 did not compile), 3 killed, 0 survived
+  external_account                     3 sites    3 killed    0 survived
+
+app/connectors/gsc.py: 1 mutants judged (1 sites, 0 did not compile), 1 killed, 0 survived
+  external_account                     1 sites    1 killed    0 survived
+
+app/connectors/ga4.py: 1 mutants judged (1 sites, 0 did not compile), 1 killed, 0 survived
+  external_account                     1 sites    1 killed    0 survived
+
+scripts/sync_ga4.py: 15 mutants judged (15 sites, 0 did not compile), 14 killed, 1 survived
+  (module)                             6 sites    5 killed    1 survived
+  main                                 5 sites    5 killed    0 survived
+  run                                  4 sites    4 killed    0 survived
+SURVIVED sync_ga4.py:52  string '__main__' -> ''
+

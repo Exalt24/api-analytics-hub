@@ -1,0 +1,62 @@
+The new tests of output round 2 run against a git archive of 71cffbb (the app, scripts and n8n folders of that commit with the two new test files and the corpus copied in), 2026-10-26.
+
+tests/test_output_round_2_classes.py: 850 failed, 604 passed (the 604 are the tables that pin what was already right: the day shapes each connector writes, the click through rate,
+cost per click and position over every mix of them, the spellings of one account against a different property type, a missing token). Failures by test:
+    359 test_a_default_sync_on_any_day_still_holds_the_whole_previous_month
+     28 test_another_account_is_refused_before_anything_is_claimed_and_the_reason_names_both_and_no_token
+      3 test_days_must_be_one_to_3650_for_every_script
+     17 test_every_spelling_of_the_same_account_runs_and_a_different_property_type_is_refused
+    390 test_the_default_window_at_the_schedule_time_holds_the_whole_previous_month
+      3 test_the_help_of_every_script_says_what_the_default_window_is
+      1 test_the_month_the_finding_describes_prints_1_50_and_not_3_00
+     48 test_the_return_is_taken_over_one_set_of_days_for_every_mix_of_count_value_and_spend
+      1 test_the_three_sync_scripts_all_run_the_one_shared_sync_body
+
+The failing assertion of each, from the old code:
+=== -k test_the_month_the_finding_describes
+E   AssertionError: assert (Decimal('3.00') == Decimal('1.50'))
+E    +  where Decimal('1.50') = Decimal('1.50')
+=== -k test_the_return_is_taken_over_one_set and 8
+E   AssertionError: ((None, None, 30000), (10000, 0, None))
+E   assert (0, 0, 0) == (1, 10000, 0)
+E     
+=== -k test_the_default_window_at_the_schedule_time and meta-2026-11
+E   AssertionError: meta synced at 2026-11-01T12:00:00+00:00 starts 2026-10-02: 2026-10-01 is never stored
+E   assert datetime.date(2026, 10, 2) <= datetime.date(2026, 10, 1)
+=== -k test_the_default_window_at_the_schedule_time and meta-2028-3
+=== -k test_every_spelling_of_the_same_account and meta
+=== -k test_another_account_is_refused and meta-act_1001-other
+E   AssertionError: ('meta', 'act_1001', '2002', 0, 'sync succeeded: window 2026-10-02 to 2026-11-01, 0 rows written, 0 api calls, 0 waits
+E     ', '')
+E   assert (0 == 2)
+=== -k test_another_account_is_refused and gsc
+E   AssertionError: ('gsc', 'sc-domain:example.com', 'sc-domain:client-b.example', 0, 'sync succeeded: window 2026-10-02 to 2026-11-01, 0 rows written, 0 api calls, 0 waits
+E     ', '')
+E   assert (0 == 2)
+=== -k test_the_three_sync_scripts
+E   AssertionError: sync_ga4
+E   assert 'run_connection_sync(' in '# LIFESPAN: permanent\n"""Pull one GA4 property\'s daily figures into the stored snapshots for one connection.\n\n   ...must be 1 to 3650")\n    return asyncio.run(run(args))\n\n\nif __name__ == "__main__":\n    raise SystemExit(main())\n'
+
+tests/test_hub_corpus_blind_2.py: 10 failed, 79 passed. The four recorded cases the fixes answer (34 F1, 35 F2, 36 F3, 37 F3b) each fail the check of what the corpus expects and the
+check that the code no longer gives the recorded actual; the case 34 and 36 checks fail too. Case 38 (the pinned known limit) passes on both, which is what pinning means.
+E   AssertionError: case 34 (pass): An agency owner reads Return on ad spend off the deck and quotes it to the client; on an ordinary month where Meta leaves the zero purchase action out, the deck doubles it (3.00 instead of 1.50)
+E   AssertionError: case 35 (pass): An agency that runs each source's sync on the 1st as the n8n README tells it gets an October deck with no ad or search data for Oct 1 in every 31-day month, and the workflow's fixed key keeps th
+E   AssertionError: case 36 (fail): An agency syncing a dozen clients by hand from one shell sends client B a deck showing client A's ad spend (EUR 3,596.00, up 237.7%) because the script never checks the account against the conne
+E   AssertionError: case 37 (fail): An agency syncing properties by hand from one shell sends client B a search slide built from client A's site (clicks up 2,297.3 percent) because the script never checks the property against the 
+E   AssertionError: case 34 still gives the recorded actual
+E   AssertionError: case 35 still gives the recorded actual
+E   AssertionError: case 36 still gives the recorded actual
+E   AssertionError: case 37 still gives the recorded actual
+E   AssertionError: ['Ad spend | EUR 2,000.00 | EUR 2,000.00 | EUR 0.00 | 0.0% | ', 'Return on ad spend | 3.00 | 3.00 | 0.00 | 0.0% | on 1...es | 30 | 30 | 0.0%', 'Purchase value | EUR 3,000.00 | EUR 3,000.00 | 0.0%', 'Return on a
+E   assert (0 == 2)
+FAILED tests/test_hub_corpus_blind_2.py::test_the_code_gives_the_outcome_the_corpus_expects[34-F1]
+FAILED tests/test_hub_corpus_blind_2.py::test_the_code_gives_the_outcome_the_corpus_expects[35-F2]
+FAILED tests/test_hub_corpus_blind_2.py::test_the_code_gives_the_outcome_the_corpus_expects[36-F3]
+FAILED tests/test_hub_corpus_blind_2.py::test_the_code_gives_the_outcome_the_corpus_expects[37-F3b]
+FAILED tests/test_hub_corpus_blind_2.py::test_a_fixed_finding_no_longer_gives_what_71cffbb_gave[34-F1]
+FAILED tests/test_hub_corpus_blind_2.py::test_a_fixed_finding_no_longer_gives_what_71cffbb_gave[35-F2]
+FAILED tests/test_hub_corpus_blind_2.py::test_a_fixed_finding_no_longer_gives_what_71cffbb_gave[36-F3]
+FAILED tests/test_hub_corpus_blind_2.py::test_a_fixed_finding_no_longer_gives_what_71cffbb_gave[37-F3b]
+FAILED tests/test_hub_corpus_blind_2.py::test_case_34_the_month_with_zero_purchase_days_prints_a_return_that_agrees_with_its_own_spend_and_value
+FAILED tests/test_hub_corpus_blind_2.py::test_case_36_the_refusal_names_both_accounts_and_nothing_was_written_for_the_stale_run
+10 failed, 79 passed in 9.20s
