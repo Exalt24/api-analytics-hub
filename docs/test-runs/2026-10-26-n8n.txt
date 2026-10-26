@@ -1,0 +1,130 @@
+n8n 2.44.6, image n8nio/n8n, workflow hubMonthlyReport01, month 2026-10
+
+RUN 1: delivery off, four tenants (two work, one cannot be built, one has a wrong key)
+status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
+  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 4
+  Build the report                   outputs (items) 2+2
+  Already delivered?                 outputs (items) 0+2
+  Any delivery on?                   outputs (items) 0+2
+  Result: built, delivery off        outputs (items) 2
+  Result: build failed               outputs (items) 2
+  All results                        outputs (items) 4
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 1+0
+  Alert on Slack?                    outputs (items) 0+1
+  Stop and Error                     outputs (items) 
+    build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
+    build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
+    built, delivery off | Example Outfitters | built, delivery off | deck 5536fa6ff6c7, 10 slides, nothing sent
+    built, delivery off | Second Store | built, delivery off | deck 1f5a641a0944, 7 slides, nothing sent
+  execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
+
+RUN 2: the same month again, delivery off
+status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
+  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 4
+  Build the report                   outputs (items) 2+2
+  Already delivered?                 outputs (items) 0+2
+  Any delivery on?                   outputs (items) 0+2
+  Result: built, delivery off        outputs (items) 2
+  Result: build failed               outputs (items) 2
+  All results                        outputs (items) 4
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 1+0
+  Alert on Slack?                    outputs (items) 0+1
+  Stop and Error                     outputs (items) 
+    build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
+    build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
+    built, delivery off | Example Outfitters | built, delivery off | deck 5536fa6ff6c7, 10 slides, nothing sent
+    built, delivery off | Second Store | built, delivery off | deck 1f5a641a0944, 7 slides, nothing sent
+  execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
+
+RUN 3: Slack on
+status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
+  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 4
+  Build the report                   outputs (items) 2+2
+  Already delivered?                 outputs (items) 0+2
+  Any delivery on?                   outputs (items) 2+0
+  Slack on?                          outputs (items) 2+0
+  Post the summary to Slack          outputs (items) 2+0
+  Email on?                          outputs (items) 0+2
+  Mark delivered                     outputs (items) 2+0
+  Result: delivered                  outputs (items) 2
+  Result: build failed               outputs (items) 2
+  All results                        outputs (items) 4
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 1+0
+  Alert on Slack?                    outputs (items) 1+0
+  Post the alert to Slack            outputs (items) 1
+  Stop and Error                     outputs (items) 
+    build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
+    build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
+    delivered | Example Outfitters | delivered | marked delivered, so a second run sends nothing
+    delivered | Second Store | delivered | marked delivered, so a second run sends nothing
+  execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
+
+RUN 4: Slack on, the same month again
+status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
+  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 4
+  Build the report                   outputs (items) 2+2
+  Already delivered?                 outputs (items) 2+0
+  Result: already delivered          outputs (items) 2
+  Result: build failed               outputs (items) 2
+  All results                        outputs (items) 4
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 1+0
+  Alert on Slack?                    outputs (items) 1+0
+  Post the alert to Slack            outputs (items) 1
+  Stop and Error                     outputs (items) 
+    already delivered | Example Outfitters | skipped, already delivered | deck 5536fa6ff6c7, sent before
+    already delivered | Second Store | skipped, already delivered | deck 1f5a641a0944, sent before
+    build failed | No Store Co | failed | 422 - "{\"detail\":\"no active connection found for this tenant\"}"
+    build failed | Wrong Key Co | failed | 401 - "{\"detail\":\"invalid credentials\"}"
+  execution error: Monthly report failed for No Store Co (422 - "{\"detail\":\"no active connection found for this tenant\"}"); Wrong Key Co (401 - "{\"detail\":\"invalid credentials\"}")
+
+RUN 5: only the tenants that work
+status success, finished True, mode cli, trigger Schedule, 1st of the month 06:00 UTC
+  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 2
+  Build the report                   outputs (items) 2+0
+  Already delivered?                 outputs (items) 2+0
+  Result: already delivered          outputs (items) 2
+  All results                        outputs (items) 2
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 0+1
+  All done                           outputs (items) 1
+    already delivered | Example Outfitters | skipped, already delivered | deck 5536fa6ff6c7, sent before
+    already delivered | Second Store | skipped, already delivered | deck 1f5a641a0944, sent before
+
+RUN 6: email on with no SMTP credential, another month
+status error, finished None, mode cli, trigger Schedule, 1st of the month 06:00 UTC
+  Schedule, 1st of the month 06:00 UTC outputs (items) 1
+  Settings                           outputs (items) 1
+  One item per tenant                outputs (items) 2
+  Build the report                   outputs (items) 2+0
+  Already delivered?                 outputs (items) 0+2
+  Any delivery on?                   outputs (items) 2+0
+  Slack on?                          outputs (items) 0+2
+  Email on?                          outputs (items) 2+0
+  Fetch the deck                     outputs (items) 2+0
+  Email the deck                     outputs (items) 2
+  Email sent?                        outputs (items) 0+2
+  Result: email failed               outputs (items) 2
+  All results                        outputs (items) 2
+  Summary                            outputs (items) 1
+  Any failed?                        outputs (items) 1+0
+  Alert on Slack?                    outputs (items) 0+1
+  Stop and Error                     outputs (items) 
+    email failed | Example Outfitters | failed | the deck was built but the email was not sent: the mail server accepted no recipient
+    email failed | Second Store | failed | the deck was built but the email was not sent: the mail server accepted no recipient
+  execution error: Monthly report failed for Example Outfitters (the deck was built but the email was not sent: the mail server accepted no recipient); Second Store (the deck was built but the email was not sent: the mail server accepted no recipient)
+
+32 checks passed, 0 failed

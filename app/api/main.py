@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.api.auth import Authenticator, Principal, requires
+from app.api.reports import router as reports_router
 from app.db import Database, fetch_kpis, latest_runs
 from app.health import read_gauges
 from app.obs import Metrics, configure_logging, new_request_id
@@ -80,6 +81,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="api-analytics-hub", version="0.1.0", lifespan=lifespan)
+app.include_router(reports_router)
 
 # Locked to the configured dashboard origin. A wildcard with credentials is
 # rejected by browsers anyway, and a wildcard without them still lets any page on

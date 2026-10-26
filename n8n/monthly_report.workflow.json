@@ -1,0 +1,1263 @@
+{
+  "id": "hubMonthlyReport01",
+  "name": "Monthly report for each tenant",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Monthly report for each tenant\nRuns on the 1st of the month at 06:00 UTC and asks the hub for last month's deck, once for each tenant in `HUB_TENANTS_JSON`. Asking twice for a month gives the same deck and sends nothing twice.\n**Needs** `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` and the variables in n8n/README.md. Slack and email are **off** until `DELIVER_SLACK` or `DELIVER_EMAIL` is `true`.",
+        "height": 230,
+        "width": 560,
+        "color": 4
+      },
+      "id": "010e3b1a-5c7d-4e2f-9a10-4d6f6e74686c79",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "020e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7a",
+      "name": "Schedule, 1st of the month 06:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "030e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7b",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $env.HUB_REPORT_MONTH || $now.minus({ months: 1 }).toFormat('yyyy-MM') }}"
+            },
+            {
+              "id": "a-hub_url",
+              "name": "hub_url",
+              "type": "string",
+              "value": "={{ ($env.HUB_BASE_URL || '').replace(/\\/+$/, '') }}"
+            },
+            {
+              "id": "a-as_of",
+              "name": "as_of",
+              "type": "string",
+              "value": "={{ $env.HUB_AS_OF || '' }}"
+            },
+            {
+              "id": "a-slack_on",
+              "name": "slack_on",
+              "type": "boolean",
+              "value": "={{ $env.DELIVER_SLACK === 'true' }}"
+            },
+            {
+              "id": "a-email_on",
+              "name": "email_on",
+              "type": "boolean",
+              "value": "={{ $env.DELIVER_EMAIL === 'true' }}"
+            },
+            {
+              "id": "a-tenants",
+              "name": "tenants",
+              "type": "array",
+              "value": "={{ JSON.parse($env.HUB_TENANTS_JSON) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "040e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7c",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -120,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "tenants",
+        "include": "allOtherFields",
+        "options": {
+          "destinationFieldName": "tenant"
+        }
+      },
+      "id": "050e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7d",
+      "name": "One item per tenant",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        140,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.hub_url }}/api/reports/monthly",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.tenant.api_key }}"
+            },
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'monthly-report:' + $json.tenant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + ':' + $json.month }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.as_of ? { month: $json.month, as_of: $json.as_of } : { month: $json.month }) }}"
+      },
+      "id": "060e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7e",
+      "name": "Build the report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        80
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-already-delivered?",
+              "leftValue": "={{ $json.delivered }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "070e3b1a-5c7d-4e2f-9a10-4d6f6e74686c7f",
+      "name": "Already delivered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "skipped, already delivered"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'deck ' + $json.sha256.slice(0, 12) + ', sent before' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "080e3b1a-5c7d-4e2f-9a10-4d6f6e74686c80",
+      "name": "Result: already delivered",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        960,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-any-delivery-on?",
+              "leftValue": "={{ $('Settings').first().json.slack_on || $('Settings').first().json.email_on }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "090e3b1a-5c7d-4e2f-9a10-4d6f6e74686c81",
+      "name": "Any delivery on?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "built, delivery off"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'deck ' + $json.sha256.slice(0, 12) + ', ' + $json.slides + ' slides, nothing sent' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "100e3b1a-5c7d-4e2f-9a10-4d6f6e74686c82",
+      "name": "Result: built, delivery off",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1240,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-slack-on?",
+              "leftValue": "={{ $('Settings').first().json.slack_on }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "110e3b1a-5c7d-4e2f-9a10-4d6f6e74686c83",
+      "name": "Slack on?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1240,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: 'Monthly report for ' + $('One item per tenant').item.json.tenant.name + ', ' + $json.month + ': ' + $json.slides + ' slides from ' + $json.sources.join(', ') + '. ' + ($json.narrative[0] || '') }) }}"
+      },
+      "id": "120e3b1a-5c7d-4e2f-9a10-4d6f6e74686c84",
+      "name": "Post the summary to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1520,
+        80
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "failed"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'the deck was built but the Slack post failed: ' + ($json.error && $json.error.message || 'unknown') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "130e3b1a-5c7d-4e2f-9a10-4d6f6e74686c85",
+      "name": "Result: Slack failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1800,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-email-on?",
+              "leftValue": "={{ $('Settings').first().json.email_on }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "140e3b1a-5c7d-4e2f-9a10-4d6f6e74686c86",
+      "name": "Email on?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Settings').first().json.hub_url }}/api/reports/monthly/{{ $('Settings').first().json.month }}/deck",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('One item per tenant').item.json.tenant.api_key }}"
+            }
+          ]
+        }
+      },
+      "id": "150e3b1a-5c7d-4e2f-9a10-4d6f6e74686c87",
+      "name": "Fetch the deck",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        60
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.EMAIL_FROM }}",
+        "toEmail": "={{ $env.EMAIL_TO }}",
+        "subject": "={{ 'Monthly report, ' + $('Settings').first().json.month + ', ' + $('One item per tenant').item.json.tenant.name }}",
+        "emailFormat": "text",
+        "text": "The monthly report is attached.",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "id": "160e3b1a-5c7d-4e2f-9a10-4d6f6e74686c88",
+      "name": "Email the deck",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2360,
+        60
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-email-sent?",
+              "leftValue": "={{ Array.isArray($json.accepted) && $json.accepted.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "170e3b1a-5c7d-4e2f-9a10-4d6f6e74686c89",
+      "name": "Email sent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $('Settings').first().json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "failed"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'the deck was built but the email was not sent: ' + ($json.error && ($json.error.description || $json.error.message) || 'the mail server accepted no recipient') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "180e3b1a-5c7d-4e2f-9a10-4d6f6e74686c8a",
+      "name": "Result: email failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2920,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.hub_url }}/api/reports/monthly/{{ $('Settings').first().json.month }}/delivered",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('One item per tenant').item.json.tenant.api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}"
+      },
+      "id": "190e3b1a-5c7d-4e2f-9a10-4d6f6e74686c8b",
+      "name": "Mark delivered",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2920,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $('Settings').first().json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "delivered"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "marked delivered, so a second run sends nothing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "200e3b1a-5c7d-4e2f-9a10-4d6f6e74686c8c",
+      "name": "Result: delivered",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3200,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $('Settings').first().json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "failed"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'it was sent but could not be marked delivered: ' + ($json.error && $json.error.message || 'unknown') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "210e3b1a-5c7d-4e2f-9a10-4d6f6e74686c8d",
+      "name": "Result: not marked delivered",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3200,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-tenant",
+              "name": "tenant",
+              "type": "string",
+              "value": "={{ $('One item per tenant').item.json.tenant.name }}"
+            },
+            {
+              "id": "a-month",
+              "name": "month",
+              "type": "string",
+              "value": "={{ $('Settings').first().json.month }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "failed"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ ($json.error && ($json.error.description || $json.error.message)) || 'unknown error' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "220e3b1a-5c7d-4e2f-9a10-4d6f6e74686c8e",
+      "name": "Result: build failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 7
+      },
+      "id": "230e3b1a-5c7d-4e2f-9a10-4d6f6e74686c8f",
+      "name": "All results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        3480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "data",
+        "options": {}
+      },
+      "id": "240e3b1a-5c7d-4e2f-9a10-4d6f6e74686c90",
+      "name": "Summary",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3720,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-any-failed?",
+              "leftValue": "={{ $json.data.some(r => r.status === 'failed') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "250e3b1a-5c7d-4e2f-9a10-4d6f6e74686c91",
+      "name": "Any failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3960,
+        80
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "260e3b1a-5c7d-4e2f-9a10-4d6f6e74686c92",
+      "name": "All done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4240,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-alert-on-slack?",
+              "leftValue": "={{ $('Settings').first().json.slack_on }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "270e3b1a-5c7d-4e2f-9a10-4d6f6e74686c93",
+      "name": "Alert on Slack?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4240,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: 'Monthly report FAILED for ' + $('Summary').first().json.data.filter(r => r.status === 'failed').map(r => r.tenant + ' (' + r.detail + ')').join('; ') }) }}"
+      },
+      "id": "280e3b1a-5c7d-4e2f-9a10-4d6f6e74686c94",
+      "name": "Post the alert to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4520,
+        140
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ 'Monthly report failed for ' + $('Summary').first().json.data.filter(r => r.status === 'failed').map(r => r.tenant + ' (' + r.detail + ')').join('; ') }}"
+      },
+      "id": "290e3b1a-5c7d-4e2f-9a10-4d6f6e74686c95",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        4800,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule, 1st of the month 06:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "One item per tenant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per tenant": {
+      "main": [
+        [
+          {
+            "node": "Build the report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build the report": {
+      "main": [
+        [
+          {
+            "node": "Already delivered?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: build failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already delivered?": {
+      "main": [
+        [
+          {
+            "node": "Result: already delivered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Any delivery on?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any delivery on?": {
+      "main": [
+        [
+          {
+            "node": "Slack on?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: built, delivery off",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack on?": {
+      "main": [
+        [
+          {
+            "node": "Post the summary to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email on?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post the summary to Slack": {
+      "main": [
+        [
+          {
+            "node": "Email on?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: Slack failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email on?": {
+      "main": [
+        [
+          {
+            "node": "Fetch the deck",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch the deck": {
+      "main": [
+        [
+          {
+            "node": "Email the deck",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: email failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email the deck": {
+      "main": [
+        [
+          {
+            "node": "Email sent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email sent?": {
+      "main": [
+        [
+          {
+            "node": "Mark delivered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: email failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark delivered": {
+      "main": [
+        [
+          {
+            "node": "Result: delivered",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: not marked delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result: already delivered": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result: built, delivery off": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Result: delivered": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Result: build failed": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Result: Slack failed": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Result: email failed": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Result: not marked delivered": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 6
+          }
+        ]
+      ]
+    },
+    "All results": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "Any failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any failed?": {
+      "main": [
+        [
+          {
+            "node": "Alert on Slack?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert on Slack?": {
+      "main": [
+        [
+          {
+            "node": "Post the alert to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post the alert to Slack": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
