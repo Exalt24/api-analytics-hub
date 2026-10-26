@@ -10,7 +10,7 @@ from __future__ import annotations
 import random
 import sys
 from datetime import date, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from fractions import Fraction
 from pathlib import Path
 
@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.report.monthly import ReportError, build_report  # noqa: E402
-from app.report.paid import LAG_DAYS, WINDOW_TEXT, attach_paid, build_paid, paid_claim_title, paid_month  # noqa: E402
+from app.report.paid import LAG_DAYS, WINDOW_TEXT, attach_paid, paid_claim_title  # noqa: E402
 from app.connectors.meta import ATTRIBUTION_WINDOW  # noqa: E402
 from sources_fixtures import (  # noqa: E402
     AS_OF,
@@ -277,3 +277,136 @@ def test_over_random_months_every_figure_equals_an_independent_exact_oracle(seed
     assert p.kpi("ad_purchases").current == (truth["pur"] if truth["pdays"] else None)
     assert all(isinstance(k.current, (int, Decimal)) or k.current is None for k in p.kpis)
     assert not [d for d in p.provisional if d in cur.missing_days]
+
+
+# ---------------------------------------------------------------- lines the derived guards found untested
+
+def test_impressions_and_clicks_are_totals_over_days_so_a_partial_month_gives_them_a_per_reported_day_change_too():
+    p = paid()
+    imp, clk = p.kpi("ad_impressions").per_day, p.kpi("ad_clicks").per_day
+    assert (imp.current_display, imp.previous_display, imp.pct_display) == ("55.17", "50.00", "+10.3%")
+    assert (clk.current_display, clk.previous_display, clk.pct_display) == ("2.41", "2.33", "+3.4%")
+    from app.report.paid import PAID_TOTAL_KEYS
+    assert PAID_TOTAL_KEYS == {"ad_spend", "ad_impressions", "ad_clicks"}
+
+
+def test_the_partial_clause_is_the_phrase_the_title_and_the_narrative_share():
+    from app.report.paid import paid_partial_clause
+    assert paid_partial_clause(paid()) == "October is missing 2 days of ad data"
+    complete = paid(paid_september() + paid_october(), covered=[(date(2026, 9, 1), date(2026, 11, 1))])
+    assert paid_partial_clause(complete) == ""
+    in_progress = paid(as_of=date(2026, 10, 12), covered=[(date(2026, 9, 1), date(2026, 10, 12))])
+    assert paid_partial_clause(in_progress) == "only 11 of 31 days of October are counted"
+
+
+@pytest.mark.parametrize("key,value,currency,signed,expected", [
+    ("ad_spend", 1234, "EUR", False, "EUR 12.34"), ("ad_spend", 1234, "EUR", True, "+EUR 12.34"), ("ad_spend", -1234, "EUR", True, "-EUR 12.34"),
+    ("ad_spend", 0, "EUR", True, "EUR 0.00"), ("ad_spend", 0, None, False, "0"), ("ad_spend", 5, None, False, "n/a"), ("cpc", 257, "USD", False, "$2.57"),
+    ("ctr", Decimal("1.5"), None, False, "1.5%"), ("ctr", Decimal("0.29"), None, True, "+0.29 pts"), ("ctr", Decimal("-0.29"), None, True, "-0.29 pts"),
+    ("ctr", Decimal("0.00"), None, True, "0.00 pts"), ("roas", Decimal("1234.5"), None, False, "1,234.5"), ("roas", Decimal("1"), None, True, "+1"),
+    ("roas", Decimal("0"), None, True, "0"), ("ad_clicks", 1234567, None, False, "1,234,567"), ("ad_clicks", 1, None, True, "+1"),
+    ("ad_clicks", -3, None, True, "-3"), ("ad_clicks", 0, None, True, "0"), ("ad_spend", None, "EUR", False, "n/a"),
+    ("ctr", Decimal("1234.50"), None, False, "1,234.50%"), ("ctr", Decimal("1234.50"), None, True, "+1,234.50 pts"),
+])
+def test_each_figure_is_written_the_way_its_row_prints_it_by_default_and_signed(key, value, currency, signed, expected):
+    from app.report.paid import show_paid
+    assert show_paid(key, value, currency, signed=signed) == expected
+    if not signed:
+        assert show_paid(key, value, currency) == expected, "unsigned is the default"
+
+
+def _complete(sept_clicks, oct_clicks, sept_spend=1000, oct_spend=1000):
+    rows = paid_day(date(2026, 9, 1), sept_spend, 5000, sept_clicks) + paid_day(date(2026, 10, 1), oct_spend, 5000, oct_clicks)
+    return paid(rows, covered=[(date(2026, 9, 1), date(2026, 11, 1))])
+
+
+@pytest.mark.parametrize("sept,octo,key,title", [
+    (50, 50, "ad_clicks", "Clicks did not change from September"),
+    (100000, 100001, "ad_clicks", "Clicks stayed essentially flat (+1) from September"),
+    (0, 50, "ad_clicks", "Clicks came to 50 in October, up 50 from September"),
+    (80, 40, "ad_clicks", "Clicks fell 50.0% from September"),
+    (80, 120, "ad_clicks", "Clicks rose 50.0% from September"),
+])
+def test_the_headline_of_a_complete_month_for_each_way_a_figure_can_move(sept, octo, key, title):
+    assert paid_claim_title(_complete(sept, octo), key) == title
+
+
+def test_a_previous_month_with_missing_days_is_named_in_the_clause_beside_this_months():
+    from app.report.paid import paid_partial_clause
+    p = paid(covered=[(date(2026, 9, 1), date(2026, 9, 28)), (date(2026, 10, 1), date(2026, 10, 10)), (date(2026, 10, 12), date(2026, 11, 1))])
+    assert paid_partial_clause(p) == "October is missing 2 days of ad data and September is missing 3 days of ad data"
+    assert paid_claim_title(p, "ad_spend") == ("October ad spend total is 20.0% above September, but October is missing 2 days of ad data "
+                                                "and September is missing 3 days of ad data: per reported day it is up 11.7%")
+
+
+def test_a_figure_the_month_before_did_not_report_says_there_is_no_previous_value_for_it():
+    rows = (paid_day(date(2026, 9, 1), 1000, 5000, 50) + paid_day(date(2026, 10, 1), 1000, 5000, 50, 4, 8000))
+    p = paid(rows, covered=[(date(2026, 9, 1), date(2026, 11, 1))])
+    purchases = p.kpi("ad_purchases")
+    assert purchases.previous is None and purchases.change is None and "no previous value" in purchases.notes and purchases.change_display == "n/a"
+    assert p.kpi("ad_clicks").notes == ()
+
+
+# ---------------------------------------------------------------- shared headline wording, with stand-in sources
+
+def _stub(*, previous, pct, change, per_day=None, missing=(), unchanged=False, flat=False):
+    from types import SimpleNamespace
+    row = SimpleNamespace(label="Clicks", current=5, current_display="5", change=change, per_day=per_day, pct=pct,
+                          pct_display=("+" if pct is not None and pct > 0 else "") + str(pct), unchanged=unchanged, flat=flat)
+    cur = SimpleNamespace(short="Oct", missing_days=list(missing), complete=True, days_expected=31, days_in_month=31)
+    prev = None if previous is None else SimpleNamespace(short="Sep", missing_days=[])
+    return SimpleNamespace(current=cur, previous=prev, kpi=lambda key: row)
+
+
+def test_a_headline_with_no_earlier_month_or_no_change_figure_only_states_the_value():
+    from app.report.sources import claim_title
+    keys = frozenset({"clicks"})
+    no_prev = claim_title(_stub(previous=None, pct=Decimal(5), change=3), "clicks", "ad", keys, "n/a")
+    assert no_prev == "Clicks came to 5 in Oct"
+    no_change = claim_title(_stub(previous=True, pct=None, change=None), "clicks", "ad", keys, "n/a")
+    assert no_change == "Clicks came to 5 in Oct"
+
+
+def test_a_small_rise_is_called_a_rise_and_a_small_fall_a_fall():
+    from app.report.sources import claim_title
+    keys = frozenset()
+    assert claim_title(_stub(previous=True, pct=Decimal("0.5"), change=1), "clicks", "ad", keys, "n/a") == "Clicks rose 0.5 from Sep"
+    assert claim_title(_stub(previous=True, pct=Decimal("-0.5"), change=-1), "clicks", "ad", keys, "n/a") == "Clicks fell 0.5 from Sep"
+
+
+def test_the_total_and_per_day_headline_needs_an_earlier_month_a_caveat_a_total_key_and_both_figures():
+    from app.report.sources import states_total_with_per_day
+    keys = frozenset({"clicks"})
+    full = dict(previous=True, pct=Decimal(5), change=3, per_day=Decimal(2), missing=[date(2026, 10, 3)])
+    assert states_total_with_per_day(_stub(**full), "clicks", "ad", keys)
+    assert not states_total_with_per_day(_stub(**{**full, "previous": None}), "clicks", "ad", keys)
+    assert not states_total_with_per_day(_stub(**{**full, "missing": []}), "clicks", "ad", keys)
+    assert not states_total_with_per_day(_stub(**full), "clicks", "ad", frozenset())
+    assert not states_total_with_per_day(_stub(**{**full, "per_day": None}), "clicks", "ad", keys)
+    assert not states_total_with_per_day(_stub(**{**full, "pct": None}), "clicks", "ad", keys)
+
+
+@pytest.mark.parametrize("web,paid,count,length,expected", [
+    (None, None, 1, 5, (18, 8)), (1, None, 1, 5, (18, 8)), (1, None, 9, 5, (15, 5)),          # a store alone or with a website keeps its sizes
+    (None, 1, 3, 389, (18, 4)), (None, 1, 8, 98, (16, 4)), (None, 1, 1, 1855, (14, 4)),
+    (None, 1, 2, 1126, (13, 4)), (None, 1, 3, 805, (12, 4)), (None, 1, 2, 1597, (12, 3)),      # the largest size whose estimated wrap fits, else the smallest
+])
+def test_the_narrative_font_is_the_largest_that_fits_the_estimated_wrap(web, paid, count, length, expected):
+    """Cases picked at the edges of each size's limit, so a changed constant in the estimate moves one of them."""
+    from types import SimpleNamespace
+    from app.report.deck import _insights_size
+    report = SimpleNamespace(web=web, paid=paid, search=None)
+    assert _insights_size(report, ["x" * length] * count) == expected
+
+
+def test_a_long_list_of_provisional_dates_is_cut_with_others_never_with_a_count_the_figure_check_would_refuse():
+    """The lag keeps real lists short, so this uses stand-ins for a source with twelve provisional days."""
+    from types import SimpleNamespace
+    from app.report.insights import _add_paid_facts, _add_search_facts
+    days = [date(2026, 10, n) for n in range(1, 13)]
+    cur = SimpleNamespace(data_days=[], quiet_days=[], missing_days=[])
+    source = dict(current=cur, previous=None, provisional=days, kpis=[], currency="EUR")
+    for add, attr, key in ((_add_paid_facts, "paid", "provisional ad dates"), (_add_search_facts, "search", "provisional search dates")):
+        facts: dict = {}
+        add(facts, SimpleNamespace(**{attr: SimpleNamespace(**source)}))
+        assert facts[key].endswith("Oct 10 and others") and "more" not in facts[key], (attr, facts[key])

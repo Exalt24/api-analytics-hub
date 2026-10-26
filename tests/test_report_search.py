@@ -209,3 +209,114 @@ def test_over_random_months_every_figure_equals_an_independent_exact_oracle(seed
     expected_position = None if imp == 0 else half_up(Fraction(weighted, imp * 1000), 1)
     assert s.kpi("position").current == expected_position
     assert search_month(rows, 2026, 10, covered=[(date(2026, 10, 1), date(2026, 11, 1))], as_of=AS_OF).position_shown == expected_position
+
+
+# ---------------------------------------------------------------- lines the derived guards found untested
+
+def test_the_partial_clause_is_the_phrase_the_title_and_the_narrative_share():
+    from app.report.search import search_partial_clause
+    assert search_partial_clause(search()) == "October is missing 2 days of search data"
+    assert search_partial_clause(search(covered=[(date(2026, 9, 1), date(2026, 11, 1))])) == ""
+
+
+@pytest.mark.parametrize("key,value,signed,expected", [
+    ("search_clicks", 1234, False, "1,234"), ("search_clicks", 1, True, "+1"), ("search_clicks", -3, True, "-3"), ("search_clicks", 0, True, "0"),
+    ("ctr", Decimal("4.24"), False, "4.24%"), ("ctr", Decimal("0.12"), True, "+0.12 pts"), ("ctr", Decimal("-0.12"), True, "-0.12 pts"),
+    ("ctr", Decimal("0.00"), True, "0.00 pts"), ("position", Decimal("8.6"), False, "8.6"), ("position", Decimal("1234.5"), False, "1,234.5"),
+    ("position", Decimal("1"), True, "+1"), ("position", Decimal("-0.8"), True, "-0.8"), ("position", None, False, "n/a"),
+])
+def test_each_search_figure_is_written_the_way_its_row_prints_it(key, value, signed, expected):
+    from app.report.search import show_search
+    assert show_search(key, value, signed=signed) == expected
+    if not signed:
+        assert show_search(key, value) == expected
+
+
+# ---------------------------------------------------------------- the last survivors of the derived guards
+
+def _row(day, metric, value):
+    return {"observed_on": day, "metric_key": metric, "value_numeric": value, "currency": None}
+
+
+def test_a_day_that_carries_only_some_of_the_figures_adds_nothing_for_the_others():
+    d1, d2 = date(2026, 10, 1), date(2026, 10, 2)
+    rows = search_day(d1, 12, 150, 5000) + [_row(d2, "search_impressions", 50)]          # day 2 has no clicks and no position
+    month = search_month(rows, 2026, 10, covered=SEARCH_COVERED, as_of=AS_OF)
+    assert month.totals == {"search_clicks": 12, "search_impressions": 200}
+    assert month.position_exact == Decimal(5)                                             # day 2 has no position to weigh
+    only_position = search_day(d1, 12, 150, 5000) + [_row(d2, "search_position", 9000)]   # a position with no impressions has no weight
+    month = search_month(only_position, 2026, 10, covered=SEARCH_COVERED, as_of=AS_OF)
+    assert month.position_exact == Decimal(5) and month.totals["search_impressions"] == 150
+
+
+def test_a_month_with_no_impressions_has_no_average_position():
+    month = search_month([_row(date(2026, 10, 1), "search_clicks", 0), _row(date(2026, 10, 1), "search_impressions", 0),
+                          _row(date(2026, 10, 1), "search_position", 3000)], 2026, 10, covered=SEARCH_COVERED, as_of=AS_OF)
+    assert month.position_exact is None and month.position_shown is None
+
+
+def test_a_top_row_is_frozen_so_a_figure_shown_cannot_be_changed_after_it_was_computed():
+    import dataclasses
+    from app.report.search import TopRow
+    row = TopRow("a", "a", 1, 2, "50.00%", "1.0")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        row.clicks = 5
+
+
+def test_the_top_rows_are_added_over_the_days_and_their_figures_are_exact():
+    stats = search_month([], 2026, 10, as_of=AS_OF)
+    d1, d2 = date(2026, 10, 1), date(2026, 10, 2)
+    rows = [top(d1, "query", "a", 3, 30, 2000), top(d2, "query", "a", 1, 10, 6000)]
+    out = top_rows(rows, stats, "query")
+    assert len(out) == 1
+    one = out[0]
+    assert (one.key, one.clicks, one.impressions, one.ctr, one.position) == ("a", 4, 40, "10.00%", "3.0")
+
+
+def test_ties_on_clicks_go_to_more_impressions_then_to_the_key_and_never_to_the_position_sum():
+    stats = search_month([], 2026, 10, as_of=AS_OF)
+    d1 = date(2026, 10, 1)
+    rows = [top(d1, "query", "x", 5, 50, 9000), top(d1, "query", "y", 5, 80, 1000), top(d1, "query", "a", 5, 80, 1000),
+            top(d1, "query", "z", 6, 10, 1000)]
+    assert [r.key for r in top_rows(rows, stats, "query")] == ["z", "a", "y", "x"]
+    assert [r.key for r in top_rows(rows, stats, "query", limit=2)] == ["z", "a"]
+
+
+def test_a_key_with_no_impressions_has_no_rate_and_no_position_and_a_big_position_has_a_thousands_comma():
+    stats = search_month([], 2026, 10, as_of=AS_OF)
+    d1 = date(2026, 10, 1)
+    zero = top_rows([top(d1, "query", "none", 0, 0, 0)], stats, "query")[0]
+    assert (zero.ctr, zero.position) == ("n/a", "n/a")
+    big = top_rows([top(d1, "query", "deep", 1, 1, 1234500)], stats, "query")[0]
+    assert big.position == "1,234.5" and big.ctr == "100.00%"
+
+
+def test_rows_of_another_dimension_or_outside_the_month_are_not_counted():
+    stats = search_month([], 2026, 10, as_of=AS_OF)
+    rows = [top(date(2026, 10, 1), "page", "/a", 9, 9, 1000), top(date(2026, 9, 30), "query", "old", 9, 9, 1000),
+            top(date(2026, 11, 1), "query", "new", 9, 9, 1000), top(date(2026, 10, 31), "query", "last", 2, 9, 1000),
+            top(date(2026, 10, 1), "query", "first", 1, 9, 1000)]
+    assert {r.key for r in top_rows(rows, stats, "query")} == {"last", "first"}
+
+
+def test_a_month_nobody_synced_shows_no_top_row_days_and_no_figures():
+    s = search(rows=[], tops=[], covered=())
+    assert s.top_row_days == 0 and s.top_queries == [] and s.top_pages == []
+    assert s.kpi("search_clicks").current_display == "n/a"
+
+
+@pytest.mark.parametrize("key,value,signed,expected", [
+    ("ctr", Decimal("1234.50"), False, "1,234.50%"), ("ctr", Decimal("1234.50"), True, "+1,234.50 pts"),
+    ("position", Decimal("1234.5"), False, "1,234.5"), ("position", Decimal("1234.5"), True, "+1,234.5"),
+    ("position", Decimal("-0.5"), True, "-0.5"), ("search_clicks", 1234567, False, "1,234,567"),
+])
+def test_figures_over_a_thousand_carry_the_comma_in_every_form(key, value, signed, expected):
+    from app.report.search import show_search
+    assert show_search(key, value, signed=signed) == expected
+
+
+def test_a_top_key_position_is_rounded_half_up_from_the_exact_weighted_figure_with_nothing_added():
+    stats = search_month([], 2026, 10, as_of=AS_OF)
+    d1 = date(2026, 10, 1)
+    assert top_rows([top(d1, "query", "k", 1, 1, 1449)], stats, "query")[0].position == "1.4"      # 1.449 is below the half
+    assert top_rows([top(d1, "query", "k", 1, 1, 1450)], stats, "query")[0].position == "1.5"      # 1.450 rounds up

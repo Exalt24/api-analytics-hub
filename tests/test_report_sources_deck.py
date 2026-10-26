@@ -45,8 +45,6 @@ from sources_fixtures import (  # noqa: E402
     SEARCH_COVERED,
     both_months,
     paid_both,
-    paid_day,
-    paid_september,
     search_both,
     top_october,
 )
@@ -506,3 +504,42 @@ def test_the_model_is_sent_the_ad_and_search_facts_and_the_prompt_names_the_new_
 def test_check_model_text_refuses_a_conversions_claim_for_ads_because_no_such_metric_is_in_the_facts():
     lines, reason = check_model_text("Conversions were 6 in October.", report_facts(report_with()))
     assert lines == [] and "6" in reason
+
+
+# ---------------------------------------------------------------- the whole sentences, in each state of a month
+
+def test_the_narrative_lines_for_ads_and_search_are_these_exact_sentences_in_a_partial_month():
+    lines = list(template_insights(report_with()).lines)
+    assert lines[-6:] == [
+        "Ad spend total was EUR 180.00 in October, 20.0% above September (EUR 150.00), but October is missing 2 days of ad data: "
+        "per reported day, ad spend is up 24.1% (EUR 6.21 against EUR 5.00).",
+        "Return on ad spend was 4.50 in October, up 35.0% from September (3.33), and October is missing 2 days of ad data.",
+        "2 days have no ad data (Oct 10, Oct 11), so the ad totals are understated.",
+        "Search clicks total was 20 in October, 33.3% below September (30), but October is missing 2 days of search data: "
+        "per reported day, search clicks are down 31.0% (0.69 against 1.00).",
+        "Average position was 6.0 in October, down 7.7% from September (6.5), and October is missing 2 days of search data.",
+        "2 days have no search data (Oct 10, Oct 11), so the search totals are understated.",
+    ]
+
+
+def test_the_narrative_lines_for_a_complete_month_name_no_gap_and_a_single_missing_day_is_singular():
+    full = [(date(2026, 9, 1), date(2026, 11, 1))]
+    lines = list(template_insights(report_with(covered=full, paid_covered=full, search_covered=full)).lines)
+    assert "Ad spend was EUR 180.00 in October, up 20.0% from September (EUR 150.00)." in lines
+    assert "Return on ad spend was 4.50 in October, up 35.0% from September (3.33)." in lines
+    assert "Search clicks were 20 in October, down 33.3% from September (30)." in lines
+    assert not [ln for ln in lines if "no ad data" in ln or "no search data" in ln]
+    one = [(date(2026, 9, 1), date(2026, 10, 10)), (date(2026, 10, 11), date(2026, 11, 1))]
+    text = "\n".join(template_insights(report_with(paid_covered=one)).lines)
+    assert "1 day has no ad data (Oct 10), so the ad totals are understated." in text
+
+
+def test_a_first_month_and_a_source_with_nothing_stored_are_said_plainly():
+    rows = [r for r in paid_both() if r["observed_on"].month == 10]
+    lines = list(template_insights(report_with(search=False, paid_rows=rows, paid_covered=[(date(2026, 10, 1), date(2026, 11, 1))])).lines)
+    assert "Ad spend was EUR 180.00 in October." in lines and "Return on ad spend was 4.50 in October." in lines
+    empty = list(template_insights(report_with(search=False, paid_rows=[], paid_covered=[])).lines)
+    assert "No ad data is stored for October yet." in empty
+    no_roas = [r for r in paid_both() if r["metric_key"] not in ("ad_purchases", "ad_purchase_value")]
+    text = "\n".join(template_insights(report_with(search=False, paid_rows=no_roas)).lines)
+    assert "Click through rate was 4.38% in October" in text and "Return on ad spend" not in text, "no return to state: the rate is the second line"
