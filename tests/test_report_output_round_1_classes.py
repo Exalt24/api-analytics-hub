@@ -87,6 +87,17 @@ def test_the_five_page_addresses_and_the_three_long_queries_of_the_finding_print
     assert len({_cut(k) for k in pages}) == 5 and len({_cut(k) for k in queries}) == 3
 
 
+def test_the_cut_of_the_finding_keys_is_exactly_this_so_the_split_of_30_characters_is_pinned():
+    """The start (12), three dots and the end (15): a characterisation of the choice, so a different split is a decision, not a drift."""
+    assert [_cut(SITE + p) for p in ("services/roof-repair/", "services/roof-replacement/", "blog/how-much-does-a-new-roof-cost/", "contact/",
+                                     "services/gutters/")] == ["https://www....es/roof-repair/", "https://www....of-replacement/",
+                                                               "https://www....-new-roof-cost/", "https://www....ng.com/contact/",
+                                                               "https://www....rvices/gutters/"]
+    assert [_cut(q) for q in ("how much does a roof replacement cost", "how much does a roof replacement cost in austin")] == [
+        "how much doe...eplacement cost", "how much doe... cost in austin"]
+    assert (KEY_WIDTH, KEY_TAIL) == (30, 15) and all(len(_cut(SITE + "x" * n)) == KEY_WIDTH for n in range(10, 40))
+
+
 def test_a_key_with_runs_of_blanks_or_line_breaks_is_one_line_and_text_is_never_dropped_from_the_end():
     assert _cut("line\nbreak   and  spaces") == "line break and spaces"
     long_query = "a very long query that people really did type into a search box one day"
