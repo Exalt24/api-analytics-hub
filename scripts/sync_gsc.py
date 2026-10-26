@@ -2,10 +2,11 @@
 """Pull one Search Console property's daily figures and top queries and pages into the stored snapshots.
 
     DATABASE_URL=postgresql://... GSC_SITE_URL=<sc-domain:example.com or https://www.example.com/> GSC_ACCESS_TOKEN=<token> \
-        python scripts/sync_gsc.py --tenant <tenant uuid> --connection <connection uuid> [--days 30] [--end 2026-11-01] [--top 10]
+        python scripts/sync_gsc.py --tenant <tenant uuid> --connection <connection uuid> [--days N] [--end 2026-11-01] [--top 10]
 
-The window is half open: it runs from END minus DAYS up to, not including, END (default: the UTC date twelve
-hours ago). The newest days are still being collected by Google: they are stored marked provisional and a later
+The window is half open: it runs up to, not including, END (default: the UTC date twelve hours ago) and starts DAYS
+before it (default: the first day of the month before END's month, so a run on the 1st holds the whole month that has
+just ended). GSC_SITE_URL must be the property that connection holds, or the run is refused. The newest days are still being collected by Google: they are stored marked provisional and a later
 run over the same days rewrites them, so run it again a few days later for a month that has just ended. Dates are
 Pacific time. `--top` is the number of top queries and top pages kept for each day (0 keeps none). The
 credentials come from the environment only; GSC_API_BASE_URL points it at another server, which is how it is run

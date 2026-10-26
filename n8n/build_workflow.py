@@ -40,6 +40,7 @@ WORKFLOW_ID = "hubMonthlyReport01"
 #: 31 October is stored only by a sync that runs at or after 12:00 UTC on 1 November. Any hour from 12:00 to 23:59 gives the same
 #: window end (the 1st, which is exclusive: the whole of the month and none of the next); 13:00 leaves an hour after the edge for that
 #: sync to finish. A schedule before 12:00 builds a deck one day short for those three sources and its key can never replace it.
+#: The default window of those syncs starts on the first day of the previous calendar month (app/sync/cli.py), so a run on the 1st holds the whole month.
 CRON = "0 13 1 * *"
 
 #: The four optional connection ids a tenant entry of HUB_TENANTS_JSON may carry into the request (app/api/reports.py MonthlyRequest). A client with

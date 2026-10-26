@@ -387,18 +387,18 @@ def test_the_sync_commands_explain_their_arguments_and_need_a_tenant_and_a_conne
     assert helped.returncode == 0
     words = " ".join(helped.stdout.split())
     assert "--tenant TENANT tenant uuid" in words and "--connection CONNECTION the gsc connection uuid" in words
-    assert "how many days back from the end (default 30)" in words and "first day NOT pulled, YYYY-MM-DD" in words
+    assert "how many days back from the end (default: from the first day of the month before the end's month)" in words and "first day NOT pulled, YYYY-MM-DD" in words
     no_tenant = _cli(["sync_gsc.py", "--connection", str(world["a_search"])])
     assert no_tenant.returncode == 2 and "--tenant" in no_tenant.stderr and "required" in no_tenant.stderr
     no_connection = _cli(["sync_gsc.py", "--tenant", str(world["a"])])
     assert no_connection.returncode == 2 and "--connection" in no_connection.stderr and "required" in no_connection.stderr
 
 
-def test_the_window_defaults_to_thirty_days_and_days_must_be_one_to_3650(world, servers):
+def test_the_window_defaults_to_the_previous_calendar_month_and_days_must_be_one_to_3650(world, servers):
     _, gsc = servers
     base = ["sync_gsc.py", "--tenant", str(world["a"]), "--connection", str(world["a_search"]), "--end", "2026-09-04", "--top", "0"]
     default = _cli(base, _gsc_env(gsc))
-    assert default.returncode == 0 and "window 2026-08-05 to 2026-09-04" in default.stdout, default.stdout + default.stderr
+    assert default.returncode == 0 and "window 2026-08-01 to 2026-09-04" in default.stdout, default.stdout + default.stderr
     for bad in ("0", "3651", "-5"):
         refused = _cli(base + ["--days", bad], _gsc_env(gsc))
         assert refused.returncode == 2 and "--days must be 1 to 3650" in refused.stderr, bad
@@ -436,6 +436,7 @@ def test_the_exit_code_and_the_line_printed_say_what_the_run_did(world, servers,
 
     class Closes:
         closed = False
+        external_account = SITE
 
         async def aclose(self):
             Closes.closed = True
