@@ -44,4 +44,4 @@ None was built or run and no account is held. The call that this workflow makes,
 
 ## The real run
 
-`python n8n/verify_in_docker.py --summary out.txt` needs Docker, the `n8nio/n8n` image, the compose Postgres and the repository's Python environment. It makes a scratch database with invented tenants, starts the API and a stand-in Slack webhook on the loopback address, runs the workflow in six throwaway containers, reads the node outputs from `n8n execute` and checks them against the database and the Slack stand-in, then removes everything it started.
+`python n8n/verify_in_docker.py --summary out.txt` needs Docker, the `n8nio/n8n:2.44.6` image (the tag the saved runs used), the compose Postgres and the repository's Python environment. It makes a scratch database with invented tenants, starts the API and a stand-in Slack webhook on the loopback address, runs the workflow in six throwaway containers, reads the node outputs from `n8n execute` and checks them against the database and the Slack stand-in, then removes everything it started.

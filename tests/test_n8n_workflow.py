@@ -15,8 +15,6 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "n8n"))
 
@@ -224,3 +222,33 @@ def test_every_setting_that_differs_between_deployments_is_read_from_the_environ
     for name in env:
         assert name in readme, "%s is not described in n8n/README.md" % name
     assert "N8N_BLOCK_ENV_ACCESS_IN_NODE" in readme and "Execute Command" in readme
+
+
+def test_each_node_lists_exactly_the_outputs_it_has_so_no_empty_slot_is_left_for_n8n_to_guess_at():
+    """A node with a true and a false branch, or an error output, has two lists; every other node that leads on has one."""
+    for source, outs in WF["connections"].items():
+        node = NODES[source]
+        two = node["type"] == "n8n-nodes-base.if" or node.get("onError") == "continueErrorOutput"
+        assert len(outs["main"]) == (2 if two else 1), (source, len(outs["main"]))
+
+
+def test_the_check_flag_says_whether_the_committed_file_is_current_and_never_writes(tmp_path, monkeypatch, capsys):
+    target = tmp_path / "wf.json"
+    monkeypatch.setattr(build_workflow, "OUT", target)
+    assert build_workflow.main(["--check"]) == 1          # nothing there: out of date, and no crash reading it
+    assert not target.exists()
+    assert "out of date" in capsys.readouterr().out
+    target.write_text(build_workflow.render().replace("\n", "\r\n"), encoding="utf-8", newline="")
+    assert build_workflow.main(["--check"]) == 0          # a Windows checkout with CRLF is the same file
+    assert "matches" in capsys.readouterr().out
+    target.write_text("{}\n", encoding="utf-8")
+    assert build_workflow.main(["--check"]) == 1
+    assert target.read_text(encoding="utf-8") == "{}\n"
+
+
+def test_without_the_check_flag_the_generator_writes_the_file_with_unix_line_ends(tmp_path, monkeypatch, capsys):
+    target = tmp_path / "wf.json"
+    monkeypatch.setattr(build_workflow, "OUT", target)
+    assert build_workflow.main([]) == 0
+    assert target.read_bytes() == build_workflow.render().encode("utf-8") and b"\r" not in target.read_bytes()
+    assert "nodes" in capsys.readouterr().out

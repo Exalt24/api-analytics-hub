@@ -1,7 +1,7 @@
 # LIFESPAN: permanent
 """Really run the monthly report workflow in a throwaway n8n container, against the real API, on invented data.
 
-    python n8n/verify_in_docker.py [--summary docs/test-runs/n8n-run.txt] [--image n8nio/n8n]
+    python n8n/verify_in_docker.py [--summary docs/test-runs/n8n-run.txt] [--image n8nio/n8n:2.44.6]
 
 What it does, and tears down at the end (every container, database and server it starts):
 
@@ -37,7 +37,6 @@ import tempfile
 import threading
 import time
 import uuid
-from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -205,6 +204,16 @@ def run_n8n(image: str, staged: Path, env: dict[str, str], label: str) -> dict:
     return execution
 
 
+def schedule_fires(image: str, staged: Path) -> list[str]:
+    """The next fire times of the workflow's Schedule Trigger, computed by the `cron` library inside the n8n image (what n8n schedules with)."""
+    for name in ("cron_probe.js", "cron_probe.sh"):
+        shutil.copyfile(Path(__file__).resolve().parent / name, staged / name)
+    done = subprocess.run(["docker", "run", "--rm", "-v", "%s:/data" % staged, "--entrypoint", "sh", image, "/data/cron_probe.sh"],
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+    line = next((ln for ln in done.stdout.splitlines() if ln.startswith("next six fires:")), "")
+    return [part.strip() for part in line.partition(":")[2].split("|") if part.strip()]
+
+
 def outputs(execution: dict, node: str) -> list[list[dict]]:
     """For each run of a node, per output index, the list of item json: [[output0 items, output1 items], ...]."""
     runs = execution["data"]["resultData"]["runData"].get(node, [])
@@ -283,6 +292,10 @@ def verify(image: str, dsn: str, summary: list[str]) -> int:
                                  timeout=120).stdout.strip()
         summary.append("n8n %s, image %s, workflow %s, month %s" % (version, image, WORKFLOW_ID, MONTH))
         (staged / "workflow.json").write_text(render(), encoding="utf-8", newline="\n")
+        fires = schedule_fires(image, staged)
+        summary.append("Schedule Trigger, next fires by n8n's own cron library: " + ", ".join(fires))
+        checks.ok(len(fires) == 6 and all(f.endswith("-01T06:00:00.000Z") for f in fires) and fires[0] == "2026-11-01T06:00:00.000Z",
+                  "the schedule fires at 06:00 UTC on the first of every month, by n8n's cron library")
         tenant, _store, website, ads, search = sample.seed(scratch_dsn)
         asyncio.run(sample.sync_website(scratch_dsn, tenant, website))
         asyncio.run(sample.sync_ads_and_search(scratch_dsn, tenant, ads, search))
@@ -411,7 +424,7 @@ def verify(image: str, dsn: str, summary: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--image", default="n8nio/n8n")
+    p.add_argument("--image", default="n8nio/n8n:2.44.6")
     p.add_argument("--summary", help="write the summary of what each run did to this file")
     p.add_argument("--raw-dir", help="keep what n8n printed for each run here, with the API keys blanked")
     args = p.parse_args(argv)
