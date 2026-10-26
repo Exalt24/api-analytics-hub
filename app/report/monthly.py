@@ -342,6 +342,9 @@ class MonthlyReport:
     top_days: list[tuple[date, int]]
     #: the website figures of a second source (app/report/web.py), or None for a store with no such source
     web: "WebReport | None" = None
+    #: the Meta ad figures (app/report/paid.py) and the Search Console figures (app/report/search.py), or None
+    paid: "PaidReport | None" = None
+    search: "SearchReport | None" = None
 
     @property
     def currency(self) -> str | None:

@@ -1533,16 +1533,16 @@ MUTATIONS = [
     (
         "service",
         "two websites are summed instead of refused",
-        "        if len(sites) > 1:",
-        "        if False:",
-        "two websites would be added into one doubled total",
+        "    if len(found) > 1:",
+        "    if False:",
+        "two websites, ad accounts or properties would be added into one doubled total",
     ),
     (
         "service",
         "a website id that is not found is ignored",
-        "        if web_connection_id and not sites:",
-        "        if False:",
-        "a named website that does not exist must be an error, not a silent store only deck",
+        "    if connection_id and not found:",
+        "    if False:",
+        "a named website, ad account or property that does not exist must be an error, not a silent deck without it",
     ),
     (
         "m006",
