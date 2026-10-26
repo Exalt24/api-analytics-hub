@@ -248,6 +248,7 @@ def test_over_random_months_every_figure_equals_an_independent_exact_oracle(seed
     rng = random.Random(seed)
     days = [date(2026, 10, 1) + timedelta(days=i) for i in range(31)]
     chosen = rng.sample(days, rng.randint(1, 12))
+    days_seen = []
     rows, truth = [], {"spend": 0, "imp": 0, "clk": 0, "pur": 0, "val": 0, "jspend": 0, "jval": 0, "pdays": 0}
     for d in chosen:
         spend, imp = rng.randint(0, 90000), rng.randint(0, 5000)
@@ -263,8 +264,12 @@ def test_over_random_months_every_figure_equals_an_independent_exact_oracle(seed
             truth["pdays"] += 1
         if val is not None:
             truth["val"] += val
-        if val is not None or pur == 0:
-            # a day with no purchases has a value of 0 though Meta leaves it out; a count above 0 with no value row stays out
+        days_seen.append((spend, pur, val))
+    # a day with no purchases has a value of 0 though Meta leaves it out, but only in a month that reports values at all; a count above 0
+    # with no value row stays out
+    reports_values = any(val is not None for _, _, val in days_seen)
+    for spend, pur, val in days_seen:
+        if val is not None or (reports_values and pur == 0):
             truth["jspend"] += spend
             truth["jval"] += val or 0
     p = paid(rows, covered=[(date(2026, 10, 1), date(2026, 11, 1))])
