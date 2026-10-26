@@ -1,0 +1,18 @@
+Whole suite, 2026-10-26, run in two foreground chunks against a scratch database of its own (hub_build_0), one pytest process at a time.
+python -m pytest <the 49 files of tests/> -q -ra
+chunk 1 (19 files): 1348 passed, 5 xfailed in 99.37s
+chunk 2 (30 files): 1260 passed in 110.16s
+total: 2608 passed, 5 xfailed (the five known limits)
+
+--- chunk 1 summary
+x..............x.xx..................................................... [ 26%]
+=========================== short test summary info ===========================
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case24] - an empty bytes source raises ValueError instead of LoadRefused (nothing is written either way); KNOWN_LIMIT, score 1x1
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case39] - a changed insurer with no filing id is keyed by an empty reference, so only the first change alerts; KNOWN_LIMIT, score 1x2, documented in docs/change-detection.md
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case41] - a trailing non-breaking space (U+00A0) is not removed by the regular expression class for white space; KNOWN_LIMIT, score 1x2, documented
+XFAIL tests/test_change_detection_corpus.py::test_replay_of_the_adversary_corpus_agrees_with_the_module[case42] - in absent mode a day with many carriers back counts them as moved rows against the 25 percent ceiling, so the operator passes force; KNOWN_LIMIT, score 1x1, documented
+XFAIL tests/test_ga4_sync_db.py::test_a_day_google_later_leaves_out_keeps_its_old_figures_which_is_the_known_limit - known limit: a day Google later reports as all zero sends no row, so the old figures stay
+1348 passed, 5 xfailed in 99.37s (0:01:39)
+
+--- chunk 2 summary
+1260 passed in 110.16s (0:01:50)

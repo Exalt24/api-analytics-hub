@@ -1,0 +1,46 @@
+Failures of the new tests against the code as it was before each piece (quoted from the runs, 2026-10-26).
+
+PIECE 1 (Meta connector) - the new tests run against the code before the commit
+  whole new test files, old code (HEAD a1c1eda):
+    ModuleNotFoundError: No module named 'app.connectors.meta_fake'   (tests/test_meta_fake_server.py)
+    ModuleNotFoundError: No module named 'app.connectors.meta'        (tests/test_meta_sync_db.py)
+  new code but the runner left as it was (no raw object fix):
+    assert '{"source": "insights", "attribution_window": "7d_click"}' == {'source': 'insights', 'attribution_window': '7d_click'}
+    FAILED tests/test_meta_sync_db.py::test_a_sync_stores_the_ad_metrics_as_integers_with_a_currency_on_the_two_money_ones_only (1 failed, 9 passed)
+  new code but migration 007 empty (the old currency check):
+    CheckViolationError: new row for relation "metric_snapshot" violates check constraint "currency_iff_money"   (every ad_spend write)
+    assert 0 == 5   (the five ad metric keys are not registered)
+
+PIECE 2 (Search Console connector)
+  whole new test files, old code (1b3e5c6):
+    ModuleNotFoundError: No module named 'app.connectors.gsc'   (tests/test_gsc_connector.py, tests/test_gsc_sync_db.py)
+  new connector but the runner as it was (no dimension rows written):
+    assert [] == [('page', '/a'), ('query', 'sandals')]   "shoes and boots were replaced, not kept beside sandals"
+  new connector but migration 008 empty:
+    ForeignKeyViolationError: insert or update on table "metric_snapshot" violates foreign key constraint "metric_snapshot_metric_key_fkey"   (10 failed)
+
+PIECE 3 (the figures of the ad and search halves of the report)
+  new test files, old code (2312315):
+    ModuleNotFoundError: No module named 'app.report.paid'   (tests/test_report_paid.py)
+    ModuleNotFoundError: No module named 'app.report.search' (tests/test_report_search.py)
+
+PIECE 4 (slides, summary rows, health slide, narrative check, report command)
+  the new deck and database tests against the tree before the deck change (eb9ff96):
+    AssertionError: assert 7 == 9    (the deck with ads and search is still seven slides)
+    AssertionError: assert 7 == 8
+    assert ["Metric", ..., "Return on ad spend", "Search clicks", ...] -> the summary table has no extra rows
+    assert "Ad rows: Meta, in the ad account's currency (EUR), purchases in a 7 day click window. ..." in "Source: the st..."
+    assert ['EUR 540.00'] == []   (the old facts hold no ad metrics, so a correct ad sentence is refused: 50 failed, 34 passed in all)
+    usage: monthly_report.py ... (the command has no --paid-connection)
+
+PIECE 5 (the monthly run: endpoint, idempotency, n8n workflow)
+  new tests against the tree before them (036c2a1):
+    tests/test_report_api_db.py: 36 failed, 2 passed (the endpoint does not exist)
+    tests/test_n8n_workflow.py: ModuleNotFoundError: No module named 'build_workflow'
+  two defects the REAL n8n run found in the first version of the workflow (neither is visible to a test that does not run n8n):
+    1. every IF read its left value as the literal text "$json.delivered": "Wrong type: '$json.delivered' is a string but was expecting a boolean [condition 0, item 0]" (the expression had no {{ }})
+    2. the Send Email node has no error output; with no SMTP credential n8n 2.44.6 recorded "Node does not have any credentials set" and passed the input item on as if the mail had gone, so the deck was MARKED DELIVERED though nothing was sent.
+       Fixed by reading the node's answer (accepted recipients) before marking: run 6 now ends as an error with both tenants "email was not sent".
+
+PIECE 6 (tests added after the derived guards named a line nothing pinned)
+  each of these failed against the mutant that had survived; the first failing test for every killed mutant is in 2026-10-26-derived-guard-verdicts.tsv

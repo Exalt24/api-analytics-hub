@@ -1,0 +1,65 @@
+derived mutation guards (tests/derived_guards.py with mutate_ast.py), latest run of each file
+file                          sites  killed  survived annotation  other
+app/connectors/gsc.py           443     438         5          3      2
+app/connectors/meta.py          516     508         8          8      0
+app/connectors/base.py           22      22         0          0      0
+app/report/paid.py              147     122        25         19      6
+app/report/search.py            151     131        20         19      1
+app/report/sources.py           146     128        18         18      0
+app/report/runs.py               78      71         7          7      0
+app/api/reports.py               57      57         0          0      0
+app/report/service.py            65      53        12         12      0
+app/sync/cli.py                  50      49         1          0      1
+app/sync/runner.py                4       4         0          0      0
+n8n/build_workflow.py           616     598        18          2     16
+app/report/deck.py              368     365         3          2      1
+app/report/insights.py          116     116         0          0      0
+all                            2779    2662       117
+
+survivors that are not a `|` in an annotation (each one judged by hand):
+  app/connectors/gsc.py:220 string 'GSCConnector' -> '' (in from_env)
+  app/connectors/gsc.py:268 string 'application/json' -> '' (in _post)
+  app/report/paid.py:85 0 -> 1 (in (module))
+  app/report/paid.py:86 0 -> 1 (in (module))
+  app/report/paid.py:88 0 -> 1 (in (module))
+  app/report/paid.py:89 0 -> 1 (in (module))
+  app/report/paid.py:90 0 -> 1 (in (module))
+  app/report/paid.py:146 1 -> 2 (in _values)
+  app/report/search.py:132 string ',f' -> '' (in top_rows)
+  app/sync/cli.py:43 2 -> 3 (in run_connection_sync)
+  n8n/build_workflow.py:53 return value -> None (in node)
+  n8n/build_workflow.py:91 delete the call statement (in build)
+  n8n/build_workflow.py:192 delete the call statement (in link)
+  n8n/build_workflow.py:200 2 -> 3 (in build)
+  n8n/build_workflow.py:202 2 -> 3 (in build)
+  n8n/build_workflow.py:204 2 -> 3 (in build)
+  n8n/build_workflow.py:206 2 -> 3 (in build)
+  n8n/build_workflow.py:208 2 -> 3 (in build)
+  n8n/build_workflow.py:210 2 -> 3 (in build)
+  n8n/build_workflow.py:212 2 -> 3 (in build)
+  n8n/build_workflow.py:215 2 -> 3 (in build)
+  n8n/build_workflow.py:217 2 -> 3 (in build)
+  n8n/build_workflow.py:224 2 -> 3 (in build)
+  n8n/build_workflow.py:226 2 -> 3 (in build)
+  n8n/build_workflow.py:242 False -> True (in render)
+  n8n/build_workflow.py:247 string 'exit 1 when the committe' -> '' (in main)
+  app/report/deck.py:378 1750 -> 1751 (in _insights_size)
+
+Why each survivor that is not a `|` in an annotation is an equivalent change (read one by one):
+  gsc.py 220      a return annotation written as a string
+  gsc.py 268      the explicit Content-Type header: httpx sets the same one for json=
+  paid.py 85-90   dataclass defaults that paid_month always overwrites before a PaidMonth is used
+  paid.py 146     Decimal(1) against Decimal(2) as a quantize exponent: only the exponent is used
+  search.py 132   a thousands comma in a click through rate, which cannot reach 1,000
+  cli.py 43       the pool size of the sync command
+  build_workflow.py 53, 91, 192, 200-226, 242, 247
+                  a return value nothing reads; a dictionary cleared before it is filled; the padding loop no node reaches; the repeated
+                  outputs argument on the second link of a node (the first link decides); ensure_ascii on ASCII only content; a help string
+  deck.py 378     1750 against 1751 in the narrative font estimate: the same integer for every size in use (18, 16, 14, 13, 12)
+Guards for app/connectors/registry.py were not run: the tests are red on that file after ast.unparse alone.
+
+How the files were run. Each file was run, the survivors read, a test written for each real one, and the file run again; the line above for
+a file is its latest run. Tests were only added after a run, so a mutant killed in an earlier run stays killed. The first runs used a shared
+pytest base temp folder, which made some mutants look killed for the wrong reason; every run here used one folder for each worker and a timeout
+that kills the whole process tree of a hung mutant (a mutant that does not terminate is counted as killed).
+Of the 2,662 kills, 104 (gsc 38, meta 64, build_workflow 2) are mutants that did not finish inside the timeout, a retry loop that never ends; the suite does not go green for them, so they count as killed, and the verdict list names them.
