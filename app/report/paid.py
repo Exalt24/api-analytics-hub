@@ -14,9 +14,10 @@ THE FIGURES
                                     is not a zero, so the table says how many days the figure covers.
   Return on ad spend                purchase value over ad spend, over the days that have BOTH, so a day with
                                     spend and no purchase figure does not pull the ratio down. A day's purchase
-                                    value is its row, or 0 when its purchase count is 0: Meta leaves a zero out of
-                                    `action_values`, so a day of spend and no purchases has no value row, and
-                                    dropping it from the return while its spend stays in the total overstated it.
+                                    value is its row, or 0 when its purchase count is 0 in a month that has value
+                                    rows at all: Meta leaves a zero out of `action_values`, so a day of spend and
+                                    no purchases has no value row, and dropping it from the return while its spend
+                                    stays in the total overstated it.
 
 MONEY HERE IS NOT THE STORE'S MONEY. Ad spend and purchase value are in the ad account's currency, which need
 not be the store's. They are shown in their own currency, never added to, subtracted from or divided by a store
@@ -107,7 +108,8 @@ def paid_month(
     # month_stats totals the store's keys, which are not in these rows; the ad figures replace them.
     month_.totals = {key: sum(d.get(key, 0) for d in base.daily.values()) for key in PAID_SUM}
     month_.purchase_days = sum(1 for d in base.daily.values() if "ad_purchases" in d)
-    valued = [(d, _purchase_value(d)) for d in base.daily.values()]
+    reports_values = any("ad_purchase_value" in d for d in base.daily.values())
+    valued = [(d, _purchase_value(d, reports_values)) for d in base.daily.values()]
     month_.value_days = sum(1 for _, value in valued if value is not None)
     both = [(d["ad_spend"], value) for d, value in valued if "ad_spend" in d and value is not None]
     month_.joint_spend = sum(spend for spend, _ in both)
@@ -116,15 +118,16 @@ def paid_month(
     return month_
 
 
-def _purchase_value(day: Mapping[str, int]) -> int | None:
-    """The purchase value of one day: its row, or 0 when the day's purchase count is 0, else None (unknown).
+def _purchase_value(day: Mapping[str, int], reports_values: bool) -> int | None:
+    """The purchase value of one day: its row, or 0 when the day's purchase count is 0 and the month reports values, else None (unknown).
 
-    Meta leaves a zero out of `action_values`, so a day with no purchases has a count of 0 and no value row, and its value is 0. A day
-    with purchases and no value row has a value nobody reported, and a day with no purchase figure at all has none: both stay out.
+    Meta leaves a zero out of `action_values`, so in a month that has value rows a day with no purchases has a count of 0 and no value
+    row, and its value is 0. A day with purchases and no value row has a value nobody reported, a day with no purchase figure at all has
+    none, and a month with no value row at all (a pixel that sends counts and no values) has none for any day: all of them stay out.
     """
     if "ad_purchase_value" in day:
         return day["ad_purchase_value"]
-    return 0 if day.get("ad_purchases") == 0 else None
+    return 0 if reports_values and day.get("ad_purchases") == 0 else None
 
 
 # ---------------------------------------------------------------- the report
