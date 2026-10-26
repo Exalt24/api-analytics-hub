@@ -109,7 +109,10 @@ class CanonicalPoint:
             )
 
 
-MONEY_METRICS = frozenset({"gross_sales", "refunds", "net_sales", "avg_order_value"})
+#: Every metric whose value is an amount of money and so needs a currency beside it. `ad_spend` and
+#: `ad_purchase_value` are in the AD ACCOUNT's currency, which is not necessarily the store's: the report never
+#: adds or divides across the two.
+MONEY_METRICS = frozenset({"gross_sales", "refunds", "net_sales", "avg_order_value", "ad_spend", "ad_purchase_value"})
 
 
 @dataclass

@@ -169,7 +169,9 @@ class SyncRunner:
                 "observed_on": p.observed_on.isoformat(),
                 "value_numeric": int(p.value_numeric),
                 "currency": p.currency,
-                "raw": json.dumps(p.raw or {}),
+                # An object, not a JSON string of one: a string inside the payload is stored as a jsonb string, and
+                # `raw->>'provisional'` and `raw->>'sampled'` would then read nothing.
+                "raw": dict(p.raw or {}),
             }
             for p in points
         ]

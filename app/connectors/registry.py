@@ -196,6 +196,7 @@ def _register_builtin() -> None:
     """Registered here rather than at import of each module, so the set of
     available platforms is one readable list instead of scattered side effects."""
     from .ga4 import GA4Connector
+    from .meta import MetaConnector
     from .shopify import ShopifyConnector
     from .shopify_scopes import DEFAULT_ORDER_HISTORY_DAYS
 
@@ -243,6 +244,31 @@ def _register_builtin() -> None:
                 "Daily rows from runReport. Per property quotas (tokens per hour and per day, 10 concurrent "
                 "requests) answer 429, and 500 and 503 count against a server error quota, so retries are "
                 "bounded. This build takes an issued access token and does not exchange or refresh one."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="meta",
+            label="Meta Ads",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=MetaConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("ad_account_id", "Ad account id", secret=False,
+                                hint="the numeric id of the ad account, with or without the act_ prefix"),
+                CredentialField("access_token", "Marketing API access token",
+                                hint="a token with the ads_read permission"),
+            ),
+            factory=MetaConnector,
+            # Insights older than 37 months are refused with error 3018, which is on the page read.
+            max_history_days=37 * 30,
+            supports_backfill=True,
+            notes=(
+                "Account level insights, one row a day, in the ad account's currency and time zone. Purchases use "
+                "the 7 day click window named in every request. Utilisation headers (a percent of the app and the "
+                "ad account limit) pace the pages, and errors 4, 17, 32, 341 and 613 are retried with a bound. "
+                "Never run against a live account: no account is held."
             ),
         )
     )
