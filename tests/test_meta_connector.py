@@ -770,3 +770,236 @@ def test_a_run_stopped_at_any_page_resumes_to_the_same_set_of_figures(seed):
             if cursor is None:
                 break
         assert union == want, "seed %d" % seed
+
+
+# ---------------------------------------------------------------- a day that is still running is never pulled
+
+def test_the_default_window_of_the_sync_command_ends_twelve_hours_behind_utc_as_for_every_source():
+    from app.connectors import ga4, meta
+    assert meta.settled_window_end is ga4.settled_window_end
+    source = (Path(__file__).resolve().parents[1] / "scripts" / "sync_meta.py").read_text(encoding="utf-8")
+    assert "settled_window_end(datetime.now(timezone.utc))" in source and "date.today()" not in source
+    from datetime import datetime
+    assert meta.settled_window_end(datetime.fromisoformat("2026-11-01T00:30:00+00:00")) == date(2026, 10, 31)
+    assert meta.settled_window_end(datetime.fromisoformat("2026-11-01T12:00:00+00:00")) == date(2026, 11, 1)
+
+
+# ---------------------------------------------------------------- lines the derived guards found untested
+
+def test_the_defaults_a_caller_relies_on_are_the_documented_ones():
+    from app.connectors import meta
+    conn = MetaConnector(ad_account_id="1", access_token="t")
+    assert conn._base == "https://graph.facebook.com" and meta.API_VERSION == "v26.0" and meta.UTILISATION_CEILING == 90
+    assert MetaConnector.platform == "meta" == registry.get("meta").platform and meta.BIGINT_MAX == 2 ** 63 - 1
+    assert conn._page_size == 500 and conn._max_attempts == 3 and conn._backoff_cap == 30.0
+
+
+def test_a_connector_closes_the_client_it_made_and_never_the_one_it_was_handed():
+    async def go():
+        own = MetaConnector(ad_account_id="1", access_token="t")
+        await own.aclose()
+        handed = httpx.AsyncClient()
+        borrowing = MetaConnector(ad_account_id="1", access_token="t", client=handed)
+        await borrowing.aclose()
+        return own._client.is_closed, handed.is_closed, await handed.aclose()
+
+    own_closed, handed_closed, _ = run(go())
+    assert own_closed is True and handed_closed is False
+
+
+def test_usage_exactly_at_the_ceiling_stops_the_next_page_and_one_below_does_not(server):
+    server.set_account(ACCOUNT, {date(2026, 10, d): day(d) for d in range(1, 4)}, currency="EUR")
+    for level, stops in ((90, True), (89, False)):
+        server.utilisation = level
+        if stops:
+            with pytest.raises(RateLimited):
+                run(collect(make(server, page_size=1)))
+        else:
+            assert len(run(collect(make(server, page_size=1)))) == 3
+
+
+@pytest.mark.parametrize("currency,exponent", [("USD", 2), ("EUR", 2), ("JPY", 0)])
+def test_the_largest_amount_the_database_holds_is_accepted_and_one_minor_unit_more_is_refused(server, currency, exponent):
+    from app.connectors.meta import BIGINT_MAX
+    biggest = Decimal(BIGINT_MAX // 10 ** exponent)
+    def amount(value):
+        row = {"account_currency": currency, "spend": str(value), "impressions": "1", "clicks": "1",
+               "date_start": "2026-10-01", "date_stop": "2026-10-01"}
+        server.faults.append(Fault(200, {"data": [row]}))
+        return {p.metric_key: p.value_numeric for p in points_of(run(collect(make(server))))}
+    assert amount(biggest)["ad_spend"] == int(biggest) * 10 ** exponent
+    over = biggest + Decimal(1) / 10 ** exponent
+    with pytest.raises(UpstreamBroken, match="is larger than any amount this hub stores"):
+        amount(over)
+
+
+@pytest.mark.parametrize("field", ["impressions", "clicks"])
+def test_a_count_is_accepted_up_to_the_bigint_and_refused_one_past_it_and_a_float_is_never_a_count(server, field):
+    from app.connectors.meta import BIGINT_MAX
+    def count(value):
+        row = {"account_currency": "EUR", "spend": "1.00", "impressions": "1", "clicks": "1", "date_start": "2026-10-01", "date_stop": "2026-10-01"}
+        row[field] = value
+        server.faults.append(Fault(200, {"data": [row]}))
+        return {p.metric_key: p.value_numeric for p in points_of(run(collect(make(server))))}
+    assert count(str(BIGINT_MAX))["ad_" + field] == BIGINT_MAX
+    with pytest.raises(UpstreamBroken, match="larger than any count"):
+        count(str(BIGINT_MAX + 1))
+    with pytest.raises(UpstreamBroken, match="not a numeric string"):
+        count(12.0)
+
+
+@pytest.mark.parametrize("code", [True, False])
+def test_an_error_code_that_is_a_boolean_is_not_read_as_the_number_one_or_zero(server, code):
+    """True is 1 in Python, which is a 'temporary error' code: it must be read as no code at all."""
+    server.faults.append(Fault(200, {"error": {"message": "x", "code": code}}))
+    with pytest.raises(UpstreamBroken):
+        run(collect(make(server)))
+
+
+def test_the_error_text_keeps_exactly_the_first_150_characters_of_the_message(server):
+    server.faults.append(Fault(400, error_in(100, None, "m" * 500)))
+    with pytest.raises(UpstreamBroken) as exc:
+        run(collect(make(server)))
+    assert str(exc.value).count("m") == 150
+
+
+def test_a_token_provider_that_returns_something_that_is_not_text_is_an_expired_token(server):
+    for value in (123, None, ""):
+        with pytest.raises(AuthExpired, match="no access token is available"):
+            run(collect(make(server, token_provider=lambda value=value: value)))
+
+
+def test_the_reason_a_call_is_retried_is_named_in_the_message_that_ends_it(server):
+    server.faults.extend([Fault(400, error_in(4))] * 3)
+    with pytest.raises(RateLimited, match="rate limit"):
+        run(collect(make(server, Sleeps())))
+    server.faults.extend([Fault(400, error_in(1))] * 3)
+    with pytest.raises(RateLimited, match="temporary error"):
+        run(collect(make(server, Sleeps())))
+    server.faults.extend([Fault(429, b"")] * 3)
+    with pytest.raises(RateLimited, match="rate limit"):
+        run(collect(make(server, Sleeps())))
+    server.faults.extend([Fault(500, b"")] * 3)
+    with pytest.raises(RateLimited, match="temporary error"):
+        run(collect(make(server, Sleeps())))
+
+
+def test_each_wait_is_counted_on_the_page_that_needed_it(server):
+    server.faults.extend([Fault(500), Fault(500)])
+    pages = run(collect(make(server, Sleeps())))
+    assert pages[0].throttle_waits == 2 and pages[0].api_calls == 3
+
+
+def test_every_row_carries_where_it_came_from_and_the_window_it_was_read_in(server):
+    pages = run(collect(make(server)))
+    assert {tuple(sorted(p.raw.items())) for p in points_of(pages)} == {(("attribution_window", "7d_click"), ("source", "insights"))}
+
+
+def test_a_data_member_that_is_not_a_list_says_so(server):
+    server.faults.append(Fault(200, {"data": "no"}))
+    with pytest.raises(UpstreamBroken, match="data is not a list"):
+        run(collect(make(server)))
+
+
+def test_a_cursor_that_comes_back_after_another_one_is_refused_not_only_one_that_repeats_at_once(server):
+    """A, then B, then A again: never equal to the one just used, but already seen."""
+    def page(day_number, after):
+        row = {"account_currency": "EUR", "spend": "1.00", "impressions": "10", "clicks": "1",
+               "date_start": "2026-10-0%d" % day_number, "date_stop": "2026-10-0%d" % day_number}
+        return {"data": [row], "paging": {"cursors": {"after": after}, "next": "x"}}
+    server.faults.extend([Fault(200, page(1, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")), Fault(200, page(2, "BBBB")),
+                          Fault(200, page(3, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")), Fault(200, page(4, "CCCC"))])
+    with pytest.raises(UpstreamBroken, match="does not advance: the cursor A{20} came back$"):
+        run(collect(make(server, page_size=1)))
+    assert len(server.requests) == 3, "stopped at the repeat, did not ask for a fourth page"
+
+
+def test_a_next_page_with_no_after_cursor_says_so(server):
+    server.faults.append(Fault(200, {"data": [], "paging": {"next": "x"}}))
+    with pytest.raises(UpstreamBroken, match="paging has a next page and no after cursor"):
+        run(collect(make(server)))
+
+
+# ---------------------------------------------------------------- the last survivors of the derived guards
+
+def test_an_error_text_is_cut_to_two_hundred_characters_and_names_the_code_and_subcode():
+    from app.connectors.meta import _read_error
+    err = _read_error({"error": {"code": 17, "error_subcode": 2446079, "message": "m" * 400}}, 400)
+    assert err.message == "m" * 150 and err.text() == "code 17 subcode 2446079: " + "m" * 150
+    assert len(err.text()) <= 200
+    from app.connectors.meta import _MetaError
+    assert len(_MetaError(1, None, "z" * 500, 400).text()) == 200
+    assert _MetaError(None, None, "", 502).text() == "HTTP 502"
+
+
+def test_an_error_that_is_not_an_object_is_kept_as_text_cut_to_120_and_a_bad_subcode_is_dropped():
+    from app.connectors.meta import _read_error
+    err = _read_error({"error": "y" * 300}, 500)
+    assert err.message == "y" * 120 and err.code is None and err.http == 500
+    for bad in ("x", True, 1.5, None):
+        assert _read_error({"error": {"code": 1, "error_subcode": bad, "message": "m"}}, 400).subcode is None, bad
+    assert _read_error({"error": {"code": 1, "error_subcode": 33, "message": "m"}}, 400).subcode == 33
+    assert _read_error({"error": {"code": True, "message": "m"}}, 400).code is None
+
+
+def test_a_usage_percent_of_zero_and_of_a_thousand_is_kept_and_above_that_or_negative_is_not():
+    from app.connectors.meta import _percent
+    assert _percent(0) == 0.0 and _percent(1000) == 1000.0 and _percent(37.5) == 37.5
+    assert _percent(1000.5) is None and _percent(-0.1) is None and _percent("5") is None and _percent(True) is None
+
+
+def test_a_retry_after_of_zero_means_wait_nothing_and_a_negative_or_missing_one_means_no_answer():
+    from app.connectors.meta import MetaConnector as C
+
+    def of(value, minutes=None):
+        headers = {} if value is None else {"Retry-After": value}
+        return C._wait_from(httpx.Response(429, headers=headers), minutes)
+    assert of("0") == 0.0 and of("4") == 4.0 and of("-1") is None and of(None) is None and of("soon") is None
+    assert of("9", 2) == 120 and of("9", 0) == 9.0
+
+
+def test_constructor_messages_and_the_smallest_allowed_values(server):
+    with pytest.raises(ValueError) as exc:
+        make(server, page_size=0)
+    assert str(exc.value) == "page_size must be at least 1"
+    with pytest.raises(ValueError) as exc:
+        make(server, max_attempts=0)
+    assert "max_attempts" in str(exc.value)
+    run(collect(make(server, max_attempts=1, page_size=1)))
+
+
+def test_two_currencies_are_named_in_alphabetical_order_in_the_refusal(server):
+    rows = [{"account_currency": c, "spend": "1.00", "impressions": "10", "clicks": "1",
+             "date_start": "2026-10-0%d" % n, "date_stop": "2026-10-0%d" % n} for n, c in ((1, "USD"), (2, "EUR"))]
+    server.faults.append(Fault(200, {"data": rows}))
+    with pytest.raises(UpstreamBroken) as exc:
+        run(collect(make(server)))
+    assert "rows name two currencies: EUR, USD" in str(exc.value)
+
+
+def test_the_call_count_header_alone_is_a_usage_level():
+    assert read_usage(httpx.Response(200, headers={"x-app-usage": '{"call_count": 77}'})) == (77.0, None)
+
+
+def test_the_constructor_and_from_env_say_what_is_missing_in_so_many_words(server):
+    with pytest.raises(ValueError) as exc:
+        make(server, access_token=None)
+    assert str(exc.value) == "give exactly one of access_token and token_provider"
+    with pytest.raises(ValueError) as exc:
+        MetaConnector.from_env({})
+    assert str(exc.value) == "set META_AD_ACCOUNT_ID and META_ACCESS_TOKEN in the environment"
+    with pytest.raises(ValueError) as exc:
+        MetaConnector.from_env({"META_AD_ACCOUNT_ID": ACCOUNT})
+    assert str(exc.value) == "set META_ACCESS_TOKEN in the environment"
+
+
+def test_a_200_that_is_not_json_or_not_an_object_says_which():
+    def conn_for(response):
+        client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: response))
+        return MetaConnector(ad_account_id=ACCOUNT, access_token=TOKEN, base_url="http://stand-in.invalid", client=client)
+    for response, words in ((httpx.Response(200, content=b"<html>down</html>"), "with a body that is not JSON, not an object"),
+                            (httpx.Response(200, json=[1]), "with list, not an object")):
+        conn = conn_for(response)
+        with pytest.raises(UpstreamBroken) as exc:
+            run(collect(conn))
+        assert "Meta answered 200 " + words in str(exc.value)
