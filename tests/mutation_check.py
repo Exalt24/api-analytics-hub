@@ -71,6 +71,9 @@ TARGETS = {
     "web": ROOT / "app" / "report" / "web.py",
     "service": ROOT / "app" / "report" / "service.py",
     "m006": ROOT / "migrations" / "006_ga4_metrics.sql",
+    "m007": ROOT / "migrations" / "007_meta_metrics.sql",
+    "m008": ROOT / "migrations" / "008_search_metrics.sql",
+    "m009": ROOT / "migrations" / "009_report_runs.sql",
 }
 
 MUTATIONS = [
@@ -1558,6 +1561,146 @@ MUTATIONS = [
         "    ('users',      'Users',      'count', 'delta'),",
         "a distinct count per day cannot be summed across days",
     ),
+    (
+        "m007",
+        "ad spend is not money in the currency check",
+        "metric_key in ('gross_sales', 'refunds', 'net_sales', 'avg_order_value', 'ad_spend', 'ad_purchase_value')",
+        "metric_key in ('gross_sales', 'refunds', 'net_sales', 'avg_order_value', 'ad_purchase_value')",
+        "an ad amount with no currency, or a currency on ad spend, must be refused by the database",
+    ),
+    (
+        "m007",
+        "purchase value is not money in the currency check",
+        "metric_key in ('gross_sales', 'refunds', 'net_sales', 'avg_order_value', 'ad_spend', 'ad_purchase_value')",
+        "metric_key in ('gross_sales', 'refunds', 'net_sales', 'avg_order_value', 'ad_spend')",
+        "a purchase value is money and needs the ad account's currency beside it",
+    ),
+    (
+        "m007",
+        "the old currency check is kept beside the new one",
+        "alter table metric_snapshot drop constraint if exists currency_iff_money;",
+        "select 1;",
+        "the check is replaced, not left standing with the old list",
+    ),
+    (
+        "m007",
+        "the ad metric migration cannot run twice",
+        "on conflict (key) do nothing;",
+        ";",
+        "a migration run twice must not fail",
+    ),
+    (
+        "m007",
+        "ad spend is registered as a gauge",
+        "    ('ad_spend',          'Ad spend',       'minor_currency', 'delta'),",
+        "    ('ad_spend',          'Ad spend',       'minor_currency', 'gauge'),",
+        "spend on a day is an amount that can be added across days",
+    ),
+    (
+        "m008",
+        "a top row may have more clicks than impressions",
+        "    constraint clicks_within_impressions check (clicks <= impressions),",
+        "    constraint clicks_within_impressions check (clicks >= 0),",
+        "a click is an impression that was clicked",
+    ),
+    (
+        "m008",
+        "a top row may be stored twice for one day and key",
+        "    unique (connection_id, observed_on, dimension, key)",
+        "    unique (id)",
+        "two rows for one query on one day must be impossible",
+    ),
+    (
+        "m008",
+        "a top row may belong to a dimension nobody asked for",
+        "check (dimension in ('query', 'page')),",
+        "check (dimension in ('query', 'page', 'country')),",
+        "only queries and pages are stored",
+    ),
+    (
+        "m008",
+        "row level security is not forced on the top rows",
+        "alter table search_top_row force row level security;",
+        "select 1;",
+        "the owner of the table must be filtered like everyone else",
+    ),
+    (
+        "m008",
+        "every tenant reads every tenant's top rows",
+        "    using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)\n    with check (",
+        "    using (true)\n    with check (",
+        "one tenant's search queries must never reach another's report",
+    ),
+    (
+        "m008",
+        "a later sync keeps the old top rows of a day beside the new",
+        "     where t.connection_id = d.connection_id and t.observed_on = d.observed_on;",
+        "     where t.connection_id = d.connection_id and t.observed_on = d.observed_on and false;",
+        "a query that left a day's top list must be gone, not kept beside the new list",
+    ),
+    (
+        "m008",
+        "the sync worker may not delete the rows it replaces",
+        "grant select, insert, update, delete on search_top_row to sync_worker;",
+        "grant select, insert, update on search_top_row to sync_worker;",
+        "replacing a day's rows needs delete",
+    ),
+    (
+        "m008",
+        "average position is registered as a delta",
+        "    ('search_position',    'Average position', 'ratio', 'gauge')",
+        "    ('search_position',    'Average position', 'ratio', 'delta')",
+        "a position is an average and must never be summed across days",
+    ),
+    (
+        "m009",
+        "two requests with one key can both build",
+        "    unique (tenant_id, idempotency_key),",
+        "    unique (id),",
+        "the unique key is what makes two simultaneous requests build one deck",
+    ),
+    (
+        "m009",
+        "a report that was not built can be marked delivered",
+        "    constraint delivered_only_when_done check (delivered_at is null or status = 'done')",
+        "    constraint delivered_only_when_done check (true)",
+        "nothing is delivered that was not built",
+    ),
+    (
+        "m009",
+        "a finished run can have no deck",
+        "    constraint done_has_a_deck check (status <> 'done' or (deck is not null and deck_sha256 is not null and slides is not null)),",
+        "    constraint done_has_a_deck check (true),",
+        "a done run holds its deck, its hash and its size",
+    ),
+    (
+        "m009",
+        "a failed run can have no reason",
+        "    constraint failed_has_a_reason check (status <> 'failed' or error is not null),",
+        "    constraint failed_has_a_reason check (true),",
+        "a failed run says why",
+    ),
+    (
+        "m009",
+        "an idempotency key can be anything",
+        "check (idempotency_key ~ '^[A-Za-z0-9:_.@-]{8,128}$'),",
+        "check (true),",
+        "a key with spaces or no length must be refused",
+    ),
+    (
+        "m009",
+        "row level security is not forced on the report runs",
+        "alter table report_run force row level security;",
+        "select 1;",
+        "the owner of the table must be filtered like everyone else",
+    ),
+    (
+        "m009",
+        "the request role may not update a run",
+        "grant select, insert, update on report_run to app_request;",
+        "grant select, insert on report_run to app_request;",
+        "a run is claimed and then finished, which is an update",
+    ),
 ]
 
 
@@ -1569,18 +1712,24 @@ HUNG_SENTINEL = "hung"
 #: The full suite runs in about ten seconds. Three minutes is not slow, it is
 #: stuck, and waiting ten minutes for that verdict cost a whole run once.
 MUTANT_TIMEOUT_SECONDS = 180
+#: The whole suite is far past three minutes now (database tests included), so the green check before and after a run gets its own limit.
+BASELINE_TIMEOUT_SECONDS = 1800
 
 
 #: The change detection guards live in code that nothing else imports, so their mutants run only the suite that can see them (about 30 seconds instead of 60). The baseline and the final
 #: check still run everything.
 SCOPED_SUITE = {key: "tests/test_change_detection.py" for key in ("m005", "changes", "cli")}
 #: The report guards run the report's own test files (space separated), which see all of them in a few seconds.
-SCOPED_SUITE.update({key: "tests/test_monthly_report.py tests/test_report_insights.py tests/test_report_deck.py tests/test_report_service_db.py tests/test_report_cli.py tests/test_report_web.py tests/test_report_web_deck.py" for key in ("report", "insights", "deck")})
+SCOPED_SUITE.update({key: "tests/test_monthly_report.py tests/test_report_insights.py tests/test_report_deck.py tests/test_report_service_db.py tests/test_report_cli.py tests/test_report_web.py tests/test_report_web_deck.py tests/test_report_paid.py tests/test_report_search.py tests/test_report_sources_deck.py" for key in ("report", "insights", "deck")})
 #: The GA4 connector's guards run its own tests (a real HTTP server on the loopback address, a few seconds) and the registry's.
 SCOPED_SUITE["ga4"] = "tests/test_ga4_connector.py tests/test_ga4_fake_server.py tests/test_registry.py"
 SCOPED_SUITE["web"] = "tests/test_report_web.py tests/test_report_web_deck.py"
 #: The service and migration guards need Postgres: the sync through to the report, and the report's own database tests.
-SCOPED_SUITE.update({key: "tests/test_ga4_sync_db.py tests/test_report_service_db.py" for key in ("service", "m006")})
+SCOPED_SUITE.update({key: "tests/test_ga4_sync_db.py tests/test_report_service_db.py tests/test_report_sources_db.py" for key in ("service", "m006")})
+#: The migrations of the ad, search and report run work each run against the database tests that apply them.
+SCOPED_SUITE["m007"] = "tests/test_meta_sync_db.py"
+SCOPED_SUITE["m008"] = "tests/test_gsc_sync_db.py"
+SCOPED_SUITE["m009"] = "tests/test_report_api_db.py"
 
 
 def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
@@ -1592,6 +1741,14 @@ def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
     except subprocess.TimeoutExpired:
         return HUNG_SENTINEL
     return r.returncode == 0
+
+
+def baseline_path(only: set[str] | None) -> str:
+    """The tests the green checks run: all of them, or only the suites of the selected keys when a run is narrowed with --only."""
+    if not only:
+        return "tests/"
+    suites = [SCOPED_SUITE.get(key, "tests/") for key in sorted(only)]
+    return "tests/" if "tests/" in suites else " ".join(dict.fromkeys(" ".join(suites).split()))
 
 
 def missing_targets() -> list[str]:
@@ -1645,7 +1802,8 @@ def main(argv: list[str] | None = None) -> int:
         pass
 
     try:
-        if run_suite() is not True:
+        baseline = baseline_path(only)
+        if run_suite(timeout=BASELINE_TIMEOUT_SECONDS, path=baseline) is not True:
             print("baseline suite is RED or hung, fix that before mutating")
             return 1
         print("baseline: green")
@@ -1680,7 +1838,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[ok]   {name}: suite went red as it should")
 
         print()
-        if run_suite() is not True:
+        if run_suite(timeout=BASELINE_TIMEOUT_SECONDS, path=baseline) is not True:
             print("suite is RED or hung after restoring, a mutation leaked")
             return 1
         print("all sources restored, suite green again")

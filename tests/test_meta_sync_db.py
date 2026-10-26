@@ -267,3 +267,10 @@ def test_row_level_security_keeps_each_tenants_ad_rows_apart(world, server):
     assert {str(r["connection_id"]) for r in a_rows} == {str(world["a_meta"])}
     assert {str(r["connection_id"]) for r in b_rows} == {str(world["b_meta"])}
     assert all(r["value_numeric"] != 999900 for r in a_rows) and {r["currency"] for r in b_rows if r["currency"]} == {"USD"}
+
+
+def test_the_ad_metrics_are_registered_with_their_unit_and_kind_so_nothing_sums_or_charts_them_wrongly(world):
+    got = {r[0]: (r[1], r[2]) for r in sql("select key, unit, kind from metric where key in "
+                                          "('ad_spend', 'ad_impressions', 'ad_clicks', 'ad_purchases', 'ad_purchase_value')")}
+    assert got == {"ad_spend": ("minor_currency", "delta"), "ad_impressions": ("count", "delta"), "ad_clicks": ("count", "delta"),
+                   "ad_purchases": ("count", "delta"), "ad_purchase_value": ("minor_currency", "delta")}
