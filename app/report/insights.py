@@ -52,6 +52,9 @@ from app.report.monthly import (
     states_total_with_per_day,
     total_phrase,
 )
+from app.report.paid import PAID_TOTAL_KEYS, WINDOW_TEXT, paid_partial_clause
+from app.report.search import SEARCH_TOTAL_KEYS, search_partial_clause
+from app.report.sources import states_total_with_per_day as source_states_total_with_per_day
 from app.report.web import (
     web_partial_clause,
     web_states_total_with_per_day,
@@ -61,7 +64,7 @@ from app.report.web import (
 #: text there is the more room for a claim the numbers do not carry.
 MAX_LINES = 6
 
-REPORT_PROMPT = """You write the commentary for a monthly performance report on one online store and, when the facts hold website figures (sessions, users, page views, key events, order rate), its website.
+REPORT_PROMPT = """You write the commentary for a monthly performance report on one online store and, when the facts hold them, its website figures (sessions, users, page views, key events, order rate), its paid media figures (ad spend, impressions, clicks, click through rate, purchases, return on ad spend) and its search figures (search clicks, search impressions, average position). Ad amounts are in the ad account's own currency, which may differ from the store's: write each amount exactly with the currency the facts give it.
 
 Rules, in order of importance:
 1. Use ONLY the facts given. Copy every amount, percentage, count and date exactly as it is
@@ -133,7 +136,59 @@ def report_facts(report: MonthlyReport) -> dict[str, Any]:
         facts["Net sales on the best day"] = format_money(value, report.currency)
     if report.web is not None:
         _add_web_facts(facts, report)
+    if report.paid is not None:
+        _add_paid_facts(facts, report)
+    if report.search is not None:
+        _add_search_facts(facts, report)
     return facts
+
+
+def _add_kpi_facts(facts: dict[str, Any], src: Any) -> None:
+    """A source's KPI rows as facts, in the same shape as the store's, so each figure is held beside its own metric."""
+    prev = src.previous
+    for row in src.kpis:
+        facts[row.label] = row.current_display
+        if prev is not None:
+            facts[row.label + " previous"] = row.previous_display
+        facts[row.label + " change"] = row.change_display
+        facts[row.label + " change percent"] = row.pct_display
+        if row.note:
+            facts[row.label + " note"] = row.note
+        if row.per_day is not None:
+            facts[row.label + " per reported day"] = row.per_day.current_display
+            facts[row.label + " per reported day previous"] = row.per_day.previous_display
+            facts[row.label + " per reported day percent"] = row.per_day.pct_display
+
+
+def _add_paid_facts(facts: dict[str, Any], report: MonthlyReport) -> None:
+    """The ad figures. Money is in the ad account's currency, which is the figure's own and need not be the store's."""
+    paid = report.paid
+    cur, prev = paid.current, paid.previous
+    facts["days with ad data"] = len(cur.data_days)
+    facts["days with no ad delivery"] = len(cur.quiet_days)
+    facts["days with no ad data"] = len(cur.missing_days)
+    facts["dates with no ad data"] = days_text(cur.missing_days)
+    facts["ad account currency"] = paid.currency or "none"
+    facts["purchase attribution window"] = WINDOW_TEXT
+    if prev is not None:
+        facts["previous period days with no ad data"] = len(prev.missing_days)
+    if paid.provisional:
+        facts["provisional ad dates"] = days_text(paid.provisional, count_rest=False)
+    _add_kpi_facts(facts, paid)
+
+
+def _add_search_facts(facts: dict[str, Any], report: MonthlyReport) -> None:
+    search = report.search
+    cur, prev = search.current, search.previous
+    facts["days with search data"] = len(cur.data_days)
+    facts["days with no search traffic"] = len(cur.quiet_days)
+    facts["days with no search data"] = len(cur.missing_days)
+    facts["dates with no search data"] = days_text(cur.missing_days)
+    if prev is not None:
+        facts["previous period days with no search data"] = len(prev.missing_days)
+    if search.provisional:
+        facts["provisional search dates"] = days_text(search.provisional, count_rest=False)
+    _add_kpi_facts(facts, search)
 
 
 def _add_web_facts(facts: dict[str, Any], report: MonthlyReport) -> None:
@@ -212,6 +267,18 @@ ALIASES = {
     "Page views": ("page views", "pageviews", "views"),
     "Key events": ("key events", "key event count"),
     "Order rate": ("order rate", "orders per session"),
+    "Ad spend": ("ad spend", "advertising spend", "ad cost", "spend"),
+    "Impressions": ("impressions", "ad impressions"),
+    "Clicks": ("clicks", "ad clicks"),
+    "Click through rate": ("click through rate", "click-through rate", "ctr"),
+    "Cost per click": ("cost per click", "cpc"),
+    "Purchases": ("purchases", "ad purchases"),
+    "Purchase value": ("purchase value", "conversion value"),
+    "Return on ad spend": ("return on ad spend", "roas"),
+    "Search clicks": ("search clicks", "organic clicks"),
+    "Search impressions": ("search impressions", "organic impressions"),
+    "Search click through rate": ("search click through rate", "search click-through rate", "search ctr"),
+    "Average position": ("average position", "avg position", "position", "ranking"),
 }
 
 #: Words for sales that say neither net nor gross: a sentence using one may use either's figures.
@@ -359,7 +426,10 @@ def template_lines(report: MonthlyReport) -> list[str]:
     cur, prev = report.current, report.previous
     clause = partial_clause(report)
     lines: list[str] = []
-    for key in ("net_sales", "orders", "avg_order_value", "refunds"):
+    # With ads or search on the report there are too many lines for one slide, so the store keeps its two headline figures
+    # (the rest are in its table) and each added source says its main point.
+    condensed = report.paid is not None or report.search is not None
+    for key in (("net_sales", "orders") if condensed else ("net_sales", "orders", "avg_order_value", "refunds")):
         row = report.kpi(key)
         if row.current is None:
             continue
@@ -392,7 +462,11 @@ def template_lines(report: MonthlyReport) -> list[str]:
         lines.append("Only %d of %d days of %s are counted, so the totals are partial."
                      % (cur.days_expected, cur.days_in_month, cur.short))
     if report.web is not None:
-        lines.extend(_web_lines(report))
+        lines.extend(_web_lines(report, ("sessions", "order_rate") if condensed else _WEB_LINE_KEYS))
+    if report.paid is not None:
+        lines.extend(_paid_lines(report))
+    if report.search is not None:
+        lines.extend(_search_lines(report))
     return lines
 
 
@@ -411,12 +485,12 @@ def _web_total_sentence(report: MonthlyReport, key: str) -> str:
         row.per_day.current_display, row.per_day.previous_display)
 
 
-def _web_lines(report: MonthlyReport) -> list[str]:
+def _web_lines(report: MonthlyReport, keys: tuple[str, ...] = _WEB_LINE_KEYS) -> list[str]:
     web = report.web
     cur, prev = web.current, web.previous
     clause = web_partial_clause(web)
     lines: list[str] = []
-    for key in _WEB_LINE_KEYS:
+    for key in keys:
         row = web.kpi(key)
         if row.current is None:
             continue
@@ -435,6 +509,63 @@ def _web_lines(report: MonthlyReport) -> list[str]:
         lines.append("%s no website data (%s), so the website totals are understated."
                      % (plural(n, "day") + (" has" if n == 1 else " have"), days_text(cur.missing_days, count_rest=False)))
     return lines
+
+
+#: The figures a template line is written for, in order, for the sources added after the website. The rest are in the tables.
+_PAID_LINE_KEYS = ("ad_spend", "roas")
+_SEARCH_LINE_KEYS = ("search_clicks", "position")
+#: A figure that is one amount or one ratio reads "was"; a count of things reads "were".
+_SINGULAR = frozenset({"ad_spend", "ad_purchase_value", "ctr", "cpc", "roas", "position"})
+
+
+def _source_total_sentence(src: Any, key: str, clause: str) -> str:
+    """A total in a partial month: the total and its raw relation, then the per reported day change."""
+    row, cur, prev = src.kpi(key), src.current, src.previous
+    return "%s total was %s in %s, %s (%s), but %s: per reported day, %s %s %s (%s against %s)." % (
+        row.label, row.current_display, cur.short, total_phrase(row, prev), row.previous_display, clause,
+        row.label.lower(), "is" if key in _SINGULAR else "are", per_day_phrase(row.per_day),
+        row.per_day.current_display, row.per_day.previous_display)
+
+
+def _source_lines(src: Any, keys: tuple[str, ...], noun: str, total_keys: frozenset[str], clause: str) -> list[str]:
+    """One line for each of `keys` that has a figure, the same wording the store's lines use, then the days with no data."""
+    cur, prev = src.current, src.previous
+    lines: list[str] = []
+    for key in keys:
+        row = src.kpi(key)
+        if row.current is None:
+            continue
+        if source_states_total_with_per_day(src, key, noun, total_keys):
+            lines.append(_source_total_sentence(src, key, clause))
+            continue
+        sentence = "%s %s %s in %s" % (row.label, "was" if key in _SINGULAR else "were", row.current_display, cur.short)
+        compare = _comparison(row, prev)
+        if compare and clause:
+            compare += ", and %s" % clause
+        lines.append(sentence + compare + ".")
+    if not cur.has_baseline:
+        lines.append("No %s data is stored for %s yet." % (noun, cur.short))
+    elif cur.missing_days:
+        n = len(cur.missing_days)
+        lines.append("%s no %s data (%s), so the %s totals are understated."
+                     % (plural(n, "day") + (" has" if n == 1 else " have"), noun,
+                        days_text(cur.missing_days, count_rest=False), noun))
+    return lines
+
+
+def _paid_lines(report: MonthlyReport) -> list[str]:
+    """Ad spend, then the return on it (the click through rate when there is no return), then the days with no data.
+
+    The attribution window and the provisional days are on the slide and in the facts; the narrative stays short.
+    """
+    paid = report.paid
+    keys = _PAID_LINE_KEYS if paid.kpi("roas").current is not None else ("ad_spend", "ctr")
+    return _source_lines(paid, keys, "ad", PAID_TOTAL_KEYS, paid_partial_clause(paid))
+
+
+def _search_lines(report: MonthlyReport) -> list[str]:
+    search = report.search
+    return _source_lines(search, _SEARCH_LINE_KEYS, "search", SEARCH_TOTAL_KEYS, search_partial_clause(search))
 
 
 def template_insights(report: MonthlyReport, *, reason: str = "no model key is set") -> Insights:

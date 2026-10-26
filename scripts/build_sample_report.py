@@ -5,11 +5,11 @@
 
 It makes a scratch database on the server named by ANALYTICS_TEST_DSN (default: the compose
 Postgres on port 5433), applies migrations 001, 002 and 006, loads the invented store snapshots and
-sync runs from app/report/demo_data.py, and gets the invented website figures the way a real run
-would: the GA4 connector reads them over HTTP from the stand-in server in app/connectors/ga4_fake.py
-and the sync runner stores them (as the sync_worker role). It records one failed website run over
-the days it leaves without data, runs the same `generate` the command line uses (as the app_request
-role, so row level security applies), writes the deck and a text read-back, and drops the scratch
+sync runs from app/report/demo_data.py, and gets the invented website, ad and search figures the way a real run
+would: each connector reads them over HTTP from its stand-in server (app/connectors/ga4_fake.py, meta_fake.py,
+gsc_fake.py) and the sync runner stores them (as the sync_worker role). It records one failed run for each
+source over the days it leaves without data, runs the same `generate` the command line uses (as the
+app_request role, so row level security applies), writes the deck and a text read-back, and drops the scratch
 database. It never touches the database the DSN names. The password in the DSN is never printed.
 
 If LibreOffice (soffice) and pdftoppm are found, it also renders every slide to a PNG and a
@@ -36,13 +36,24 @@ sys.path.insert(0, str(ROOT))
 
 from app.connectors.ga4 import GA4Connector  # noqa: E402
 from app.connectors.ga4_fake import FakeGA4  # noqa: E402
+from app.connectors.gsc import GSCConnector  # noqa: E402
+from app.connectors.gsc_fake import FakeGSC  # noqa: E402
+from app.connectors.meta import MetaConnector  # noqa: E402
+from app.connectors.meta_fake import FakeMeta  # noqa: E402
 from app.db import Database  # noqa: E402
 from app.report.deck import dump_deck  # noqa: E402
 from app.report.demo_data import (  # noqa: E402
     DEMO_RUNS,
+    PAID_CURRENCY,
+    PAID_FAILED_WINDOW,
+    PAID_SYNC_WINDOWS,
+    SEARCH_FAILED_WINDOW,
+    SEARCH_SYNC_WINDOWS,
     WEB_FAILED_WINDOW,
     WEB_SYNC_WINDOWS,
+    demo_paid_days,
     demo_points,
+    demo_search_days,
     demo_web_days,
 )
 from app.report.service import generate  # noqa: E402
@@ -52,10 +63,12 @@ DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
 YEAR, MONTH = 2026, 10
 #: The date the sample treats as today, so the deck is the same on every machine and day.
 AS_OF = date(2026, 11, 2)
-DATA_NOTE = "Sample report: invented store orders and website figures. The website side ran against a stand-in server, not Google."
+DATA_NOTE = "Sample report: invented figures. The website, ad and search sides ran against stand-in servers, not Google or Meta."
 #: The invented property and token the stand-in server answers for. Neither is real.
 SAMPLE_PROPERTY = "100000001"
 SAMPLE_TOKEN = "sample-token-not-a-credential"
+SAMPLE_AD_ACCOUNT = "200000002"
+SAMPLE_SITE = "sc-domain:example-outfitters.test"
 RENDER_TIMEOUT_SECONDS = 180
 
 
@@ -76,12 +89,13 @@ def find_soffice() -> str | None:
     return None
 
 
-def seed(dsn: str) -> tuple[str, str, str]:
-    """Load the invented tenant, store connection, snapshots and runs, and an empty website connection.
+def seed(dsn: str) -> tuple[str, str, str, str, str]:
+    """Load the invented tenant, store connection, snapshots and runs, and empty website, ad and search connections.
 
-    Returns (tenant, store connection, website connection). The website's rows come from `sync_website`.
+    Returns (tenant, store, website, ads, search) ids. The other three sources' rows come from the sync functions.
     """
     tenant, connection, website = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    ads, search = str(uuid.uuid4()), str(uuid.uuid4())
     payload = [
         {"tenant_id": tenant, "connection_id": connection, "metric_key": p.metric_key,
          "observed_on": p.observed_on.isoformat(), "value_numeric": p.value_numeric,
@@ -89,7 +103,7 @@ def seed(dsn: str) -> tuple[str, str, str]:
         for p in demo_points()
     ]
     with psycopg.connect(dsn, autocommit=True) as conn, conn.cursor() as cur:
-        for name in ("001_init.sql", "002_control_plane.sql", "006_ga4_metrics.sql"):
+        for name in ("001_init.sql", "002_control_plane.sql", "006_ga4_metrics.sql", "007_meta_metrics.sql", "008_search_metrics.sql"):
             cur.execute((ROOT / "migrations" / name).read_text(encoding="utf-8"))
         cur.execute("select set_config('app.tenant_id', %s, false)", (tenant,))
         cur.execute("insert into tenant (id, slug, name) values (%s, 'demo', 'Demo')", (tenant,))
@@ -103,6 +117,13 @@ def seed(dsn: str) -> tuple[str, str, str]:
             "values (%s, %s, 'ga4', 'properties/' || %s, 'Example site', %s)",
             (website, tenant, SAMPLE_PROPERTY, b"no credential, invented data"),
         )
+        for connection_id, platform, account, name in ((ads, "meta", "act_" + SAMPLE_AD_ACCOUNT, "Example ads"),
+                                                       (search, "gsc", SAMPLE_SITE, "Example search")):
+            cur.execute(
+                "insert into platform_connection (id, tenant_id, platform, external_account, display_name, credentials_enc) "
+                "values (%s, %s, %s, %s, %s, %s)",
+                (connection_id, tenant, platform, account, name, b"no credential, invented data"),
+            )
         cur.execute("select upsert_snapshots(%s::jsonb)", (json.dumps(payload),))
         for run in DEMO_RUNS:
             cur.execute(
@@ -116,7 +137,13 @@ def seed(dsn: str) -> tuple[str, str, str]:
             "values (%s, %s, 'schedule', %s, %s, %s, now())",
             (tenant, website, WEB_FAILED_WINDOW.window_start, WEB_FAILED_WINDOW.window_end, WEB_FAILED_WINDOW.status),
         )
-    return tenant, connection, website
+        for connection_id, failed in ((ads, PAID_FAILED_WINDOW), (search, SEARCH_FAILED_WINDOW)):
+            cur.execute(
+                "insert into sync_run (tenant_id, connection_id, trigger, window_start, window_end, status, finished_at) "
+                "values (%s, %s, 'schedule', %s, %s, %s, now())",
+                (tenant, connection_id, failed.window_start, failed.window_end, failed.status),
+            )
+    return tenant, connection, website, ads, search
 
 
 async def sync_website(dsn: str, tenant: str, website: str) -> None:
@@ -141,6 +168,41 @@ async def sync_website(dsn: str, tenant: str, website: str) -> None:
                 if outcome.status != "succeeded":
                     raise SystemExit("the website sync did not succeed: %s %s" % (outcome.status, outcome.error_code))
                 print("website sync %s to %s: %d rows" % (start, end, outcome.rows_written))
+    finally:
+        await db.close()
+
+
+async def sync_ads_and_search(dsn: str, tenant: str, ads: str, search: str) -> None:
+    """Fill the ad and search connections through their connectors, the stand-in servers and the sync runner."""
+    import httpx
+
+    def client():
+        return httpx.AsyncClient(trust_env=False, verify=False, timeout=10)
+
+    db = Database(dsn, max_size=2, role="sync_worker")
+    await db.connect()
+    try:
+        with FakeMeta(token=SAMPLE_TOKEN) as meta, FakeGSC(token=SAMPLE_TOKEN, today=AS_OF) as gsc:
+            meta.set_account(SAMPLE_AD_ACCOUNT, demo_paid_days(), currency=PAID_CURRENCY)
+            days, queries, pages = demo_search_days()
+            gsc.set_site(SAMPLE_SITE, days, queries=queries, pages=pages)
+            for label, connection, windows, build in (
+                ("ads", ads, PAID_SYNC_WINDOWS, lambda: MetaConnector(
+                    ad_account_id=SAMPLE_AD_ACCOUNT, access_token=SAMPLE_TOKEN, base_url=meta.url, client=client())),
+                ("search", search, SEARCH_SYNC_WINDOWS, lambda: GSCConnector(
+                    site_url=SAMPLE_SITE, access_token=SAMPLE_TOKEN, base_url=gsc.url, client=client())),
+            ):
+                for start, end in windows:
+                    connector = build()
+                    try:
+                        outcome = await SyncRunner(db).run_once(
+                            tenant_id=tenant, connection_id=connection, connector=connector,
+                            window_start=start, window_end=end, trigger="backfill")
+                    finally:
+                        await connector.aclose()
+                    if outcome.status != "succeeded":
+                        raise SystemExit("the %s sync did not succeed: %s %s" % (label, outcome.status, outcome.error_code))
+                    print("%s sync %s to %s: %d rows" % (label, start, end, outcome.rows_written))
     finally:
         await db.close()
 
@@ -192,14 +254,15 @@ async def build(dsn: str, outdir: Path) -> int:
     scratch_dsn = _swap_db(dsn, scratch)
     db = Database(scratch_dsn, max_size=2)
     try:
-        tenant, connection, website = seed(scratch_dsn)
+        tenant, connection, website, ads, search = seed(scratch_dsn)
         await sync_website(scratch_dsn, tenant, website)
+        await sync_ads_and_search(scratch_dsn, tenant, ads, search)
         await db.connect()
         outdir.mkdir(parents=True, exist_ok=True)
         deck = outdir / ("report_%04d-%02d.pptx" % (YEAR, MONTH))
         path, report, insights = await generate(
             db, tenant, YEAR, MONTH, deck, connection_id=connection, web_connection_id=website,
-            data_note=DATA_NOTE, as_of=AS_OF,
+            paid_connection_id=ads, search_connection_id=search, data_note=DATA_NOTE, as_of=AS_OF,
         )
         text = dump_deck(path)
         (outdir / ("report_%04d-%02d.txt" % (YEAR, MONTH))).write_text(text + "\n", encoding="utf-8", newline="\n")

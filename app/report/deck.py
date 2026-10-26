@@ -22,7 +22,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
@@ -46,6 +46,8 @@ from app.report.monthly import (
     per_day_phrase,
     plural,
 )
+from app.report.paid import PaidReport, WINDOW_TEXT, paid_claim_title
+from app.report.search import SearchReport, search_claim_title
 from app.report.web import WebReport, web_claim_title
 
 NAVY = RGBColor(0x1F, 0x3A, 0x5F)
@@ -120,9 +122,9 @@ def _footer(slide, lines: Sequence[str]) -> None:
 
 
 def _table(slide, top, rows: Sequence[Sequence[str]], widths: Sequence[float], *, size: int = 16,
-           row_h: float = 0.5, left_cols: int = 1, width=BODY_W):
+           row_h: float = 0.5, left_cols: int = 1, width=BODY_W, left=MARGIN):
     """A header row in navy, banded body rows, numbers right aligned."""
-    shape = slide.shapes.add_table(len(rows), len(rows[0]), MARGIN, top, width, Inches(row_h * len(rows)))
+    shape = slide.shapes.add_table(len(rows), len(rows[0]), left, top, width, Inches(row_h * len(rows)))
     table = shape.table
     total = sum(widths)
     for i, w in enumerate(widths):
@@ -197,15 +199,18 @@ def _definitions(report: MonthlyReport) -> str:
 
 def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, axis_title: str,
                  number_format: str, alt: str, *, compare: bool, top, height, left=MARGIN, width=BODY_W,
-                 source: tuple[MonthStats, MonthStats | None] | None = None) -> None:
+                 source: tuple[MonthStats, MonthStats | None] | None = None, currency: str | None = None,
+                 legend: bool = True) -> None:
     """A line of daily values: a dot on zero for a day with no orders, a break and an X for no data.
 
-    `source` draws another source's days (the website's) instead of the store's.
+    `source` draws another source's days (the website's, the ads', the search's) instead of the store's;
+    `currency` is the money axis's currency when that source's is not the store's.
     """
-    cur, prev, cc = (source[0], source[1] if compare else None, report.currency) if source else (
-        report.current, report.previous if compare else None, report.currency)
+    cc = currency if currency is not None else report.currency
+    cur, prev = (source[0], source[1] if compare else None) if source else (
+        report.current, report.previous if compare else None)
     days = max(cur.days_in_month, prev.days_in_month if prev else 0)
-    to_axis = (lambda v: _major(v, cc)) if metric == "net_sales" else (lambda v: None if v is None else float(v))
+    to_axis = (lambda v: _major(v, cc)) if metric in ("net_sales", "ad_spend") else (lambda v: None if v is None else float(v))
     points = daily_series(cur, metric)
     values = [to_axis(v) for _, v in points]
     series = [(series_name, values, ACCENT)]
@@ -232,7 +237,7 @@ def _daily_chart(slide, report: MonthlyReport, metric: str, series_name: str, ax
     chart.font.size = Pt(12)
     chart.font.name = FONT
     chart.font.color.rgb = INK
-    chart.has_legend = len(series) > 1
+    chart.has_legend = len(series) > 1 and legend
     if chart.has_legend:
         chart.legend.position = XL_LEGEND_POSITION.BOTTOM
         chart.legend.include_in_layout = False
@@ -306,8 +311,15 @@ def _kpi_slide(prs, report: MonthlyReport) -> None:
     head = ["Metric", cur.name, prev.name if prev else "Previous month", "Change", "Change %", "Note"]
     rows = [head] + [[k.label, k.current_display, k.previous_display, k.change_display, k.pct_display,
                       _note_text(report, k)] for k in report.kpis]
-    _table(slide, Inches(1.6), rows, [3.0, 2.0, 2.0, 1.8, 1.3, 3.7], size=14, row_h=0.58)
-    _footer(slide, ["Source: the store's daily order records.", _definitions(report)] + _per_day_definition(report))
+    extra = _extra_kpi_rows(report)
+    if extra:
+        # The summary table carries a headline row or two for each added source, so it is tighter than the store's alone.
+        rows += extra
+        _table(slide, Inches(1.45), rows, [2.2, 1.6, 1.6, 1.4, 1.0, 5.8], size=12, row_h=min(0.58, 4.6 / len(rows)))
+    else:
+        _table(slide, Inches(1.6), rows, [3.0, 2.0, 2.0, 1.8, 1.3, 3.7], size=14, row_h=0.58)
+    _footer(slide, ["Source: the store's daily order records."] + _extra_kpi_footer(report)
+            + [_definitions(report)] + _per_day_definition(report))
 
 
 def _sales_slide(prs, report: MonthlyReport) -> None:
@@ -352,12 +364,29 @@ def _value_slide(prs, report: MonthlyReport) -> None:
     _footer(slide, [_definitions(report)])
 
 
+def _insights_size(report: MonthlyReport, lines: Sequence[str]) -> tuple[int, int]:
+    """The font size and the space after each line that keep the narrative on the slide.
+
+    A store alone, or with a website, keeps the sizes it always had. With ads or search there are more lines,
+    so the size is the largest of a few that fit when each line is estimated to wrap at about 1,750 / size
+    characters across the slide (a measure, not a promise: the render is looked at).
+    """
+    if report.paid is None and report.search is None:
+        size = 18 if report.web is None or len(lines) <= 8 else 15
+        return size, 8 if size == 18 else 5
+    for size in (18, 16, 14, 13, 12):
+        per_line = int(1750 / size)
+        wrapped = sum(max(1, -(-len(line) // per_line)) for line in lines)
+        if wrapped * size * 1.2 + len(lines) * 4 <= 4.7 * 72:
+            return size, 4
+    return 12, 3
+
+
 def _insights_slide(prs, report: MonthlyReport, insights: Insights) -> None:
     slide = _new_slide(prs, insights_title(report))
     # More lines when a second source is on the report, so the text is a little smaller to stay on the slide.
-    size = 18 if report.web is None or len(insights.lines) <= 8 else 15
-    _text(slide, MARGIN, Inches(1.6), BODY_W, Inches(4.8), list(insights.lines), size, INK,
-          space_after=8 if size == 18 else 5)
+    size, space = _insights_size(report, insights.lines)
+    _text(slide, MARGIN, Inches(1.6), BODY_W, Inches(4.8), list(insights.lines), size, INK, space_after=space)
     _footer(slide, [NARRATIVE_FOOTER])
 
 
@@ -544,6 +573,223 @@ def _health_slide_multi(prs, report: MonthlyReport) -> None:
                     "A day with nothing to report is one where a data pull ran and found none. A day with no data is one no data pull covered."])
 
 
+# ---------------------------------------------------------------- the paid media and search sources
+
+def _source_note_text(src, row: KpiRow, *, flagged: frozenset[str] = frozenset(), provisional: Sequence = (),
+                      coverage: Mapping[str, int] | None = None) -> str:
+    """The Note cell of an ad or search figure, naming the month and the days behind it.
+
+    `flagged` are the figures that can still change in the `provisional` days, and `coverage` maps a figure
+    that exists only on some days to the number of days that carry it.
+    """
+    cur, prev = src.current, src.previous
+    parts = []
+    for note in row.notes:
+        if note == "partial data":
+            if cur.missing_days:
+                parts.append("%s: %s missing" % (cur.short, plural(len(cur.missing_days), "day")))
+            if not cur.complete:
+                parts.append("%s: %d of %d days" % (cur.short, cur.days_expected, cur.days_in_month))
+            if prev is not None and prev.missing_days:
+                parts.append("%s: %s missing" % (prev.short, plural(len(prev.missing_days), "day")))
+            if row.per_day is not None:
+                parts.append("per reported day %s" % per_day_phrase(row.per_day))
+        elif note == "zero baseline":
+            parts.append("%s was zero" % prev.short)
+        elif note == "no previous month":
+            parts.append("no earlier month stored")
+        elif note == "no previous value":
+            parts.append("no %s figure" % prev.short)
+        elif note == "not available":
+            parts.append("not reported")
+    if coverage and row.key in coverage and row.current is not None and coverage[row.key] < cur.reported_days:
+        parts.append("on %d of %d days" % (coverage[row.key], cur.reported_days))
+    if provisional and row.key in flagged and row.current is not None:
+        parts.append("last %s provisional" % plural(len(provisional), "day"))
+    return "; ".join(parts)
+
+
+_PAID_COVERED = frozenset({"ad_purchases", "ad_purchase_value", "roas"})
+_PAID_HEADLINES = ("ad_spend", "roas")
+_SEARCH_HEADLINES = ("search_clicks", "position")
+
+
+def _paid_note(paid: PaidReport, row: KpiRow) -> str:
+    cur = paid.current
+    return _source_note_text(paid, row, flagged=_PAID_COVERED, provisional=paid.provisional,
+                             coverage={"ad_purchases": cur.purchase_days, "ad_purchase_value": cur.value_days,
+                                       "roas": cur.joint_days})
+
+
+def _search_note(search: SearchReport, row: KpiRow) -> str:
+    return _source_note_text(search, row, flagged=frozenset(k.key for k in search.kpis), provisional=search.provisional)
+
+
+def _extra_kpi_rows(report: MonthlyReport) -> list[list[str]]:
+    """A headline row or two for the ads and for search, in the summary table beside the store's figures."""
+    rows: list[list[str]] = []
+    if report.paid is not None:
+        for key in _PAID_HEADLINES:
+            k = report.paid.kpi(key)
+            rows.append([k.label, k.current_display, k.previous_display, k.change_display, k.pct_display, _paid_note(report.paid, k)])
+    if report.search is not None:
+        for key in _SEARCH_HEADLINES:
+            k = report.search.kpi(key)
+            rows.append([k.label, k.current_display, k.previous_display, k.change_display, k.pct_display, _search_note(report.search, k)])
+    return rows
+
+
+def _extra_kpi_footer(report: MonthlyReport) -> list[str]:
+    parts = []
+    if report.paid is not None:
+        parts.append("Ad rows: Meta, in the ad account's currency%s, purchases in a %s window." % (
+            " (%s)" % report.paid.currency if report.paid.currency else "", WINDOW_TEXT))
+    if report.search is not None:
+        parts.append("Search rows: Search Console, Pacific time, a lower position is nearer the top.")
+    return [" ".join(parts)] if parts else []
+
+
+def _source_footer(src, noun_quiet: str, first: str, side: str, extra: Sequence[str] = ()) -> list[str]:
+    """Footnote lines of a source slide: where the figures come from, which days are dots and gaps, and what may still change."""
+    lines = [first]
+    cur = src.current
+    bits = []
+    prev = src.previous
+    if cur.quiet_days or (prev is not None and prev.quiet_days):
+        bits.append("a dot on the zero line is a day with %s, on either line" % noun_quiet)
+    if cur.missing_days:
+        bits.append("a break with an X is a day with no data (%s)" % days_text(cur.missing_days))
+    if prev is not None and prev.missing_days:
+        bits.append("the grey line has no data on %s" % days_text(prev.missing_days))
+    joined = "; ".join(bits)
+    lines.append("Day of the month across. %s The grey line is the month before.%s" % (
+        side, (" " + joined[:1].upper() + joined[1:] + ".") if bits else ""))
+    return lines + list(extra)
+
+
+def _paid_slide(prs, report: MonthlyReport) -> None:
+    paid = report.paid
+    cur, prev = paid.current, paid.previous
+    slide = _new_slide(prs, paid_claim_title(paid, "ad_spend"))
+    left_w = Inches(5.9)
+    head = ["Metric", cur.short, prev.short if prev else "Before", "Change %"]
+    rows = [head] + [[k.label, k.current_display, k.previous_display, k.pct_display] for k in paid.kpis]
+    _table(slide, Inches(1.5), rows, [2.35, 1.65, 1.65, 1.05], size=12, row_h=0.46, width=left_w)
+    x = MARGIN + left_w + Inches(0.3)
+    w = BODY_W - left_w - Inches(0.3)
+    unit = _unit_name(paid.currency)
+    _daily_chart(
+        slide, report, "ad_spend", cur.name, "Ad spend (%s)" % unit, '"$"#,##0' if unit == "$" else "#,##0",
+        "Line chart of ad spend for each day of %s%s" % (cur.name, ", with %s as a grey line" % prev.name if prev else ""),
+        compare=True, top=Inches(1.45), height=Inches(2.45), left=x, width=w, source=(cur, prev),
+        currency=paid.currency)
+    _daily_chart(
+        slide, report, "ad_clicks", cur.name, "Clicks", "#,##0",
+        "Line chart of ad clicks for each day of %s%s" % (cur.name, ", with %s as a grey line" % prev.name if prev else ""),
+        compare=True, top=Inches(3.95), height=Inches(2.45), left=x, width=w, source=(cur, prev), legend=False)
+    extra = []
+    if paid.provisional:
+        extra.append("Provisional days (a click can lead to a purchase after the day is over): %s." % days_text(paid.provisional))
+    if any(k.per_day is not None for k in paid.kpis):
+        extra.append("Per reported day divides a total by the days with ad delivery plus the days with none.")
+    _footer(slide, _source_footer(
+        paid, "no ad delivery",
+        "Source: Meta Marketing API, in the ad account's currency%s and time zone; store days follow UTC. Purchases are Meta's own count in a %s window, not the store's orders."
+        % (" (%s)" % paid.currency if paid.currency else "", WINDOW_TEXT),
+        "Top chart: ad spend. Bottom chart: clicks.", extra))
+
+
+def _top_table(slide, left, title: str, rows, first_col: str) -> None:
+    _text(slide, left, Inches(3.9), Inches(3.85), Inches(0.35), [title], 15, NAVY)
+    body = [[first_col, "Clicks", "Impr.", "Pos."]] + [[r.shown_key, format(r.clicks, ",d"), format(r.impressions, ",d"), r.position]
+                                                       for r in rows]
+    if len(body) == 1:
+        body.append(["no rows stored", "", "", ""])
+    _table(slide, Inches(4.25), body, [2.2, 0.6, 0.8, 0.55], size=11, row_h=0.33, left_cols=1, width=Inches(3.85), left=left)
+
+
+def _search_slide(prs, report: MonthlyReport) -> None:
+    search = report.search
+    cur, prev = search.current, search.previous
+    slide = _new_slide(prs, search_claim_title(search, "search_clicks"))
+    top, height = Inches(1.4), Inches(2.45)
+    _daily_chart(
+        slide, report, "search_clicks", cur.name, "Search clicks", "#,##0",
+        "Line chart of search clicks for each day of %s%s" % (cur.name, ", with %s as a grey line" % prev.name if prev else ""),
+        compare=True, top=top, height=height, left=MARGIN, width=_HALF_W, source=(cur, prev))
+    _daily_chart(
+        slide, report, "search_impressions", cur.name, "Search impressions", "#,##0",
+        "Line chart of search impressions for each day of %s%s" % (cur.name, ", with %s as a grey line" % prev.name if prev else ""),
+        compare=True, top=top, height=height, left=MARGIN + _HALF_W + Inches(0.3), width=_HALF_W, source=(cur, prev), legend=False)
+    _text(slide, MARGIN, Inches(3.9), Inches(4.0), Inches(0.35), ["Search figures"], 15, NAVY)
+    head = ["Metric", cur.short[:3], prev.short[:3] if prev else "Before", "Chg %"]
+    rows = [head] + [[k.label, k.current_display, k.previous_display, k.pct_display] for k in search.kpis]
+    _table(slide, Inches(4.25), rows, [2.2, 0.85, 0.85, 0.8], size=11, row_h=0.33, width=Inches(4.0))
+    _top_table(slide, MARGIN + Inches(4.15), "Top queries", search.top_queries, "Query")
+    _top_table(slide, MARGIN + Inches(8.15), "Top pages", search.top_pages, "Page")
+    extra = ["Top queries and pages add up each day's top rows over %d days, so a key outside a day's top rows is not counted: they are lower bounds, not totals."
+             % search.top_row_days]
+    if search.provisional:
+        extra.append("Provisional days (Search Console is still collecting them): %s." % days_text(search.provisional))
+    _footer(slide, _source_footer(
+        search, "no search traffic",
+        "Source: Google Search Console. Search days are Pacific time, store days follow UTC. A lower average position is nearer the top of the results.",
+        "Left: search clicks. Right: search impressions.", extra))
+
+
+def _sources(report: MonthlyReport) -> list[tuple[str, MonthStats, MonthStats | None]]:
+    """(name, this month, the month before) of every source on the report, the store first."""
+    out = [("Store", report.current, report.previous)]
+    if report.web is not None:
+        out.append(("Website", report.web.current, report.web.previous))
+    if report.paid is not None:
+        out.append(("Ads", report.paid.current, report.paid.previous))
+    if report.search is not None:
+        out.append(("Search", report.search.current, report.search.previous))
+    return out
+
+
+def _health_title_sources(report: MonthlyReport) -> str:
+    cur = report.current
+    sources = _sources(report)
+    short = [name.lower() for name, c, _ in sources if c.missing_days]
+    if short:
+        names = short[0] if len(short) == 1 else ", ".join(short[:-1]) + " and " + short[-1]
+        return "Data health: %s is missing days of %s data" % (cur.short, names)
+    if not cur.complete:
+        return "Data health: %d of %d days of %s are counted so far" % (cur.days_expected, cur.days_in_month, cur.short)
+    return "Data health: every day of %s is covered in all %d sources" % (cur.short, len(sources))
+
+
+def _health_slide_sources(prs, report: MonthlyReport) -> None:
+    """One row for each source, then the days with no data for each source and month, and the days that may still change."""
+    cur = report.current
+    slide = _new_slide(prs, _health_title_sources(report))
+    sources = _sources(report)
+    provisional = {"Ads": report.paid.provisional if report.paid else [], "Search": report.search.provisional if report.search else []}
+    head = ["Source, %s" % cur.short, "Days with data", "Days with nothing to report", "Days with no data",
+            "Days that may still change", "Stored daily figures used"]
+    rows = [head] + [[name, str(len(c.data_days)), str(len(c.quiet_days)), str(len(c.missing_days)),
+                      str(len(provisional[name])) if name in provisional else "n/a", str(c.rows_used)] for name, c, _ in sources]
+    _table(slide, Inches(1.4), rows, [2.3, 1.5, 2.2, 1.7, 2.0, 2.2], size=13, row_h=0.46)
+    notes = []
+    for name, c, p in sources:
+        notes.append("Days with no data in %s, %s: %s." % (c.short, name.lower(), days_text(c.missing_days)))
+        if p is not None and p.missing_days:
+            notes.append("Days with no data in %s, %s: %s." % (p.short, name.lower(), days_text(p.missing_days)))
+    for name in ("Ads", "Search"):
+        if provisional[name]:
+            notes.append("May still change, %s: %s." % (name.lower(), days_text(provisional[name])))
+    if not cur.complete:
+        notes.append("%s is not over: %d of %d days are counted." % (cur.short, cur.days_expected, cur.days_in_month))
+    if any(c.missing_days or not c.complete or (p is not None and p.missing_days) for _, c, p in sources):
+        notes.append("A month with days missing is understated, so its changes are marked partial.")
+    _text(slide, MARGIN, Inches(1.65 + 0.46 * len(rows)), BODY_W, Inches(2.4), notes, 12, INK, space_after=2)
+    _footer(slide, ["For each source, days with data, days with nothing to report and days with no data add up to the days in the month.",
+                    "A day with nothing to report is one where a data pull ran and found none. A day with no data is one no data pull covered. "
+                    "A day that may still change is one close to the report date: purchases and search figures are restated for a few days."])
+
+
 # ---------------------------------------------------------------- public
 
 def _set_app_properties(prs: Presentation) -> None:
@@ -573,17 +819,24 @@ def build_deck(report: MonthlyReport, insights: Insights, *, data_note: str = ""
     _sales_slide(prs, report)
     if report.web is None:
         _orders_slide(prs, report)
-        _value_slide(prs, report)
-        _insights_slide(prs, report, insights)
-        _health_slide(prs, report)
     else:
-        # A second source needs its own figures and its own days, so the deck is eight slides, not
-        # seven: the orders chart moves beside the sessions chart and the website table is new.
+        # A second source needs its own figures and its own days, so the orders chart moves beside the
+        # sessions chart and the website table is new.
         _sessions_orders_slide(prs, report)
-        _value_slide(prs, report)
+    _value_slide(prs, report)
+    if report.web is not None:
         _web_slide(prs, report)
-        _insights_slide(prs, report, insights)
+    if report.paid is not None:
+        _paid_slide(prs, report)
+    if report.search is not None:
+        _search_slide(prs, report)
+    _insights_slide(prs, report, insights)
+    if report.paid is not None or report.search is not None:
+        _health_slide_sources(prs, report)
+    elif report.web is not None:
         _health_slide_multi(prs, report)
+    else:
+        _health_slide(prs, report)
     props = prs.core_properties
     props.title = "Monthly performance report, %s" % report.current.name
     props.author = props.last_modified_by = "api-analytics-hub"
