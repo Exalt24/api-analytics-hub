@@ -1,0 +1,26 @@
+Deploy kit verification, 2026-10-30. Machine: Windows 11, Docker 29.9.2 (Linux containers), Git Bash. Nothing here ran on a server.
+
+1. caddy validate (image caddy:2, deploy/ mounted read-only)
+   docker run --rm -v <repo>/deploy:/etc/caddy:ro caddy:2 caddy validate --config /etc/caddy/Caddyfile
+   last line: Valid configuration
+   (run again with -e HUB_SITE=hub.example.com: Valid configuration)
+
+2. A request through a running Caddy to a stub upstream (HUB_API_UPSTREAM and HUB_WEB_UPSTREAM pointed at a stub that answers every GET with "stub:" plus the path), TLS from Caddy's own local CA, curl -sk --resolve hub.localhost:18443:127.0.0.1
+   first version of the Caddyfile (a bare `respond @private 404` for /metrics):
+     /api/kpis 200, /health 200, /metrics 200 (LEAK), /  200
+   after moving it into `handle @private { respond 404 }`:
+     /api/kpis 200, /health 200, /metrics 404, /metrics/x 200 (then widened the matcher to /metrics /metrics/*)
+   headers on a 200: Referrer-Policy: same-origin, Strict-Transport-Security: max-age=31536000, X-Content-Type-Options: nosniff, no Server header
+   a later adversary pass (agent a8352d6de45ffbe26, port 18444, curl --path-as-is) tried 30 spellings of /metrics (encoded, dot-segment, case, double slash, trailing slash): all 404, none reached the upstream; /metrics. /metrics;x /metricsx /api/metrics were forwarded and are different paths the FastAPI route (exactly GET /metrics, app/api/main.py:123) does not serve.
+
+3. systemd-analyze verify in debian:bookworm-slim, deploy/verify_units.sh (installs systemd, creates stand-in files for /opt/hub/.venv/bin/python, /opt/hub/scripts/db_backup.py and /etc/hub/hub.env, copies the four units, runs systemd-analyze verify)
+   good units: exit 0, "UNITS OK", "Normalized form: *-*-* 02:30:00", next elapse printed
+   BREAK=1 (ExecStart pointed at /opt/hub/.venv/bin/nope): exit 1, "hub-backup.service: Command /opt/hub/.venv/bin/nope is not executable: No such file or directory"
+
+4. tests/test_deploy_files.py (13 tests, all pass). Turned red on purpose, then restored, 3 times:
+   - Caddyfile `handle @private {` changed to `@x {`: test_caddy_never_proxies_metrics_and_does_it_inside_a_handle FAILED (1 failed, 11 passed)
+   - hub-backup.timer Persistent=true changed to false: test_timers_catch_up_after_downtime[hub-backup.timer] FAILED
+   - Persistent=true appended to hub-backup-check.timer: test_the_interval_timer_does_not_rely_on_persistent FAILED
+   all green again after restoring each file.
+
+Not run: a real systemd starting a timer, a Caddy reload on a host, an alert delivered from a timer, anything on a rented server.
