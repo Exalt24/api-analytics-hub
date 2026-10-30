@@ -181,7 +181,11 @@ def do_check(directory: Path, args, now: float) -> int:
     log.info(describe_backup(problems), extra={"event": "backup_check", "findings": len(problems)})
     state = load_state(args.state) if args.state else {}
     message, new_state = decide(state, problems, now, args.repeat_seconds, describer=describe_backup)
-    if message and os.environ.get("SLACK_WEBHOOK_URL"):
+    if message and not os.environ.get("SLACK_WEBHOOK_URL"):
+        # Without this line an unset variable dropped the alert silently, and the saved state then said it had been sent.
+        log.error("a backup problem was found and SLACK_WEBHOOK_URL is not set, so nobody was told", extra={"event": "alert_not_configured"})
+        return 1                           # state is NOT saved, so the first run after the variable is set sends the alert
+    if message:
         try:
             post_slack(os.environ["SLACK_WEBHOOK_URL"], message)
         except RuntimeError as exc:

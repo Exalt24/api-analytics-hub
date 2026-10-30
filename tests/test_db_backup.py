@@ -262,6 +262,21 @@ def test_the_check_with_nothing_on_disk_says_never_backed_up(tmp_path):
     assert db_backup.main(["check", "--dir", str(tmp_path / "nothing")]) == 1
 
 
+def test_a_problem_with_no_slack_webhook_is_logged_and_not_remembered_as_alerted(monkeypatch, tmp_path, caplog):
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    state = tmp_path / "alert.json"
+    with caplog.at_level("ERROR"):
+        rc = db_backup.main(["check", "--dir", str(tmp_path / "nothing"), "--state", str(state)])
+    assert rc == 1                                    # the problem still shows in the exit status
+    assert any(getattr(r, "event", "") == "alert_not_configured" for r in caplog.records)
+    assert not state.exists()                         # nothing was sent, so nothing is remembered as sent
+    sent = []
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.invalid/x")
+    monkeypatch.setattr(db_backup, "post_slack", lambda url, text, timeout=10.0: sent.append(text))
+    assert db_backup.main(["check", "--dir", str(tmp_path / "nothing"), "--state", str(state)]) == 1
+    assert len(sent) == 1 and state.exists()          # the first run after the variable is set sends it at once
+
+
 def test_a_bad_database_url_is_a_tool_error_not_a_traceback(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("DATABASE_URL", "mysql://nope")
     assert db_backup.main(["backup", "--dir", str(tmp_path)]) == 2

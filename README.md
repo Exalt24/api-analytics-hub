@@ -24,7 +24,7 @@ The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app) and l
 
 ## Run it
 
-Requirements: Docker, Python 3.13, Node 20+, and `psql` (or the container's own, second form below). Run on Windows 11 with Git Bash; the psql form and the macOS and Linux lines were not run.
+Requirements: Docker (010 needs pgvector), Python 3.13, Node 20+, and `psql` (or the container's own, second form below). Run on Windows 11 with Git Bash; the psql form and the macOS and Linux lines were not run.
 
 ```bash
 # 1. Postgres
@@ -50,7 +50,7 @@ cd web && npm install && npm run build
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store: it reads the store's domain and Admin API token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE`, or `.secrets/shopify_dev_token.txt` (never committed), so nobody else can run it. It drops the `public` schema and applies only migrations 001 to 003, so run 004 to 009 (the report tables included) after it. It then loads real figures (the last 120 days, `SEED_DAYS` changes it) and prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started rather than run with `npm run dev`, because the development server did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` needs the owner's Shopify development store: it reads the store's domain and Admin API token from a two-line file named by `SHOPIFY_DEV_TOKEN_FILE`, or `.secrets/shopify_dev_token.txt` (never committed), so nobody else can run it. It drops the `public` schema and applies only migrations 001 to 003, so run 004 to 010 (the report tables included) after it. It then loads real figures (the last 120 days, `SEED_DAYS` changes it) and prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started rather than run with `npm run dev`, because the development server did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
 
 Paste a key into the box: the viewer key can read, and Sync now comes back 403 with the reason.
 

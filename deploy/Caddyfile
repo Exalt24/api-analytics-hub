@@ -1,6 +1,6 @@
-# Reverse proxy for one host: Caddy terminates TLS and sends /api, /health, /ready and /metrics to the FastAPI service
-# and everything else to the dashboard. The upstreams come from the environment so the same file runs on a server
-# (127.0.0.1) and in the test below (a container reaching the host).
+# Reverse proxy for one host: Caddy terminates TLS and sends /api/*, /health and /ready to the FastAPI service and
+# everything else to the dashboard; /metrics is answered 404 here. The upstreams come from the environment so the same
+# file runs on a server (127.0.0.1) and in docs/deploy.md's container test (a container reaching the host).
 #
 #   HUB_SITE          site address, default hub.localhost (Caddy issues its own local certificate for it)
 #   HUB_API_UPSTREAM  default 127.0.0.1:8000
