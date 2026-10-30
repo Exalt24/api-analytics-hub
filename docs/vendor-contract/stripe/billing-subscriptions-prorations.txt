@@ -1,0 +1,576 @@
+URL: https://docs.stripe.com/billing/subscriptions/prorations
+STATUS: 200
+
+Skip to content
+Search
+/
+Ask AI
+Create account
+Sign in
+Get started
+Payments
+Revenue
+Risk
+Data
+Money management
+Stablecoins
+Embedded finance
+Developer resources
+APIs & SDKs
+Help
+Overview
+BILLING
+Overview
+How the Billing APIs work
+Invoicing
+Quotes
+Subscriptions
+How subscriptions work
+GET STARTED
+Quickstart
+Design an integration
+Build an integration
+Embed a pricing table
+Collect a payment method with no initial payment
+Migrate subscriptions to Stripe
+Configure subscription events
+MANAGE SUBSCRIPTIONS
+Reduce subscription fraud and nonpayment risk
+Set billing cycles
+Configure trial offers
+Enable billing mode
+Use mixed interval subscriptions
+Apply coupons
+Entitlements
+Modify subscriptions
+Change prices
+Manage prorations
+Manage pending updates
+Cancel subscriptions
+Pause subscriptions
+Bill customers in advance
+Manage subscriptions on iOS
+INVOICE AND COLLECT PAYMENTS
+Subscription invoices
+Configure collection methods
+Defer credit prorations
+Set payment method types per subscription
+Pause payment collection
+Integrate with third-party payment processing
+CALCULATE AND COLLECT TAXES
+Collect taxes on subscriptions
+Customer tax IDs
+Migrate subscriptions to Stripe Tax
+SALES-LED BILLING
+Contracts
+Subscription schedules
+Backdate subscriptions
+Analytics
+Usage-based billing
+Test your Billing integration
+Automations
+Scripts
+CUSTOMER MANAGEMENT
+Customer management
+Retention
+Revenue recovery
+TAX
+Overview
+Use Stripe Tax
+Tax rates
+Manage compliance
+ACCOUNTING
+Overview
+How Revenue Recognition works
+Get started
+Import data to Stripe
+Reports
+Examples
+Revenue Recognition for platforms
+United States
+English (United States)
+Home
+/
+Revenue
+/
+Subscriptions
+/
+Modify subscriptions
+Prorations
+Manage prorations for modified subscriptions.
+Ask about this page
+Copy for LLM
+View as Markdown
+Set up agent
+
+The most complex aspect of changing existing subscriptions are prorations, where the customer is charged a percentage of a subscription’s cost to reflect partial use. This page explains how prorations work with subscriptions and how to manage prorations for your customers.
+
+How prorations work
+
+For example, upgrading or downgrading
+ a subscription can result in prorated charges. If a customer upgrades from a 10 USD monthly plan to a 20 USD option halfway through the billing period, the customer is billed an additional 5 USD:
+
+ITEM	AMOUNT	TOTAL
+Unused time on original 10 USD plan (credit)	-5 USD	-5 USD
+Remaining time on new 20 USD plan (debit)	+10 USD	+5 USD
+
+Proration ensures that customers are billed accurately, but a proration can result in different payment amounts than you might expect. Negative prorations aren’t automatically refunded and positive prorations aren’t immediately billed, although you can do both manually.
+
+You can preview a proration
+ to view the amount before applying the changes. To learn more about how credit prorations work
+, read our guide.
+
+Identify proration items
+
+Use the proration property on an Invoice item or parent.subscription_item_details.proration on an Invoice line item to determine whether Stripe classifies the item as a proration.
+
+Stripe bases this classification on the operation that creates the item, not only on the length of the service period. For this classification, a scheduled phase transition
+ behaves like a subscription update.
+
+The following table describes items that Stripe generates through subscription billing:
+
+SCENARIO	CONSIDERED A PRORATION	EXAMPLE
+Credit item generated through subscription billing		Updating a subscription to a lower-priced item creates a credit for unused time on the previous item.
+Item for a backdated period		Backdating a subscription creates proration items for the period between backdate_start_date and the subscription creation date. The number of items depends on the billing mode
+.
+Partial-period debit created during subscription creation or update, except for the trial behavior listed below		Creating a subscription with a future billing cycle anchor creates a debit for the period between the creation date and the anchor.
+Debit created during subscription creation with a billing cycle anchor		Creating a monthly subscription with a billing cycle anchor exactly one month after the creation date creates a proration debit, even though the debit covers a complete billing period.
+Debit from updating a trial offer
+ without changing its trial status		Updating a subscription that uses a trial offer creates a proration debit for the remaining trial-offer period.
+Renewal debit for a period shortened by cancel_at		Setting a future cancel_at date can shorten a renewal period and create a proration debit.
+Full-period debit created during subscription creation without backdating or a billing cycle anchor		Creating a monthly subscription that starts immediately creates a non-proration debit for the first complete month.
+Full-period debit created during a subscription update		Changing the billing cycle anchor on an existing monthly subscription can start a new billing period and create a non-proration debit for the complete period.
+Debit created by starting or ending a trial		Starting or ending a trial offer
+ or free trial period
+ creates a non-proration debit, even when the debit covers a partial billing period.
+Debit from updating a free trial period without changing its trial status		Updating a subscription during a free trial period
+ without changing the trial status creates a non-proration debit.
+Regular renewal debit		After partial-period prebilling
+, renewing a subscription can create a non-proration debit for the remaining part of the billing period.
+
+A single subscription operation can create both proration and non-proration items. For example, ending a trial on an active subscription can create a credit proration for unused trial time and a non-proration debit for the next complete billing period.
+
+A manually created invoice item with a negative amount isn’t automatically classified as a proration.
+
+Proration time granularity
+
+By default, Stripe calculates prorations down to the second. To change the time granularity—for example, to prorate by day, hour, week, or month—use proration customizations
+.
+
+Advanced proration customization
+
+For more advanced customization of proration logic, see Custom proration scripts
+.
+
+Prorations and discounts
+
+When calculating proration credits or debits, Stripe uses the subscription’s discounted price, not the original price. However, no additional discounts are applied to the proration line items themselves because they’re marked discountable=false.
+
+This means that discounts applied to an invoice that contains both non-proration items and proration items only apply to the invoice items and invoice line items that aren’t prorations.
+
+Non-proration line items show discount adjustments in discount_amounts.
+
+Discount changes and prorations
+
+Updating subscription-level promotion codes, coupons, or discounts by themselves doesn’t create proration invoice items. Only changes that affect billable amounts for the current billing cycle create prorations, such as:
+
+Changing a subscription item’s price or quantity
+Adding or removing subscription items
+Changing billing cycle anchors or proration behavior
+
+When you make a change that creates a proration, Stripe computes the proration amounts using the subscription’s current pricing and discounting state at the time the proration is calculated. If you modify discounts as part of the same API call that also triggers prorations (for example, changing an item quantity and modifying a discount in a single update), the proration debit or credit is calculated using the modified discounts.
+
+For example:
+
+Updating only a subscription item’s metadata or applying or removing a discount: No proration invoice items are created, and no immediate proration charges or credits appear on the upcoming invoice.
+Updating a subscription item’s quantity and removing a discount in the same call: Proration invoice items are created for the quantity change, and the proration amounts reflect prices after the discount change—the modified discount is used in the proration calculation.
+
+For more information about how discounts work on subscriptions, including how duration=once coupons are consumed and removed from subscription.discounts, see Coupons and promotion codes
+.
+
+What triggers prorations
+
+By default, the following scenarios result in a proration:
+
+UPDATE	DESCRIPTION
+Changing items	Adding a new item or removing an existing item
+Changing price	Changing to a price with a different base cost or billing period
+Changing quantity	Increasing or decreasing the quantity on a subscription item
+Adding trial_end or trial_from_plan	Adding a trial period to an active subscription
+Changing billing_cycle_anchor	Resetting the billing period to a new date
+Setting cancel_at	Canceling a subscription mid-period (not at period end)
+What doesn’t trigger prorations
+
+Many subscription updates don’t affect billing or generate prorations. Make these updates at any time without creating proration invoice items:
+
+PARAMETER	DESCRIPTION
+Configuration and settings updates	
+automatic_tax	Enable or disable automatic tax calculation
+default_payment_method	Change the default payment method
+default_source	Change the default payment source
+payment_behavior	Control payment attempt behavior
+collection_method	Change between charge automatically and send invoice
+days_until_due	Update payment due date for send invoice subscriptions
+tax_filing_currency	Change the tax filing currency
+retry_settings	Modify retry behavior for failed payments
+trial_settings	Update trial end behavior settings
+pay_immediately	Control immediate payment behavior
+pending_invoice_item_interval	Change how often pending items are invoiced
+pause_collection	Pause or resume payment collection
+proration_date	Set a specific proration date (doesn’t create prorations by itself)
+Metadata and descriptive fields	
+metadata and items.metadata	Update metadata on the subscription/subscription items
+cancellation_details	Add cancellation feedback and comments
+Updates that act as settings for future non-proration billing changes	
+discounts and items.discounts	Add or update subscription-level coupons or promotion codes that apply to future invoices.
+billing_thresholds and items.billing_thresholds	Update billing thresholds on subscription/subscription items
+cancel_at_period_end	Cancel at the current period end without proration
+add_invoice_items	Add one-time charges to the next invoice
+Note
+
+These updates don’t generate proration invoice items with proration_behavior=create_prorations or generate invoices with proration invoice items with proration_behavior=always_invoice because they don’t change the billing amount for the current period.
+
+Manually creating your own prorations
+
+To calculate your own prorations outside of Stripe and add them to the subscription, pass add_invoice_items with a negative unit_amount (equal to the calculated proration amount) to these endpoints:
+
+CreateSubscription
+UpdateSubscription
+CreateSubscriptionSchedule
+UpdateSubscriptionSchedule
+When prorations are applied
+
+Prorations only apply to charges that occur ahead of the billing period. Usage-based billing
+ isn’t subject to proration.
+
+The prorated amount is calculated as soon as the API updates the subscription. The current billing period’s start and end times are used to calculate the cost of the subscription before and after the change.
+
+Prorations and unpaid invoices
+
+Stripe calculates prorations based on the subscription’s status at the time of an update, assuming that any previous invoices for the subscription will eventually be paid. If a customer changes their subscription while having an unpaid invoice for the current period, they might receive a credit for unused time on the higher-priced plan, even if they haven’t paid for that time yet.
+
+To avoid crediting for unpaid time, you can disable prorations when the subscription’s latest invoice is unpaid. When updating the subscription, set proration_behavior to none. Select one of the following approaches:
+
+To keep the original billing period: Manually create a one-off invoice for any new charges.
+To charge immediately for the new plan and reset the billing period: Set billing_cycle_anchor to now. For more details, see Reset the billing period to the current time
+.
+
+Either of these approaches can lead to double payment if the customer eventually pays the old invoice. To avoid this, void the unpaid invoice.
+
+Taxes and prorations
+
+For information about how taxes work with prorations, see Collect taxes for recurring payments
+.
+
+Credit prorations
+
+Credit prorations are issued when customers downgrade their subscriptions or cancel subscription items before the end of their billing period. Stripe offers two approaches for calculating credit prorations, depending on whether you set your subscription’s billing_mode
+ to classic or flexible.
+
+Relating credit prorations to debited items
+
+Credit proration invoice items include a proration_details object when Stripe can attribute the credit to its original debit. In those cases, proration_details.credited_items identifies the debit that the credit applies to, so you can reconcile credits against the original charges. For subscriptions with billing_mode=classic, the proration_details object is absent for flows where Stripe can’t identify the original debit.
+
+The credited_items object has a type field:
+
+If type is invoice_item, the debit is still a pending invoice item. The invoice_item field is the ID of that debited invoice item.
+If type is invoice_line_items, the debit is one or more invoice line items on an existing invoice. The invoice_line_item_details object includes the invoice ID and an invoice_line_items array of debited line item IDs.
+
+A single credit can reference multiple debited invoice line items—for example, when tiered unit pricing results in several debit line items on the invoice. Invoice items can represent tiered usage in a more aggregated way than the line items on a finalized invoice, so the array reflects the debits as they appear on the invoice.
+
+Calculation logic with no prorations
+
+In the following scenario, you upgrade a 10 USD monthly subscription to 20 USD with the proration_behavior set to none for 10 days. There’s no previous debit to base it on. Later, you downgrade the subscription to 10 USD per month with the proration_behavior set to always_invoice.
+
+To set up this scenario, first you create a subscription for 10 USD per month on April 1:
+
+Command Line
+Select a language
+cURL
+curl https://api.stripe.com/v1/subscriptions \
+  -u "sk_test_...:" \
+  -d "items[0][price]=price_10_monthly"
+
+The response includes the invoice that’s created for this subscription:
+
+Create subscription response
+{
+  "id": "sub_123",
+  "latest_invoice": {
+    "id": "in_123",
+    "total": 1000,
+    "currency": "usd"
+  }
+}
+
+Then, on April 11, you upgrade the subscription
+ to 20 USD per month without creating prorations:
+
+Command Line
+Select a language
+cURL
+curl https://api.stripe.com/v1/subscriptions/{{SUBSCRIPTION_ID}} \
+  -u "sk_test_...:" \
+  -d "items[0][id]={{SUBSCRIPTION_ITEM_ID}}" \
+  -d "items[0][price]=price_20_monthly" \
+  -d proration_behavior=none
+
+The latest invoice remains unchanged because proration_behavior is none:
+
+Upgrade subscription response
+{
+  "id": "sub_123",
+  "latest_invoice": {
+    "id": "in_123"
+  }
+}
+
+Finally, on April 21, you downgrade the subscription
+ to 10 USD per month and create prorations:
+
+Command Line
+Select a language
+cURL
+curl https://api.stripe.com/v1/subscriptions/{{SUBSCRIPTION_ID}} \
+  -u "sk_test_...:" \
+  -d "items[0][id]={{SUBSCRIPTION_ITEM_ID}}" \
+  -d "items[0][price]=price_10_monthly" \
+  -d proration_behavior=always_invoice
+CLASSIC	FLEXIBLE
+The billing_mode=classic proration calculation logic creates a credit proration based on the current price, even though the customer never paid the 20 USD monthly rate. The latest invoice credits a third of the month for 20 USD (-6.67 USD), even though the customer never paid for the price_20_monthly price. It also debits a third of the month for 10 USD (3.33 USD).	The calculation logic enabled with billing_mode=flexible creates a credit proration based on the last price billed for the subscription item. In this case, the latest invoice credits a third of a month for the 10 USD monthly price billed on April 1 (3.33 USD) and debits a third of the month for the 10 USD price (3.33 USD). The credit and debit cancel out so the invoice total is 0 USD.
+
+# billing_mode = classic
+  {
+    "id": "sub_123",
+    "latest_invoice": {
+      "id": "in_456",
+      "total": -334,
+      "currency": "usd"
+    }
+  }
+	
+# billing_mode = flexible
+  {
+    "id": "sub_123",
+    "latest_invoice": {
+      "id": "in_456",
+      "total": 0,
+      "currency": "usd"
+    }
+  }
+Calculation logic for coupons applied to multiple subscription items
+
+Stripe weights the amount_off coupon on the credit proration to prevent over-billing.
+
+In the following scenario, a 5 USD coupon is unevenly allocated to a 25 USD monthly subscription for a 10 USD item and 20 USD item.
+
+To set up this scenario, you create a subscription with multiple items and a coupon on February 1:
+
+Command Line
+Select a language
+cURL
+curl https://api.stripe.com/v1/subscriptions \
+  -u "sk_test_...:" \
+  -d "items[0][price]=price_10_monthly" \
+  -d "items[1][price]=price_20_monthly" \
+  -d "discounts[0][coupon]=five_dollars_off"
+
+Which returns this response:
+
+Create subscription with multiple items and a coupon response
+{
+  "id": "sub_123",
+  "latest_invoice": {
+    "id": "in_123",
+    "total": 2500,
+    "currency": "usd",
+    "lines": {
+      "data": [
+      {
+        "id": "ili_1",
+        "amount": 1000,
+        "price": "price_10_monthly",
+        "discount_amounts": [{
+          "discount": "di_a",
+          "amount": 166
+        }]
+      },
+      {
+        "id": "ili_2",
+        "amount": 2000,
+        "price": "price_20_monthly",
+        "discount_amounts": [{
+          "discount": "di_a",
+          "amount": 334
+        }]
+      }
+    ]}
+  }
+}
+
+To cancel the 10 USD monthly subscription item:
+
+Command Line
+Select a language
+cURL
+curl https://api.stripe.com/v1/subscription_items/si_10_monthly \
+  -u "sk_test_...:" \
+  -d proration_behavior=create_prorations
+
+When a subscription item is deleted, the billing_mode associated with that subscription affects how the proration is calculated as follows:
+
+CLASSIC	FLEXIBLE
+The default behavior distributes a 5 USD coupon to each item (2.5 USD each), canceling the cheaper item (5 USD) and resulting in a refund of 2.5 USD. Stripe calculates the total with the formula -0.5 x (10 USD price - 5 USD coupon) = -2.50 USD.	The flexible behavior reflects the proportional discount applied to the canceled item, rather than potentially applying the full discount amount to the proration calculation. Stripe calculates the total using the formula -0.5 x (10 USD price - 1.66 USD discount amount) = -4.17 USD.
+
+# billing_mode = classic
+  {
+    "id": "sub_123",
+    "latest_invoice": {
+      "id": "in_456",
+      "total": -250,
+      "currency": "usd"
+    }
+  }
+	
+# billing_mode = flexible
+  {
+    "id": "sub_123",
+    "latest_invoice": {
+      "id": "in_789",
+      "total": -417,
+      "currency": "usd"
+    }
+  }
+Preview a proration
+
+You can create a preview invoice to preview changes to a subscription. This API call doesn’t modify the subscription. Instead, it returns the upcoming invoice
+ based only on the parameters that you pass. Changing the price or quantity both result in a proration. This example changes the price and sets a date for the proration.
+
+Accounts v2
+Customers v1
+Select a language
+Ruby
+# Don't put any keys in code. See https://docs.stripe.com/keys-best-practices.
+# Find your keys at https://dashboard.stripe.com/apikeys.
+client = Stripe::StripeClient.new('sk_test_EXAMPLE_REDACTED_BY_US')
+
+# Set proration date to this moment:
+proration_date = Time.now.to_i
+
+subscription = client.v1.subscriptions.retrieve('sub_49ty4767H20z6a')
+
+# See what the next invoice would look like with a price switch
+# and proration set:
+items = [{
+  id: subscription.items.data[0].id,
+  price: 'price_CBb6IXqvTLXp3f', # Switch to new price
+}]
+
+invoice = client.v1.invoices.create_preview({
+  customer_account: 'acct_4fdAW5ftNQow1a',
+  subscription: 'sub_49ty4767H20z6a',
+  subscription_details: {
+    items: items,
+    proration_date: proration_date,
+  }
+})
+
+You can expand the example response below to see:
+
+The credit for unused time at the previous price on lines 36-38.
+The cost for time spent at the new price on lines 107-109.
+The new subtotal and total for the invoice on lines 276-279.
+{
+  "id": "upcoming_in_1OujwkClCIKljWvsq5v2ICAN",
+  "account_country": "US",
+  "account_name": "Test account",
+  "amount_due": 3627,
+  "amount_paid": 0,
+  "amount_remaining": 3627,
+  "application_fee_amount": null,
+  "attempt_count": 0,
+  "attempted": false,
+See all 281 lines
+
+Use this information to confirm the changes with the customer before modifying the subscription. Because Stripe prorates to the second, prorated amounts might change between the time they’re previewed and the time the update is made. To avoid this, pass in a subscription_details.proration_date value when creating a preview. When you update the subscription, pass the same date using the proration_date parameter on a subscription so that the proration is calculated at the same time.
+
+Select a language
+Ruby
+# Don't put any keys in code. See https://docs.stripe.com/keys-best-practices.
+# Find your keys at https://dashboard.stripe.com/apikeys.
+client = Stripe::StripeClient.new('sk_test_EXAMPLE_REDACTED_BY_US')
+
+subscription = client.v1.subscriptions.update(
+  'sub_49ty4767H20z6a',
+  {
+    items: [
+      {
+        id: subscription.items.data[0].id,
+        price: 'price_CBb6IXqvTLXp3f',
+      },
+    ],
+    proration_date: proration_date,
+  }
+)
+Control proration behavior
+
+Prorating is controlled by the proration_behavior parameter, which has three possible parameter options: create_prorations, always_invoice, and none.
+
+Default behavior
+
+The default parameter for proration_behavior is create_prorations, which creates proration invoice items when applicable. These proration items are only invoiced immediately under certain conditions
+.
+
+Create immediate prorations
+
+To bill a customer immediately for a change to a subscription on the same billing period, set proration_behavior to always_invoice when you modify the subscription. This calculates the proration, then immediately generates an invoice.
+
+Disable prorations
+
+To disable prorations on a per-request basis, set the proration_behavior parameter to none. No parameter turns off all future prorations for a subscription. To disable prorations indefinitely, set proration_behavior to none for every request that generates prorations. Note this doesn’t prevent Stripe from creating non-proration items, such as regular renewal or full-period subscription items.
+
+Common mistake
+
+When canceling a subscription, you can only disable the proration if the cancel_at date is within the current billing period. If you cancel the subscription for a date outside the current period, you can’t disable the proration.
+
+Command Line
+Select a language
+curl
+curl https://api.stripe.com/v1/subscriptions/sub_49ty4767H20z6a \
+  -u sk_test_...: \
+  -d "items[0][id]"="si_1AkFf6LlRB0eXbMtRFjYiJ0J" \
+  -d "items[0][price]"="price_CBb6IXqvTLXp3f" \
+  -d "proration_behavior"="none"
+
+When prorations are disabled, customers are billed the full amount at the new price when the next invoice is generated.
+
+Was this page helpful?
+Yes
+No
+Need help? Contact Support.
+Chat with Stripe developers on Discord.
+Check out our changelog.
+Questions? Contact Sales.
+LLM? Read llms.txt.
+Powered by Markdoc
+ON THIS PAGE
+How prorations work
+Identify proration items
+Proration time granularity
+Advanced proration customization
+Prorations and discounts
+What triggers prorations
+What doesn’t trigger prorations
+Manually creating your own prorations
+When prorations are applied
+Prorations and unpaid invoices
+Taxes and prorations
+Credit prorations
+Relating credit prorations to debited items
+Calculation logic with no prorations
+Calculation logic for coupons applied to multiple subscription items
+Preview a proration
+Control proration behavior
+Default behavior
+Create immediate prorations
+Disable prorations

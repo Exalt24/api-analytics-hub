@@ -1,0 +1,1194 @@
+URL: https://docs.stripe.com/api/invoices/object
+STATUS: 200
+
+Find anything
+Ask AI
+Introduction
+Authentication
+Errors
+Expanding Responses
+Idempotent requests
+Include-dependent response values (API v2)
+Metadata
+Pagination
+Request IDs
+Connected Accounts
+Versioning
+Enums
+Core Resources
+Accountsv2
+Account Linksv2
+Account Tokensv2
+US Bank Accountsv2
+GB Bank Accountsv2
+Balances
+Balance Transactions
+Charges
+Customers
+Customer Sessions
+Disputes
+Events
+Eventsv2
+Event Destinationsv2
+Files
+File Links
+Mandates
+Payment Intents
+Personsv2
+Person Tokensv2
+Setup Intents
+Setup Attempts
+Stripe Balance Debit Agreements
+3DS Authentications
+Payouts
+Refunds
+Confirmation Tokens
+Tokens
+Ephemeral Keys
+Payment Methods
+Payment Methods
+Payment Method Configurations
+Payment Method Domains
+Bank Accounts
+Cash Balances
+Cash Balance Transactions
+Cards
+Sources
+Money Management
+Products
+Products
+Prices
+Coupons
+Promotion Codes
+Discounts
+Tax Codes
+Tax Rates
+Shipping Rates
+Product Catalog
+Trial Offers
+Commerce
+Agentic Commerce
+Shared Payment Issued Tokens
+Shared Payment Granted Tokens
+Checkout
+Checkout Sessions
+Payment Links
+Payment Links
+Billing
+Alerts
+Credit Balance Summaries
+Credit Balance Transactions
+Credit Grants
+Credit Notes
+Customer Balance Transactions
+Customer Portal Configurations
+Customer Portal Sessions
+Feedback Options
+Invoices
+The Invoice object
+Create a preview invoice
+Create an invoice
+Update an invoice
+Retrieve an invoice
+List all invoices
+Delete a draft invoice
+Attach a payment to an Invoice
+Finalize an invoice
+Mark an invoice as uncollectible
+Pay an invoice
+Search invoices
+Send an invoice for manual payment
+Void an invoice
+Invoice Items
+Invoice Line Items
+Invoice Payments
+Invoice Rendering Templates
+Billing Meters
+Billing Meter Events
+Billing Meter Event Adjustments
+Meter Event Adjustmentsv2
+Meter Event Streamsv2
+Billing Meter Event Summaries
+Meter Eventsv2
+Plans
+Quotes
+Subscriptions
+Subscription Items
+Subscription Schedules
+Tax IDs
+Test Clocks
+Capital
+Financing Offers
+Financing Summaries
+Connect
+Accounts
+Login Links
+Account Links
+Account Sessions
+Application Fees
+Application Fee Refunds
+Capabilities
+Country Specs
+Balance Settings
+External Bank Accounts
+External Account Cards
+Persons
+Top-ups
+Transfers
+Transfer Reversals
+Secrets
+App Installs
+Reserves
+Fraud
+Issuing
+Terminal
+Treasury for Platforms
+Payment Records
+Account Evaluation
+Entitlements
+Sigma
+Reporting
+Financial Connections
+Tax
+Identity
+Crypto
+Climate
+Tax Reporting
+Forwarding
+Privacy
+Webhooks
+2026-10-28.endive
+API Reference
+Docs
+Support
+Sign in →
+Invoices v1
+Ask about this section
+Copy for LLM
+View as Markdown
+
+Invoices are statements of amounts owed by a customer, and are either generated one-off, or generated periodically from a subscription.
+
+They contain invoice items, and proration adjustments that may be caused by subscription upgrades/downgrades (if necessary).
+
+If your invoice is configured to be billed through automatic charges, Stripe automatically finalizes your invoice and attempts payment. Note that finalizing the invoice, when automatic, does not happen immediately as the invoice is created. Stripe waits until one hour after the last webhook was successfully sent (or the last webhook timed out after failing). If you (and the platforms you may have connected to) have no webhooks configured, Stripe waits one hour after creation to finalize the invoice.
+
+If your invoice is configured to be billed by sending an email, then based on your email settings, Stripe will email the invoice to your customer and await payment. These emails can contain a link to a hosted page to pay the invoice.
+
+Stripe applies any customer credit on the account before determining the amount due for the invoice (i.e., the amount that will be actually charged). If the amount due for the invoice is less than Stripe’s minimum allowed charge per currency, the invoice is automatically marked paid, and we add the amount due to the customer’s credit balance which is applied to the next invoice.
+
+More details on the customer’s credit balance are here.
+
+Related guide: Send invoices to customers
+
+Was this section helpful?
+Yes
+No
+Endpoints
+Events
+Create a preview invoice
+POST
+/v1/invoices/create_preview
+Create an invoice
+POST
+/v1/invoices
+Update an invoice
+POST
+/v1/invoices/:id
+Retrieve an invoice
+GET
+/v1/invoices/:id
+List all invoices
+GET
+/v1/invoices
+Delete a draft invoice
+DELETE
+/v1/invoices/:id
+Attach a payment to an Invoice
+POST
+/v1/invoices/:id/attach_payment
+Finalize an invoice
+POST
+/v1/invoices/:id/finalize
+Mark an invoice as uncollectible
+POST
+/v1/invoices/:id/mark_uncollectible
+Pay an invoice
+POST
+/v1/invoices/:id/pay
+Search invoices
+GET
+/v1/invoices/search
+Send an invoice for manual payment
+POST
+/v1/invoices/:id/send
+Void an invoice
+POST
+/v1/invoices/:id/void
+The Invoice object v1
+Ask about this section
+Copy for LLM
+View as Markdown
+Attributes
+id
+string
+
+Unique identifier for the object. For preview invoices created using the create preview endpoint, this id will be prefixed with upcoming_in.
+
+auto_advance
+boolean
+
+Controls whether Stripe performs automatic collection of the invoice. If false, the invoice’s state doesn’t automatically advance without an explicit action.
+
+automatic_tax
+object
+
+Settings and latest results for automatic tax lookup for this invoice.
+
+Show child attributes
+collection_method
+enum
+
+Either charge_automatically, or send_invoice. When charging automatically, Stripe will attempt to pay this invoice using the default source attached to the customer. When sending an invoice, Stripe will email this invoice to the customer with payment instructions.
+
+Possible enum values
+charge_automatically
+
+Attempt payment using the default source attached to the customer.
+
+
+
+send_invoice
+
+Email payment instructions to the customer.
+
+confirmation_secret
+nullable object
+Includable
+
+The confirmation secret associated with this invoice. Currently, this contains the client_secret of the PaymentIntent that Stripe creates during invoice finalization.
+
+Show child attributes
+currency
+enum
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+customer
+string
+Expandable
+
+The ID of the customer to bill.
+
+customer_account
+nullable string
+
+The ID of the account representing the customer to bill.
+
+description
+nullable string
+
+An arbitrary string attached to the object. Often useful for displaying to users. Referenced as ‘memo’ in the Dashboard.
+
+hosted_invoice_url
+nullable string
+
+The URL for the hosted invoice page, which allows customers to view and pay an invoice. If the invoice has not been finalized yet, this will be null.
+
+lines
+object
+
+The individual line items that make up the invoice. lines is sorted as follows: (1) pending invoice items (including prorations) in reverse chronological order, (2) subscription items in reverse chronological order, and (3) invoice items added after invoice creation in chronological order.
+
+Show child attributes
+metadata
+nullable map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
+
+parent
+nullable object
+
+The parent that generated this invoice
+
+Show child attributes
+payments
+object
+Includable
+
+Payments for this invoice. Use invoice payment to get more details.
+
+Show child attributes
+period_end
+timestamp
+
+The latest timestamp at which invoice items can be associated with this invoice. Use the line item period to get the service period for each price.
+
+period_start
+timestamp
+
+The earliest timestamp at which invoice items can be associated with this invoice. Use the line item period to get the service period for each price.
+
+status
+nullable enum
+
+The status of the invoice, one of draft, open, paid, uncollectible, or void. Learn more
+
+Possible enum values
+draft
+
+
+open
+
+
+paid
+
+
+uncollectible
+
+
+void
+total
+integer
+
+Total after discounts and taxes.
+
+More attributes
+Expand all
+object
+string, value is "invoice"
+account_country
+nullable string
+account_name
+nullable string
+account_tax_ids
+nullable array of strings
+Expandable
+amount_due
+integer
+amount_overpaid
+integer
+amount_paid
+integer
+amount_paid_off_stripe
+integer
+Includable
+amount_remaining
+integer
+amount_shipping
+integer
+application
+nullable string
+Expandable
+Connect only
+attempt_count
+integer
+attempted
+boolean
+automatically_finalizes_at
+nullable timestamp
+billing_reason
+nullable enum
+created
+timestamp
+custom_fields
+nullable array of objects
+customer_address
+nullable object
+customer_email
+nullable string
+customer_name
+nullable string
+customer_phone
+nullable string
+customer_shipping
+nullable object
+customer_tax_exempt
+nullable enum
+customer_tax_ids
+nullable array of objects
+default_payment_method
+nullable string
+Expandable
+default_source
+nullable string
+Expandable
+default_tax_rates
+array of objects
+discounts
+array of strings
+Expandable
+due_date
+nullable timestamp
+effective_at
+nullable timestamp
+ending_balance
+nullable integer
+footer
+nullable string
+from_invoice
+nullable object
+invoice_pdf
+nullable string
+issuer
+object
+Connect only
+last_finalization_error
+nullable object
+latest_revision
+nullable string
+Expandable
+livemode
+boolean
+next_payment_attempt
+nullable timestamp
+number
+nullable string
+on_behalf_of
+nullable string
+Expandable
+Connect only
+payment_settings
+object
+post_payment_credit_notes_amount
+integer
+pre_payment_credit_notes_amount
+integer
+receipt_number
+nullable string
+rendering
+nullable object
+shipping_cost
+nullable object
+shipping_details
+nullable object
+starting_balance
+integer
+statement_descriptor
+nullable string
+status_details
+nullable object
+status_transitions
+object
+subtotal
+integer
+subtotal_excluding_tax
+nullable integer
+test_clock
+nullable string
+Expandable
+threshold_reason
+nullable object
+total_discount_amounts
+nullable array of objects
+total_excluding_tax
+nullable integer
+total_pretax_credit_amounts
+nullable array of objects
+total_taxes
+nullable array of objects
+webhooks_delivered_at
+nullable timestamp
+THE INVOICE OBJECT
+{
+  "id": "in_1MtHbELkdIwHu7ixl4OzzPMv",
+  "object": "invoice",
+  "account_country": "US",
+  "account_name": "Stripe Docs",
+  "account_tax_ids": null,
+  "amount_due": 0,
+  "amount_paid": 0,
+  "amount_overpaid": 0,
+  "amount_remaining": 0,
+  "amount_shipping": 0,
+  "application": null,
+  "attempt_count": 0,
+  "attempted": false,
+  "auto_advance": false,
+  "automatic_tax": {
+    "enabled": false,
+    "liability": null,
+    "status": null
+  },
+  "billing_reason": "manual",
+  "collection_method": "charge_automatically",
+  "created": 1680644467,
+  "currency": "usd",
+  "custom_fields": null,
+  "customer": "cus_NeZwdNtLEOXuvB",
+  "customer_address": null,
+  "customer_email": "jennyrosen@example.com",
+  "customer_name": "Jenny Rosen",
+  "customer_phone": null,
+  "customer_shipping": null,
+  "customer_tax_exempt": "none",
+  "customer_tax_ids": [],
+  "confirmation_secret": null,
+  "default_payment_method": null,
+  "default_source": null,
+  "default_tax_rates": [],
+  "description": null,
+  "discounts": [],
+  "due_date": null,
+  "ending_balance": null,
+  "footer": null,
+  "from_invoice": null,
+  "hosted_invoice_url": null,
+  "invoice_pdf": null,
+  "issuer": {
+    "type": "self"
+  },
+  "last_finalization_error": null,
+  "latest_revision": null,
+  "lines": {
+    "object": "list",
+    "data": [],
+    "has_more": false,
+    "total_count": 0,
+    "url": "/v1/invoices/in_1MtHbELkdIwHu7ixl4OzzPMv/lines"
+  },
+  "payments": {
+    "object": "list",
+    "data": [],
+    "has_more": false,
+    "total_count": 0,
+    "url": "/v1/invoice_payments"
+  },
+  "livemode": false,
+  "metadata": {},
+  "next_payment_attempt": null,
+  "number": null,
+  "on_behalf_of": null,
+  "parent": null,
+  "payment_settings": {
+    "default_mandate": null,
+    "payment_method_options": null,
+    "payment_method_types": null
+  },
+  "period_end": 1680644467,
+  "period_start": 1680644467,
+  "post_payment_credit_notes_amount": 0,
+  "pre_payment_credit_notes_amount": 0,
+  "receipt_number": null,
+  "shipping_cost": null,
+  "shipping_details": null,
+  "starting_balance": 0,
+  "statement_descriptor": null,
+  "status": "draft",
+  "status_transitions": {
+    "finalized_at": null,
+    "marked_uncollectible_at": null,
+    "paid_at": null,
+    "voided_at": null
+  },
+  "subtotal": 0,
+  "subtotal_excluding_tax": 0,
+  "test_clock": null,
+  "total": 0,
+  "total_discount_amounts": [],
+  "total_excluding_tax": 0,
+  "total_taxes": [],
+  "transfer_data": null,
+  "webhooks_delivered_at": 1680644467
+}
+Create a preview invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/create_preview
+
+At any time, you can preview the upcoming invoice for a subscription or subscription schedule. This will show you all the charges that are pending, including subscription renewal charges, invoice item charges, etc. It will also show you any discounts that are applicable to the invoice.
+
+You can also preview the effects of creating or updating a subscription or subscription schedule, including a preview of any prorations that will take place. To ensure that the actual proration is calculated exactly the same as the previewed proration, you should pass the subscription_details.proration_date parameter when doing the actual subscription update.
+
+The recommended way to get only the prorations being previewed on the invoice is to consider line items where parent.subscription_item_details.proration is true.
+
+Note that when you are viewing an upcoming invoice, you are simply viewing a preview – the invoice has not yet been created. As such, the upcoming invoice will not show up in invoice listing calls, and you cannot use the API to pay or edit the invoice. If you want to change the amount that your customer will be billed, you can add, remove, or update pending invoice items, or update the customer’s discount.
+
+Note: Currency conversion calculations use the latest exchange rates. Exchange rates may vary between the time of the preview and the time of the actual invoice creation. Learn more
+
+Parameters
+automatic_tax
+object
+
+Settings for automatic tax lookup for this invoice preview.
+
+Show child parameters
+customer
+string
+
+The identifier of the customer whose upcoming invoice you’re retrieving. If automatic_tax is enabled then one of customer, customer_details, subscription, or schedule must be set.
+
+customer_account
+string
+
+The identifier of the account representing the customer whose upcoming invoice you’re retrieving. If automatic_tax is enabled then one of customer, customer_account, customer_details, subscription, or schedule must be set.
+
+subscription
+string
+
+The identifier of the subscription for which you’d like to retrieve the upcoming invoice. If not provided, but a subscription_details.items is provided, you will preview creating a subscription with those items. If neither subscription nor subscription_details.items is provided, you will retrieve the next upcoming invoice from among the customer’s subscriptions.
+
+More parameters
+Expand all
+currency
+enum
+customer_details
+object
+discounts
+array of objects
+invoice_items
+array of objects
+issuer
+object
+Connect only
+on_behalf_of
+string
+Connect only
+preview_mode
+enum
+schedule
+string
+schedule_details
+object
+subscription_details
+object
+Returns
+
+Returns an invoice if valid customer information is provided. Raises an error otherwise.
+
+Create an invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices
+
+This endpoint creates a draft invoice for a given customer. The invoice remains a draft until you finalize the invoice, which allows you to pay or send the invoice to your customers.
+
+Parameters
+auto_advance
+boolean
+
+Controls whether Stripe performs automatic collection of the invoice. If false, the invoice’s state doesn’t automatically advance without an explicit action. Defaults to false.
+
+automatic_tax
+object
+
+Settings for automatic tax lookup for this invoice.
+
+Show child parameters
+collection_method
+enum
+
+Either charge_automatically, or send_invoice. When charging automatically, Stripe will attempt to pay this invoice using the default source attached to the customer. When sending an invoice, Stripe will email this invoice to the customer with payment instructions. Defaults to charge_automatically.
+
+Possible enum values
+charge_automatically
+
+
+send_invoice
+customer
+string
+Required unless from_invoice is provided
+
+The ID of the customer to bill.
+
+customer_account
+string
+
+The ID of the account to bill.
+
+description
+string
+
+An arbitrary string attached to the object. Often useful for displaying to users. Referenced as ‘memo’ in the Dashboard.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+subscription
+string
+
+The ID of the subscription to invoice, if any. If set, the created invoice will only include pending invoice items for that subscription. The subscription’s billing cycle and regular subscription events won’t be affected.
+
+More parameters
+Expand all
+account_tax_ids
+array of strings
+application_fee_amount
+integer
+Connect only
+automatically_finalizes_at
+timestamp
+currency
+enum
+custom_fields
+array of objects
+days_until_due
+integer
+default_payment_method
+string
+default_source
+string
+default_tax_rates
+array of strings
+discounts
+array of objects
+due_date
+timestamp
+effective_at
+timestamp
+footer
+string
+from_invoice
+object
+Required unless customer is provided
+issuer
+object
+Connect only
+number
+string
+on_behalf_of
+string
+Connect only
+payment_settings
+object
+pending_invoice_items_behavior
+enum
+rendering
+object
+shipping_cost
+object
+shipping_details
+object
+statement_descriptor
+string
+transfer_data
+object
+Connect only
+Returns
+
+Returns the invoice object. Raises an error if the customer ID provided is invalid.
+
+Update an invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id
+
+Draft invoices are fully editable. Once an invoice is finalized, you can no longer change most of its details, including monetary values and collection_method. For most invoices, this also includes description.
+
+If you would like to stop the Stripe Billing engine from automatically finalizing, reattempting payments on, sending reminders for, or automatically reconciling invoices, pass auto_advance=false.
+
+Parameters
+auto_advance
+boolean
+
+Controls whether Stripe performs automatic collection of the invoice.
+
+automatic_tax
+object
+
+Settings for automatic tax lookup for this invoice.
+
+Show child parameters
+collection_method
+enum
+
+Either charge_automatically or send_invoice. This field can be updated only on draft invoices.
+
+Possible enum values
+charge_automatically
+
+
+send_invoice
+description
+string
+
+An arbitrary string attached to the object. Often useful for displaying to users. Referenced as ‘memo’ in the Dashboard.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+More parameters
+Expand all
+id
+string
+Required
+account_tax_ids
+array of strings
+application_fee_amount
+integer
+Connect only
+automatically_finalizes_at
+timestamp
+custom_fields
+array of objects
+days_until_due
+integer
+default_payment_method
+string
+default_source
+string
+default_tax_rates
+array of strings
+discounts
+array of objects
+due_date
+timestamp
+effective_at
+timestamp
+footer
+string
+issuer
+object
+Connect only
+number
+string
+on_behalf_of
+string
+Connect only
+payment_settings
+object
+rendering
+object
+shipping_cost
+object
+shipping_details
+object
+statement_descriptor
+string
+transfer_data
+object
+Connect only
+Returns
+
+Returns the invoice object.
+
+Retrieve an invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/invoices/:id
+
+Retrieves the invoice with the given ID.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+Returns
+
+Returns an invoice object if a valid invoice ID was provided. Raises an error otherwise.
+
+The invoice object contains a lines hash that contains information about the subscriptions and invoice items that have been applied to the invoice, as well as any prorations that Stripe has automatically calculated. Each line on the invoice has an amount attribute that represents the amount actually contributed to the invoice’s total. For invoice items and prorations, the amount attribute is the same as for the invoice item or proration respectively. For subscriptions, the amount may be different from the plan’s regular price depending on whether the invoice covers a trial period or the invoice period differs from the plan’s usual interval.
+
+The invoice object has both a subtotal and a total. The subtotal represents the total before any discounts, while the total is the final amount to be charged to the customer after all coupons have been applied.
+
+The invoice also has a next_payment_attempt attribute that tells you the next time (as a Unix timestamp) payment for the invoice will be automatically attempted. For invoices with manual payment collection, that have been closed, or that have reached the maximum number of retries (specified in your subscriptions settings), the next_payment_attempt will be null.
+
+List all invoices v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/invoices
+
+You can list all invoices, or list the invoices for a specific customer. The invoices are returned sorted by creation date, with the most recently created invoices appearing first.
+
+Parameters
+customer
+string
+
+Only return invoices for the customer specified by this customer ID.
+
+customer_account
+string
+
+Only return invoices for the account representing the customer specified by this account ID.
+
+status
+enum
+
+The status of the invoice, one of draft, open, paid, uncollectible, or void. Learn more
+
+Possible enum values
+draft
+
+
+open
+
+
+paid
+
+
+uncollectible
+
+
+void
+subscription
+string
+
+Only return invoices for the subscription specified by this subscription ID.
+
+More parameters
+Expand all
+collection_method
+enum
+created
+object | integer
+ending_before
+string
+limit
+integer
+starting_after
+string
+Returns
+
+A dictionary with a data property that contains an array invoice attachments,
+
+Delete a draft invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+DELETE 
+/v1/invoices/:id
+
+Permanently deletes a one-off invoice draft. This cannot be undone. Attempts to delete invoices that are no longer in a draft state will fail; once an invoice has been finalized or if an invoice is for a subscription, it must be voided.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+Returns
+
+A successfully deleted invoice. Otherwise, this call raises an error, such as if the invoice has already been deleted.
+
+Attach a payment to an Invoice v1
+Preview
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id/attach_payment
+
+Attaches a PaymentIntent or an Out of Band Payment to the invoice, adding it to the list of payments.
+
+For the PaymentIntent, when the PaymentIntent’s status changes to succeeded, the payment is credited to the invoice, increasing its amount_paid. When the invoice is fully paid, the invoice’s status becomes paid.
+
+If the PaymentIntent’s status is already succeeded when it’s attached, it’s credited to the invoice immediately.
+
+See: Partial payments to learn more.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+payment_intent
+string
+
+The ID of the PaymentIntent to attach to the invoice.
+
+payment_record
+string
+
+The ID of the PaymentRecord to attach to the invoice.
+
+Returns
+
+Returns the invoice object that the payment was attached to.
+
+Finalize an invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id/finalize
+
+Stripe automatically finalizes drafts before sending and attempting payment on invoices. However, if you’d like to finalize a draft invoice manually, you can do so using this method.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+auto_advance
+boolean
+
+Controls whether Stripe performs automatic collection of the invoice. If false, the invoice’s state doesn’t automatically advance without an explicit action.
+
+Returns
+
+Returns an invoice object with status=open.
+
+Mark an invoice as uncollectible v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id/mark_uncollectible
+
+Marking an invoice as uncollectible is useful for keeping track of bad debts that can be written off for accounting purposes.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+Returns
+
+Returns the invoice object.
+
+Pay an invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id/pay
+
+Stripe automatically creates and then attempts to collect payment on invoices for customers on subscriptions according to your subscriptions settings. However, if you’d like to attempt payment on an invoice out of the normal collection schedule or for some other reason, you can do so.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+forgive
+boolean
+
+In cases where the source used to pay the invoice has insufficient funds, passing forgive=true controls whether a charge should be attempted for the full amount available on the source, up to the amount to fully pay the invoice. This effectively forgives the difference between the amount available on the source and the amount due.
+
+Passing forgive=false will fail the charge if the source hasn’t been pre-funded with the right amount. An example for this case is with ACH Credit Transfers and wires: if the amount wired is less than the amount due by a small amount, you might want to forgive the difference. Defaults to false.
+
+mandate
+string
+
+ID of the mandate to be used for this invoice. It must correspond to the payment method used to pay the invoice, including the payment_method param or the invoice’s default_payment_method or default_source, if set.
+
+off_session
+boolean
+
+Indicates if a customer is on or off-session while an invoice payment is attempted. Defaults to true (off-session).
+
+paid_out_of_band
+boolean
+
+Boolean representing whether an invoice is paid outside of Stripe. This will result in no charge being made. Defaults to false.
+
+payment_method
+string
+
+A PaymentMethod to be charged. The PaymentMethod must be the ID of a PaymentMethod belonging to the customer associated with the invoice being paid.
+
+source
+string
+
+A payment source to be charged. The source must be the ID of a source belonging to the customer associated with the invoice being paid.
+
+Returns
+
+Returns the invoice object.
+
+Search invoices v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/invoices/search
+
+Search for invoices you’ve previously created using Stripe’s Search Query Language. Don’t use search in read-after-write flows where strict consistency is necessary. Under normal operating conditions, data is searchable in less than a minute. Occasionally, propagation of new or updated data can be up to an hour behind during outages. Search functionality is not available to merchants in India.
+
+Parameters
+query
+string
+Required
+
+The search query string. See search query language and the list of supported query fields for invoices.
+
+limit
+integer
+
+A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.
+
+page
+string
+
+A cursor for pagination across multiple pages of results. Don’t include this parameter on the first call. Use the next_page value returned in a previous response to request subsequent results.
+
+Returns
+
+A dictionary with a data property that contains an array of up to limit invoices. If no objects match the query, the resulting array will be empty. See the related guide on expanding properties in lists.
+
+Send an invoice for manual payment v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id/send
+
+Stripe will automatically send invoices to customers according to your subscriptions settings. However, if you’d like to manually send an invoice to your customer out of the normal schedule, you can do so. When sending invoices that have already been paid, there will be no reference to the payment in the email.
+
+Requests made in test-mode result in no emails being sent, despite sending an invoice.sent event.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+Returns
+
+Returns the invoice object.
+
+Void an invoice v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/invoices/:id/void
+
+Mark a finalized invoice as void. This cannot be undone. Voiding an invoice is similar to deletion, however it only applies to finalized invoices and maintains a papertrail where the invoice can still be found.
+
+Consult with local regulations to determine whether and how an invoice might be amended, canceled, or voided in the jurisdiction you’re doing business in. You might need to issue another invoice or credit note instead. Stripe recommends that you consult with your legal counsel for advice specific to your business.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+Returns
+
+Returns the voided invoice object.
+
+Need help? Contact Support.
+Chat with Stripe developers on Discord.
+Check out our changelog.
+Questions? Contact Sales.
+LLM? Read llms.txt.
+Powered by Markdoc

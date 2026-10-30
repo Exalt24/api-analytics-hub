@@ -1,0 +1,257 @@
+URL: https://docs.stripe.com/error-low-level
+STATUS: 200
+
+Skip to content
+Search
+/
+Ask AI
+Create account
+Sign in
+Get started
+Payments
+Revenue
+Risk
+Data
+Money management
+Stablecoins
+Embedded finance
+Developer resources
+APIs & SDKs
+Help
+Overview
+VERSIONING
+Changelog
+Upgrade your integration
+How API versioning works
+ESSENTIALS
+SDKs
+API
+API v2
+Rate limits
+AUTHENTICATION
+API keys
+Service principals
+Workload Identity Federation
+Specify request context
+Domains and IP addresses
+MAKE REQUESTS
+Expand responses
+Pagination
+Search objects
+Localize content
+TESTING AND DATA
+Metadata
+Test your application
+ERROR HANDLING
+Handle errors
+Advanced error handling
+Error codes
+Events
+Testing
+Stripe CLI
+TOOLS
+Stripe Dashboard
+Stripe Projects
+Provisioning
+Workbench
+Developers Dashboard
+Stripe for Visual Studio Code
+Terraform
+Stripe Discord server
+FEATURES
+Workflows
+Batch jobs
+Stripe health alerts
+File uploads
+AI TOOLS
+Agent plugins
+Model Context Protocol
+Agent skills
+Stripe Directory
+EXTEND STRIPE
+Overview
+Build Stripe apps
+Use apps from Stripe
+Build extensions
+Custom objects
+SECURITY AND PRIVACY
+Security
+Activity logs
+Stripebot web crawler
+Privacy
+PARTNERS
+Partner ecosystem
+Partner certification
+United States
+English (United States)
+Home
+/
+Developer resources
+/
+API
+/
+Handle errors
+Advanced error handling
+Learn how to understand errors at the HTTP level.
+Ask about this page
+Copy for LLM
+View as Markdown
+Set up agent
+
+Handling errors at the HTTP level requires understanding why a request failed and whether you can safely retry it. Use HTTP error categories
+ to choose how to respond, and idempotency keys
+ to retry requests without repeating an operation’s side effects.
+
+Stripe SDKs
+ handle most HTTP and retry details. If you use an SDK, start with error handling
+ and error codes
+. Use the HTTP-level guidance when you make requests directly or need to investigate errors beyond the SDK’s handling.
+
+The idempotency and response replay guidance applies to API v1. For API v2, see API v2 idempotency
+, which uses different replay behavior and a 30-day window.
+
+HTTP errors
+
+Stripe SDKs provide error information
+ by raising an exception or returning an error value. When you handle HTTP responses directly or investigate an unusual error, use the error category to determine your next action.
+
+From an HTTP point of view, errors fall into three major categories:
+
+Content error
+: Invalid content in the API request.
+Network error
+: Intermittent communication problems between client and server.
+Server error
+: A problem on the Stripe servers.
+
+Each type of error requires a different approach and idempotency semantics. See the HTTP status codes
+ for individual codes and their meanings.
+
+Content errors
+
+Content errors return an HTTP response with a 4xx status code
+. For example, Stripe might return a 401 for an invalid API key or a 400 for a missing required parameter. Inspect the error response’s code field, when present, to determine how to handle the error programmatically. See error codes
+ for specific causes and handling guidance.
+
+For a POST operation using an idempotency key, Stripe caches the result after the API method begins execution, including errors. Retrying a cached 400 response with the same key returns the same error. Errors that occur before execution begins, such as invalid parameters, an invalid API key, or rate limiting, don’t cache a result. Retry these requests after resolving the error.
+
+Choose your next action based on the error, rather than generating a new key for every 4xx response:
+
+When retrying the same operation, preserve the idempotency key and parameters within the retry window
+.
+If a 409 indicates that another request with the same key is still executing, wait and retry with that key and the same parameters. A new key can start a second operation.
+If you need to change the request parameters, first establish that the original operation didn’t succeed and isn’t still executing. Use a new key for the corrected operation. If the original outcome remains unknown, reconcile it
+ before starting another operation.
+Network errors
+
+Network errors result from connectivity problems between client and server, such as socket errors or timeouts. A connection might close before your client receives a response. Restoring connectivity doesn’t tell you whether the original request succeeded.
+
+When a connection fails, you might not know whether Stripe received or executed the request. Retry with the same idempotency key and parameters within the first 24 hours after the original request. If you still haven’t received a result when that window ends, stop retrying and reconcile the outcome as described in POST requests
+. Sending the same idempotency key with different parameters produces an error indicating that the request didn’t match the original.
+
+Configure automatic retries
+
+Stripe SDKs can generate idempotency keys and retry requests automatically. Retry defaults depend on the SDK, version, and how you construct the client. Retries use exponential backoff to avoid repeatedly sending requests during an ongoing failure.
+
+Before configuring retries, install and set up your Stripe SDK
+. These examples configure a maximum of two retries. Use a restricted API key
+ with only the permissions your requests need. Load it from a secure server-side environment variable, such as STRIPE_SECRET_KEY, or a secrets manager. See secret key best practices
+.
+
+Select a language
+Ruby
+# After loading the Stripe library, apply this global setting before creating your client.
+Stripe.max_network_retries = 2
+Server errors
+
+Server errors return an HTTP response with a 5xx status code. Treat the outcome of a request that returns 500 as indeterminate: the operation might have produced side effects even though you received an error. Don’t retry with a new idempotency key until you’ve resolved the original outcome. Retrieve the relevant object, inspect the request in the Dashboard, and use webhook events to reconcile what happened.
+
+For API v1, Stripe caches 500 responses from POST requests that use an idempotency key. Retrying with the same key returns the cached response while Stripe retains it.
+
+During incident recovery, Stripe attempts to reconcile failed operations and send webhook events
+ for any objects created during reconciliation. The cached response doesn’t change, and reconciliation isn’t guaranteed to resolve every operation.
+
+Prepare your webhook handlers to process objects your integration hasn’t received in an API response. When creating a resource, include a local identifier in its metadata so you can match an object received through a webhook to your local records, including after reconciliation.
+
+Verify webhook signatures
+ before processing events. If you restrict inbound traffic by IP address, allow Stripe’s public webhook IP addresses
+.
+
+Idempotency
+
+Idempotency is a web API design principle defined as the ability to apply the same operation multiple times without changing the result beyond the first try. It makes it safe to retry API requests in some situations—in particular, when the first request gets no response because of a network error. Because a certain amount of intermittent failure is to be expected, clients need a way of reconciling failed requests with a server, and idempotency provides a mechanism for that.
+
+Stripe SDKs can generate idempotency keys and retry requests automatically. See retry configuration
+ for SDK defaults and examples. For finer-grained control over retries, generate idempotency keys and write your own retry logic.
+
+GET and DELETE requests
+
+API v1 GET and DELETE requests are idempotent, so retrying them doesn’t repeat the original operation’s side effects. You don’t need to send an idempotency key with these requests.
+
+POST requests
+
+Including an idempotency key makes API v1 POST requests idempotent while Stripe retains the key. Your client generates the key and sends it with the original request. Stripe retains keys for at least 24 hours and can remove them after that. Reusing a key after it’s removed can execute a new request.
+
+Limit retries of an unresolved operation to the first 24 hours after the original request, using the same key and parameters. For example, if an object creation request receives no response because of a connection error, retrying within that window prevents the retry from creating a second object.
+
+If the outcome is still unknown after that window, don’t retry with either the old key or a new one. Retrieve the relevant object, inspect the request in the Dashboard, and use webhook events to reconcile the outcome. If you can’t establish what happened, contact Stripe support before repeating the operation.
+
+Sending idempotency keys
+
+Idempotency keys are sent in the Idempotency-Key header. Use them for all API v1 POST requests. Stripe SDKs can generate and send them automatically for retries. If your application retries across separate SDK calls or process restarts, generate and persist a key for the operation and supply it to every attempt.
+
+If you send idempotency keys manually, make sure the tokens being used are sufficiently unique to unambiguously identify a single operation within your account over the last 24 hours, at a minimum. There are two common strategies for generating idempotency keys:
+
+Use an algorithm that generates a token with enough randomness, like UUID v4.
+Derive the key from a user-attached object, like the ID of a shopping cart. This provides a relatively straightforward way to protect against double submissions.
+
+To identify a previously executed response that’s being replayed from the server, look for the header Idempotent-Replayed: true.
+
+The Stripe-Should-Retry header
+
+The Stripe-Should-Retry response header provides retry guidance that might not be available from the status code or response body:
+
+true: Retry the request using exponential backoff to avoid overloading the API.
+false: Don’t retry the request.
+Absent: Use the status code and other response information to decide whether to retry.
+
+Stripe SDKs respect this header automatically when retrying requests.
+
+HTTP status codes
+
+The following table lists HTTP status codes and their meanings:
+
+STATUS CODE	NAME	MEANING
+200	OK	Everything worked as expected.
+400	Bad Request	The request was unacceptable, often due to missing a required parameter.
+401	Unauthorized	No valid API key provided.
+402	Request Failed	The parameters were valid but the request failed.
+403	Forbidden	The API key doesn’t have permissions to perform the request.
+409	Conflict	The request conflicts with another request, potentially due to using the same idempotent
+ key.
+424	External Dependency Failed	The request couldn’t be completed due to a failure in a dependency external to Stripe.
+429	Too Many Requests	Too many requests hit the API too quickly. Retry requests with exponential backoff
+.
+500, 502, 503, 504	Server Errors	A server error
+ occurred on Stripe’s side.
+Was this page helpful?
+Yes
+No
+Need help? Contact Support.
+Chat with Stripe developers on Discord.
+Check out our changelog.
+Questions? Contact Sales.
+LLM? Read llms.txt.
+Powered by Markdoc
+ON THIS PAGE
+HTTP errors
+Content errors
+Network errors
+Configure automatic retries
+Server errors
+Idempotency
+GET and DELETE requests
+POST requests
+Sending idempotency keys
+The Stripe-Should-Retry header
+HTTP status codes

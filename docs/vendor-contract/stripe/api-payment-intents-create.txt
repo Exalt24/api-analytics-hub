@@ -1,0 +1,1402 @@
+URL: https://docs.stripe.com/api/payment_intents/create
+STATUS: 200
+
+Find anything
+Ask AI
+Introduction
+Authentication
+Errors
+Expanding Responses
+Idempotent requests
+Include-dependent response values (API v2)
+Metadata
+Pagination
+Request IDs
+Connected Accounts
+Versioning
+Enums
+Core Resources
+Accountsv2
+Account Linksv2
+Account Tokensv2
+US Bank Accountsv2
+GB Bank Accountsv2
+Balances
+Balance Transactions
+Charges
+Customers
+Customer Sessions
+Disputes
+Events
+Eventsv2
+Event Destinationsv2
+Files
+File Links
+Mandates
+Payment Intents
+The PaymentIntent object
+The PaymentIntent LineItem object
+Create a PaymentIntent
+Update a PaymentIntent
+Retrieve a PaymentIntent
+List all PaymentIntents
+List all PaymentIntent LineItems
+Cancel a PaymentIntent
+Capture a PaymentIntent
+Confirm a PaymentIntent
+Increment an authorization
+Reconcile a customer_balance PaymentIntent
+Search PaymentIntents
+Verify microdeposits on a PaymentIntent
+Personsv2
+Person Tokensv2
+Setup Intents
+Setup Attempts
+Stripe Balance Debit Agreements
+3DS Authentications
+Payouts
+Refunds
+Confirmation Tokens
+Tokens
+Ephemeral Keys
+Payment Methods
+Payment Methods
+Payment Method Configurations
+Payment Method Domains
+Bank Accounts
+Cash Balances
+Cash Balance Transactions
+Cards
+Sources
+Money Management
+Products
+Products
+Prices
+Coupons
+Promotion Codes
+Discounts
+Tax Codes
+Tax Rates
+Shipping Rates
+Product Catalog
+Trial Offers
+Commerce
+Agentic Commerce
+Shared Payment Issued Tokens
+Shared Payment Granted Tokens
+Checkout
+Checkout Sessions
+Payment Links
+Payment Links
+Billing
+Alerts
+Credit Balance Summaries
+Credit Balance Transactions
+Credit Grants
+Credit Notes
+Customer Balance Transactions
+Customer Portal Configurations
+Customer Portal Sessions
+Feedback Options
+Invoices
+Invoice Items
+Invoice Line Items
+Invoice Payments
+Invoice Rendering Templates
+Billing Meters
+Billing Meter Events
+Billing Meter Event Adjustments
+Meter Event Adjustmentsv2
+Meter Event Streamsv2
+Billing Meter Event Summaries
+Meter Eventsv2
+Plans
+Quotes
+Subscriptions
+Subscription Items
+Subscription Schedules
+Tax IDs
+Test Clocks
+Capital
+Financing Offers
+Financing Summaries
+Connect
+Accounts
+Login Links
+Account Links
+Account Sessions
+Application Fees
+Application Fee Refunds
+Capabilities
+Country Specs
+Balance Settings
+External Bank Accounts
+External Account Cards
+Persons
+Top-ups
+Transfers
+Transfer Reversals
+Secrets
+App Installs
+Reserves
+Fraud
+Issuing
+Terminal
+Treasury for Platforms
+Payment Records
+Account Evaluation
+Entitlements
+Sigma
+Reporting
+Financial Connections
+Tax
+Identity
+Crypto
+Climate
+Tax Reporting
+Forwarding
+Privacy
+Webhooks
+2026-10-28.endive
+API Reference
+Docs
+Support
+Sign in →
+Payment Intents v1
+Ask about this section
+Copy for LLM
+View as Markdown
+
+A PaymentIntent guides you through the process of collecting a payment from your customer. We recommend that you create exactly one PaymentIntent for each order or customer session in your system. You can reference the PaymentIntent later to see the history of payment attempts for a particular session.
+
+A PaymentIntent transitions through multiple statuses throughout its lifetime as it interfaces with Stripe.js to perform authentication flows and ultimately creates at most one successful charge.
+
+Related guide: Payment Intents API
+
+Was this section helpful?
+Yes
+No
+The PaymentIntent object v1
+Ask about this section
+Copy for LLM
+View as Markdown
+Attributes
+id
+string
+retrievable with publishable key
+
+Unique identifier for the object.
+
+amount
+integer
+retrievable with publishable key
+
+Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the smallest currency unit (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or equivalent in charge currency. The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).
+
+automatic_payment_methods
+nullable object
+retrievable with publishable key
+
+Settings to configure compatible payment methods from the Stripe Dashboard
+
+Show child attributes
+client_secret
+nullable string
+retrievable with publishable key
+
+The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key.
+
+The client secret can be used to complete a payment from your frontend. It should not be stored, logged, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.
+
+Refer to our docs to accept a payment and learn about how client_secret should be handled.
+
+currency
+enum
+retrievable with publishable key
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+customer
+nullable string
+Expandable
+
+ID of the Customer this PaymentIntent belongs to, if one exists.
+
+Payment methods attached to other Customers cannot be used with this PaymentIntent.
+
+If setup_future_usage is set and this PaymentIntent’s payment method is not card_present, then the payment method attaches to the Customer after the PaymentIntent has been confirmed and any required actions from the user are complete. If the payment method is card_present and isn’t a digital wallet, then a generated_card payment method representing the card is created and attached to the Customer instead.
+
+customer_account
+nullable string
+
+ID of the Account representing the customer that this PaymentIntent belongs to, if one exists.
+
+Payment methods attached to other Accounts cannot be used with this PaymentIntent.
+
+If setup_future_usage is set and this PaymentIntent’s payment method is not card_present, then the payment method attaches to the Account after the PaymentIntent has been confirmed and any required actions from the user are complete. If the payment method is card_present and isn’t a digital wallet, then a generated_card payment method representing the card is created and attached to the Account instead.
+
+description
+nullable string
+retrievable with publishable key
+
+An arbitrary string attached to the object. Often useful for displaying to users.
+
+last_payment_error
+nullable object
+retrievable with publishable key
+
+The payment error encountered in the previous PaymentIntent confirmation. It will be cleared if the PaymentIntent is later updated for any reason.
+
+Show child attributes
+latest_charge
+nullable string
+Expandable
+
+ID of the latest Charge object created by this PaymentIntent. This property is null until PaymentIntent confirmation is attempted.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Learn more about storing information in metadata.
+
+next_action
+nullable object
+retrievable with publishable key
+
+If present, this property tells you what actions you need to take in order for your customer to fulfill a payment using the provided source.
+
+Show child attributes
+payment_method
+nullable string
+Expandable
+retrievable with publishable key
+
+ID of the payment method used in this PaymentIntent.
+
+receipt_email
+nullable string
+retrievable with publishable key
+
+Email address that the receipt for the resulting payment will be sent to. If receipt_email is specified for a payment in live mode, a receipt will be sent regardless of your email settings.
+
+setup_future_usage
+nullable enum
+retrievable with publishable key
+
+Indicates that you intend to make future payments with this PaymentIntent’s payment method.
+
+If you provide a Customer with the PaymentIntent, you can use this parameter to attach the payment method to the Customer after the PaymentIntent is confirmed and the customer completes any required actions. If you don’t provide a Customer, you can still attach the payment method to a Customer after the transaction completes.
+
+If the payment method is card_present and isn’t a digital wallet, Stripe creates and attaches a generated_card payment method representing the card to the Customer instead.
+
+When processing card payments, Stripe uses setup_future_usage to help you comply with regional legislation and network rules, such as SCA.
+
+Possible enum values
+off_session
+
+Use off_session if your customer may or may not be present in your checkout flow.
+
+
+
+on_session
+
+Use on_session if you intend to only reuse the payment method when your customer is present in your checkout flow.
+
+shipping
+nullable object
+retrievable with publishable key
+
+Shipping information for this PaymentIntent.
+
+Show child attributes
+statement_descriptor
+nullable string
+
+Text that appears on the customer’s statement as the statement descriptor for a non-card charge. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+Setting this value for a card charge returns an error. For card charges, set the statement_descriptor_suffix instead.
+
+statement_descriptor_suffix
+nullable string
+
+Provides information about a card charge. Concatenated to the account’s statement descriptor prefix to form the complete statement descriptor that appears on the customer’s statement.
+
+status
+enum
+retrievable with publishable key
+
+Status of this PaymentIntent, one of requires_payment_method, requires_confirmation, requires_action, processing, requires_capture, canceled, or succeeded. Read more about each PaymentIntent status.
+
+Possible enum values
+canceled
+
+The PaymentIntent has been canceled.
+
+
+
+processing
+
+The PaymentIntent is currently being processed.
+
+
+
+requires_action
+
+The PaymentIntent requires additional action from the customer.
+
+
+
+requires_capture
+
+The PaymentIntent has been confirmed and requires capture.
+
+
+
+requires_confirmation
+
+The PaymentIntent requires confirmation.
+
+
+
+requires_payment_method
+
+The PaymentIntent requires a payment method to be attached.
+
+
+
+succeeded
+
+The PaymentIntent has succeeded.
+
+More attributes
+Expand all
+object
+string, value is "payment_intent"
+retrievable with publishable key
+allowed_payment_method_types
+nullable array of enums
+amount_capturable
+integer
+amount_details
+nullable object
+amount_received
+integer
+application
+nullable string
+Expandable
+Connect only
+application_fee_amount
+nullable integer
+Connect only
+canceled_at
+nullable timestamp
+retrievable with publishable key
+cancellation_reason
+nullable enum
+retrievable with publishable key
+capture_method
+enum
+retrievable with publishable key
+confirmation_method
+enum
+retrievable with publishable key
+created
+timestamp
+retrievable with publishable key
+excluded_payment_method_types
+nullable array of enums
+hooks
+nullable object
+livemode
+boolean
+retrievable with publishable key
+managed_payments
+nullable object
+on_behalf_of
+nullable string
+Expandable
+Connect only
+payment_details
+nullable object
+payment_method_configuration_details
+nullable object
+payment_method_options
+nullable object
+payment_method_types
+array of strings
+retrievable with publishable key
+payment_record
+nullable string
+Expandable
+presentment_details
+nullable object
+processing
+nullable object
+retrievable with publishable key
+review
+nullable string
+Expandable
+transfer_data
+nullable object
+Connect only
+transfer_group
+nullable string
+Connect only
+The PaymentIntent LineItem object v1
+Ask about this section
+Copy for LLM
+View as Markdown
+Attributes
+id
+string
+
+Unique identifier for the object.
+
+object
+string, value is "payment_intent_amount_details_line_item"
+
+String representing the object’s type. Objects of the same type share the same value.
+
+discount_amount
+nullable integer
+
+The discount applied on this line item represented in the smallest currency unit. An integer greater than 0.
+
+This field is mutually exclusive with the amount_details[discount_amount] field.
+
+payment_method_options
+nullable object
+
+Payment method-specific information for line items.
+
+Show child attributes
+product_code
+nullable string
+
+The product code of the line item, such as an SKU. Required for L3 rates. At most 12 characters long.
+
+product_name
+string
+
+The product name of the line item. Required for L3 rates. At most 1024 characters long.
+
+For Cards, this field is truncated to 26 alphanumeric characters before being sent to the card networks. For PayPal, this field is truncated to 127 characters.
+
+quantity
+integer
+
+The quantity of items. Required for L3 rates. An integer greater than 0.
+
+tax
+nullable object
+
+Contains information about the tax on the item.
+
+Show child attributes
+unit_cost
+integer
+
+The unit cost of the line item represented in the smallest currency unit. Required for L3 rates. An integer greater than or equal to 0.
+
+unit_of_measure
+nullable string
+
+A unit of measure for the line item, such as gallons, feet, meters, etc. Required for L3 rates. At most 12 alphanumeric characters long.
+
+THE PAYMENTINTENT LINEITEM OBJECT
+{
+  "id": "uli_T1KmwLEvkprqQb",
+  "object": "payment_intent_amount_details_line_item",
+  "discount_amount": 50,
+  "payment_method_options": null,
+  "product_code": "SKU001",
+  "product_name": "Product 001",
+  "quantity": 1,
+  "tax": {
+    "total_tax_amount": 20
+  },
+  "unit_cost": 2000,
+  "unit_of_measure": "each"
+}
+Create a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents
+
+Creates a PaymentIntent object.
+
+After the PaymentIntent is created, attach a payment method and confirm to continue the payment. Learn more about the available payment flows with the Payment Intents API.
+
+When you use confirm=true during creation, it’s equivalent to creating and confirming the PaymentIntent in the same call. You can use any parameters available in the confirm API when you supply confirm=true.
+
+Parameters
+amount
+integer
+
+Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the smallest currency unit (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or equivalent in charge currency. The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).
+
+automatic_payment_methods
+object
+
+When you enable this parameter, this PaymentIntent accepts payment methods that you enable in the Dashboard and that are compatible with this PaymentIntent’s other parameters.
+
+Show child parameters
+confirm
+boolean
+
+Set to true to attempt to confirm this PaymentIntent immediately. This parameter defaults to false. When creating and confirming a PaymentIntent at the same time, you can also provide the parameters available in the Confirm API.
+
+currency
+enum
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+customer
+string
+
+ID of the Customer this PaymentIntent belongs to, if one exists.
+
+Payment methods attached to other Customers cannot be used with this PaymentIntent.
+
+If setup_future_usage is set and this PaymentIntent’s payment method is not card_present, then the payment method attaches to the Customer after the PaymentIntent has been confirmed and any required actions from the user are complete. If the payment method is card_present and isn’t a digital wallet, then a generated_card payment method representing the card is created and attached to the Customer instead.
+
+customer_account
+string
+
+ID of the Account representing the customer that this PaymentIntent belongs to, if one exists.
+
+Payment methods attached to other Accounts cannot be used with this PaymentIntent.
+
+If setup_future_usage is set and this PaymentIntent’s payment method is not card_present, then the payment method attaches to the Account after the PaymentIntent has been confirmed and any required actions from the user are complete. If the payment method is card_present and isn’t a digital wallet, then a generated_card payment method representing the card is created and attached to the Account instead.
+
+description
+string
+
+An arbitrary string attached to the object. Often useful for displaying to users.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+off_session
+boolean | enum
+only when confirm=true
+
+Set to true to indicate that the customer isn’t in your checkout flow during this payment attempt and can’t authenticate. Use this parameter in scenarios where you collect payment method details and charge them later. This parameter can only be used with confirm=true.
+
+Possible enum values
+one_off
+
+
+recurring
+payment_method
+string
+
+The ID of a PaymentMethod to attach to this PaymentIntent.
+
+If you omit this parameter with confirm=true, customer.default_source attaches as this PaymentIntent’s payment instrument to improve migration for users of the Charges API. We recommend that you explicitly provide the payment_method moving forward. If the payment method is attached to a Customer, you must also provide the ID of that Customer as the customer parameter of this PaymentIntent.
+
+receipt_email
+string
+
+Email address to send the receipt to. If you specify receipt_email for a payment in live mode, you send a receipt regardless of your email settings.
+
+setup_future_usage
+enum
+
+Indicates that you intend to make future payments with this PaymentIntent’s payment method.
+
+If you provide a Customer with the PaymentIntent, you can use this parameter to attach the payment method to the Customer after the PaymentIntent is confirmed and the customer completes any required actions. If you don’t provide a Customer, you can still attach the payment method to a Customer after the transaction completes.
+
+If the payment method is card_present and isn’t a digital wallet, Stripe creates and attaches a generated_card payment method representing the card to the Customer instead.
+
+When processing card payments, Stripe uses setup_future_usage to help you comply with regional legislation and network rules, such as SCA.
+
+Possible enum values
+off_session
+
+Use off_session if your customer may or may not be present in your checkout flow.
+
+
+
+on_session
+
+Use on_session if you intend to only reuse the payment method when your customer is present in your checkout flow.
+
+shipping
+object
+
+Shipping information for this PaymentIntent.
+
+Show child parameters
+statement_descriptor
+string
+
+Text that appears on the customer’s statement as the statement descriptor for a non-card charge. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+Setting this value for a card charge returns an error. For card charges, set the statement_descriptor_suffix instead.
+
+The maximum length is 22 characters.
+
+statement_descriptor_suffix
+string
+
+Provides information about a card charge. Concatenated to the account’s statement descriptor prefix to form the complete statement descriptor that appears on the customer’s statement.
+
+The maximum length is 22 characters.
+
+More parameters
+Expand all
+allowed_payment_method_types
+array of enums
+amount_details
+object
+application_fee_amount
+integer
+Connect only
+capture_method
+enum
+confirmation_method
+enum
+confirmation_token
+string
+only when confirm=true
+error_on_requires_action
+boolean
+only when confirm=true
+excluded_payment_method_types
+array of enums
+hooks
+object
+mandate
+string
+only when confirm=true
+mandate_data
+object
+only when confirm=true
+on_behalf_of
+string
+Connect only
+payment_details
+object
+payment_method_configuration
+string
+payment_method_data
+object
+payment_method_options
+object
+radar_options
+object
+return_url
+string
+only when confirm=true
+transfer_data
+object
+Connect only
+transfer_group
+string
+Connect only
+use_stripe_sdk
+boolean
+Returns
+
+Returns a PaymentIntent object.
+
+Server-side language
+cURL
+curl https://api.stripe.com/v1/payment_intents \
+  -u "sk_test_...
+sk_test_...
+:" \
+  -H "Stripe-Version: 2026-10-28.endive" \
+  -d amount=2000 \
+  -d currency=usd \
+  -d "automatic_payment_methods[enabled]=true"
+RESPONSE
+{
+  "id": "pi_3MtwBwLkdIwHu7ix28a3tqPa",
+  "object": "payment_intent",
+  "amount": 2000,
+  "amount_capturable": 0,
+  "amount_details": {
+    "tip": {}
+  },
+  "amount_received": 0,
+  "application": null,
+  "application_fee_amount": null,
+  "automatic_payment_methods": {
+    "enabled": true
+  },
+  "canceled_at": null,
+  "cancellation_reason": null,
+  "capture_method": "automatic",
+  "client_secret": "pi_3MtwBwLkdIwHu7ix28a3tqPa_secret_SAMPLE_REMOVED",
+  "confirmation_method": "automatic",
+  "created": 1680800504,
+  "currency": "usd",
+  "customer": null,
+  "description": null,
+  "last_payment_error": null,
+  "latest_charge": null,
+  "livemode": false,
+  "metadata": {},
+  "next_action": null,
+  "on_behalf_of": null,
+  "payment_method": null,
+  "payment_method_options": {
+    "card": {
+      "installments": null,
+      "mandate_options": null,
+      "network": null,
+      "request_three_d_secure": "automatic"
+    },
+    "link": {
+      "persistent_token": null
+    }
+  },
+  "payment_method_types": [
+    "card",
+    "link"
+  ],
+  "processing": null,
+  "receipt_email": null,
+  "review": null,
+  "setup_future_usage": null,
+  "shipping": null,
+  "source": null,
+  "statement_descriptor": null,
+  "statement_descriptor_suffix": null,
+  "status": "requires_payment_method",
+  "transfer_data": null,
+  "transfer_group": null
+}
+Update a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id
+
+Updates properties on a PaymentIntent object without confirming.
+
+Depending on which properties you update, you might need to confirm the PaymentIntent again. For example, updating the payment_method always requires you to confirm the PaymentIntent again. If you prefer to update and confirm at the same time, we recommend updating properties through the confirm API instead.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+amount
+integer
+
+Amount intended to be collected by this PaymentIntent. A positive integer representing how much to charge in the smallest currency unit (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or equivalent in charge currency. The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).
+
+client_secret
+string
+Required if using a publishable key.
+
+The client secret of the PaymentIntent.
+
+currency
+enum
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+customer
+string
+
+ID of the Customer this PaymentIntent belongs to, if one exists.
+
+Payment methods attached to other Customers cannot be used with this PaymentIntent.
+
+If setup_future_usage is set and this PaymentIntent’s payment method is not card_present, then the payment method attaches to the Customer after the PaymentIntent has been confirmed and any required actions from the user are complete. If the payment method is card_present and isn’t a digital wallet, then a generated_card payment method representing the card is created and attached to the Customer instead.
+
+customer_account
+string
+
+ID of the Account representing the customer that this PaymentIntent belongs to, if one exists.
+
+Payment methods attached to other Accounts cannot be used with this PaymentIntent.
+
+If setup_future_usage is set and this PaymentIntent’s payment method is not card_present, then the payment method attaches to the Account after the PaymentIntent has been confirmed and any required actions from the user are complete. If the payment method is card_present and isn’t a digital wallet, then a generated_card payment method representing the card is created and attached to the Account instead.
+
+description
+string
+
+An arbitrary string attached to the object. Often useful for displaying to users.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+payment_method
+string
+
+The ID of a PaymentMethod to attach to this PaymentIntent. To unset this field to null, pass in an empty string.
+
+receipt_email
+string
+
+Email address that the receipt for the resulting payment will be sent to. If receipt_email is specified for a payment in live mode, a receipt will be sent regardless of your email settings.
+
+setup_future_usage
+enum
+
+Indicates that you intend to make future payments with this PaymentIntent’s payment method.
+
+If you provide a Customer with the PaymentIntent, you can use this parameter to attach the payment method to the Customer after the PaymentIntent is confirmed and the customer completes any required actions. If you don’t provide a Customer, you can still attach the payment method to a Customer after the transaction completes.
+
+If the payment method is card_present and isn’t a digital wallet, Stripe creates and attaches a generated_card payment method representing the card to the Customer instead.
+
+When processing card payments, Stripe uses setup_future_usage to help you comply with regional legislation and network rules, such as SCA.
+
+If you’ve already set setup_future_usage and you’re performing a request using a publishable key, you can only update the value from on_session to off_session.
+
+Possible enum values
+off_session
+
+Use off_session if your customer may or may not be present in your checkout flow.
+
+
+
+on_session
+
+Use on_session if you intend to only reuse the payment method when your customer is present in your checkout flow.
+
+shipping
+object
+
+Shipping information for this PaymentIntent.
+
+Show child parameters
+statement_descriptor
+string
+
+Text that appears on the customer’s statement as the statement descriptor for a non-card charge. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+Setting this value for a card charge returns an error. For card charges, set the statement_descriptor_suffix instead.
+
+The maximum length is 22 characters.
+
+statement_descriptor_suffix
+string
+
+Provides information about a card charge. Concatenated to the account’s statement descriptor prefix to form the complete statement descriptor that appears on the customer’s statement.
+
+The maximum length is 22 characters.
+
+More parameters
+Expand all
+allowed_payment_method_types
+array of enums
+amount_details
+object
+application_fee_amount
+integer
+Connect only
+capture_method
+enum
+secret key only
+excluded_payment_method_types
+array of enums
+hooks
+object
+payment_details
+object
+payment_method_configuration
+string
+payment_method_data
+object
+payment_method_options
+object
+transfer_data
+object
+Connect only
+transfer_group
+string
+Connect only
+Returns
+
+Returns a PaymentIntent object.
+
+Retrieve a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/payment_intents/:id
+
+Retrieves the details of a PaymentIntent that has previously been created.
+
+You can retrieve a PaymentIntent client-side using a publishable key when the client_secret is in the query string.
+
+If you retrieve a PaymentIntent with a publishable key, it only returns a subset of properties. Refer to the payment intent object reference for more details.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+client_secret
+string
+Required if you use a publishable key.
+
+The client secret of the PaymentIntent. We require it if you use a publishable key to retrieve the source.
+
+Returns
+
+Returns a PaymentIntent if a valid identifier was provided.
+
+List all PaymentIntents v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/payment_intents
+
+Returns a list of PaymentIntents.
+
+Parameters
+customer
+string
+
+Only return PaymentIntents for the customer that this customer ID specifies.
+
+customer_account
+string
+
+Only return PaymentIntents for the account representing the customer that this ID specifies.
+
+More parameters
+Expand all
+created
+object | integer
+ending_before
+string
+limit
+integer
+starting_after
+string
+Returns
+
+A dictionary with a data property that contains an array of up to limit PaymentIntents, starting after PaymentIntent starting_after. Each entry in the array is a separate PaymentIntent object. If no other PaymentIntents are available, the resulting array is empty.
+
+List all PaymentIntent LineItems v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/payment_intents/:id/amount_details_line_items
+
+Lists all LineItems of a given PaymentIntent.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+More parameters
+Expand all
+ending_before
+string
+limit
+integer
+starting_after
+string
+Returns
+
+A dictionary with a data property that contains an array of up to limit line items of the given PaymentIntent, starting after line item starting_after. Each entry in the array is a separate line item object. If no other line items are available, the resulting array is empty.
+
+Cancel a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id/cancel
+
+You can cancel a PaymentIntent object when it’s in one of these statuses: requires_payment_method, requires_capture, requires_confirmation, requires_action or, in rare cases, processing.
+
+After it’s canceled, no additional charges are made by the PaymentIntent and any operations on the PaymentIntent fail with an error. For PaymentIntents with a status of requires_capture, the remaining amount_capturable is automatically refunded.
+
+You can directly cancel the PaymentIntent for a Checkout Session only when the PaymentIntent has a status of requires_capture. Otherwise, you must expire the Checkout Session.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+cancellation_reason
+enum
+
+Reason for canceling this PaymentIntent. Possible values are: duplicate, fraudulent, requested_by_customer, or abandoned
+
+Possible enum values
+abandoned
+
+
+duplicate
+
+
+fraudulent
+
+
+requested_by_customer
+Returns
+
+Returns a PaymentIntent object if the cancellation succeeds. Returns an error if the PaymentIntent is already canceled or isn’t in a cancelable state.
+
+Capture a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id/capture
+
+Capture the funds of an existing uncaptured PaymentIntent when its status is requires_capture.
+
+Uncaptured PaymentIntents are cancelled a set number of days (7 by default) after their creation.
+
+Learn more about separate authorization and capture.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+amount_to_capture
+integer
+
+The amount to capture from the PaymentIntent, which must be less than or equal to the original amount. Defaults to the full amount_capturable if it’s not provided.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+More parameters
+Expand all
+amount_details
+object
+application_fee_amount
+integer
+Connect only
+final_capture
+boolean
+hooks
+object
+payment_details
+object
+statement_descriptor
+string
+statement_descriptor_suffix
+string
+transfer_data
+object
+Connect only
+Returns
+
+Returns a PaymentIntent object with status="succeeded" if the PaymentIntent is capturable. Returns an error if the PaymentIntent isn’t capturable or if an invalid amount to capture is provided.
+
+Confirm a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id/confirm
+
+Confirm that your customer intends to pay with current or provided payment method. Upon confirmation, the PaymentIntent will attempt to initiate a payment.
+
+If the selected payment method requires additional authentication steps, the PaymentIntent will transition to the requires_action status and suggest additional actions via next_action. If payment fails, the PaymentIntent transitions to the requires_payment_method status or the canceled status if the confirmation limit is reached. If payment succeeds, the PaymentIntent will transition to the succeeded status (or requires_capture, if capture_method is set to manual).
+
+If the confirmation_method is automatic, payment may be attempted using our client SDKs and the PaymentIntent’s client_secret. After next_actions are handled by the client, no additional confirmation is required to complete the payment.
+
+If the confirmation_method is manual, all payment attempts must be initiated using a secret key.
+
+If any actions are required for the payment, the PaymentIntent will return to the requires_confirmation state after those actions are completed. Your server needs to then explicitly re-confirm the PaymentIntent to initiate the next payment attempt.
+
+There is a variable upper limit on how many times a PaymentIntent can be confirmed. After this limit is reached, any further calls to this endpoint will transition the PaymentIntent to the canceled state.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+client_secret
+string
+Required if using a publishable key.
+
+The client secret of the PaymentIntent.
+
+payment_method
+string
+
+The ID of a PaymentMethod to attach to this PaymentIntent. If the payment method is attached to a Customer, it must match the customer that is set on this PaymentIntent.
+
+receipt_email
+string
+
+Email address that the receipt for the resulting payment will be sent to. If receipt_email is specified for a payment in live mode, a receipt will be sent regardless of your email settings.
+
+setup_future_usage
+enum
+
+Indicates that you intend to make future payments with this PaymentIntent’s payment method.
+
+If you provide a Customer with the PaymentIntent, you can use this parameter to attach the payment method to the Customer after the PaymentIntent is confirmed and the customer completes any required actions. If you don’t provide a Customer, you can still attach the payment method to a Customer after the transaction completes.
+
+If the payment method is card_present and isn’t a digital wallet, Stripe creates and attaches a generated_card payment method representing the card to the Customer instead.
+
+When processing card payments, Stripe uses setup_future_usage to help you comply with regional legislation and network rules, such as SCA.
+
+If you’ve already set setup_future_usage and you’re performing a request using a publishable key, you can only update the value from on_session to off_session.
+
+Possible enum values
+off_session
+
+Use off_session if your customer may or may not be present in your checkout flow.
+
+
+
+on_session
+
+Use on_session if you intend to only reuse the payment method when your customer is present in your checkout flow.
+
+shipping
+object
+
+Shipping information for this PaymentIntent.
+
+Show child parameters
+More parameters
+Expand all
+allowed_payment_method_types
+array of enums
+amount_details
+object
+amount_to_confirm
+integer
+secret key only
+capture_method
+enum
+secret key only
+confirmation_token
+string
+error_on_requires_action
+boolean
+excluded_payment_method_types
+array of enums
+hooks
+object
+mandate
+string
+secret key only
+mandate_data
+object
+off_session
+boolean | enum
+secret key only
+payment_details
+object
+payment_method_data
+object
+payment_method_options
+object
+secret key only
+radar_options
+object
+secret key only
+return_url
+string
+use_stripe_sdk
+boolean
+Returns
+
+Returns the resulting PaymentIntent after all possible transitions are applied.
+
+Increment an authorization v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id/increment_authorization
+
+Perform an incremental authorization on an eligible PaymentIntent. To be eligible, the PaymentIntent’s status must be requires_capture and incremental_authorization_supported must be true.
+
+Incremental authorizations attempt to increase the authorized amount on your customer’s card to the new, higher amount provided. Similar to the initial authorization, incremental authorizations can be declined. A single PaymentIntent can call this endpoint multiple times to further increase the authorized amount.
+
+If the incremental authorization succeeds, the PaymentIntent object returns with the updated amount. If the incremental authorization fails, a card_declined error returns, and no other fields on the PaymentIntent or Charge update. The PaymentIntent object remains capturable for the previously authorized amount.
+
+Each PaymentIntent can have a maximum of 10 incremental authorization attempts, including declines. After it’s captured, a PaymentIntent can no longer be incremented.
+
+Learn more about incremental authorizations with in-person payments and online payments.
+
+Parameters
+amount
+integer
+Required
+
+The updated total amount that you intend to collect from the cardholder. This amount must be greater than the currently authorized amount.
+
+id
+string
+Required
+
+Unique identifier for the object.
+
+description
+string
+
+An arbitrary string attached to the object. Often useful for displaying to users.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+statement_descriptor
+string
+
+Text that appears on the customer’s statement as the statement descriptor for a non-card or card charge. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+The maximum length is 22 characters.
+
+More parameters
+Expand all
+amount_details
+object
+application_fee_amount
+integer
+Connect only
+hooks
+object
+payment_details
+object
+transfer_data
+object
+Connect only
+Returns
+
+Returns a PaymentIntent object with the updated amount if the incremental authorization succeeds. Returns an error if the incremental authorization failed or the PaymentIntent isn’t eligible for incremental authorizations.
+
+Reconcile a customer_balance PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id/apply_customer_balance
+
+Manually reconcile the remaining amount for a customer_balance PaymentIntent.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+amount
+integer
+
+Amount that you intend to apply to this PaymentIntent from the customer’s cash balance. If the PaymentIntent was created by an Invoice, the full amount of the PaymentIntent is applied regardless of this parameter.
+
+A positive integer representing how much to charge in the smallest currency unit (for example, 100 cents to charge 1 USD or 100 to charge 100 JPY, a zero-decimal currency). The maximum amount is the amount of the PaymentIntent.
+
+When you omit the amount, it defaults to the remaining amount requested on the PaymentIntent.
+
+currency
+enum
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+Returns
+
+Returns a PaymentIntent object.
+
+Search PaymentIntents v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/payment_intents/search
+
+Search for PaymentIntents you’ve previously created using Stripe’s Search Query Language. Don’t use search in read-after-write flows where strict consistency is necessary. Under normal operating conditions, data is searchable in less than a minute. Occasionally, propagation of new or updated data can be up to an hour behind during outages. Search functionality is not available to merchants in India.
+
+Parameters
+query
+string
+Required
+
+The search query string. See search query language and the list of supported query fields for payment intents.
+
+limit
+integer
+
+A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.
+
+page
+string
+
+A cursor for pagination across multiple pages of results. Don’t include this parameter on the first call. Use the next_page value returned in a previous response to request subsequent results.
+
+Returns
+
+A dictionary with a data property that contains an array of up to limit PaymentIntents. If no objects match the query, the resulting array will be empty. See the related guide on expanding properties in lists.
+
+Verify microdeposits on a PaymentIntent v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/payment_intents/:id/verify_microdeposits
+
+Verifies microdeposits on a PaymentIntent object.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+amounts
+array of integers
+
+Two positive integers, in cents, equal to the values of the microdeposits sent to the bank account.
+
+client_secret
+string
+Required if using a publishable key.
+
+The client secret of the PaymentIntent.
+
+descriptor_code
+string
+
+A six-character code starting with SM present in the microdeposit sent to the bank account.
+
+Returns
+
+Returns a PaymentIntent object.
+
+Need help? Contact Support.
+Chat with Stripe developers on Discord.
+Check out our changelog.
+Questions? Contact Sales.
+LLM? Read llms.txt.
+Powered by Markdoc

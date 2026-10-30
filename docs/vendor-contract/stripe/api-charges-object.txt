@@ -1,0 +1,751 @@
+URL: https://docs.stripe.com/api/charges/object
+STATUS: 200
+
+Find anything
+Ask AI
+Introduction
+Authentication
+Errors
+Expanding Responses
+Idempotent requests
+Include-dependent response values (API v2)
+Metadata
+Pagination
+Request IDs
+Connected Accounts
+Versioning
+Enums
+Core Resources
+Accountsv2
+Account Linksv2
+Account Tokensv2
+US Bank Accountsv2
+GB Bank Accountsv2
+Balances
+Balance Transactions
+Charges
+The Charge object
+Create a charge
+Update a charge
+Retrieve a charge
+List all charges
+Capture a charge
+Search charges
+Customers
+Customer Sessions
+Disputes
+Events
+Eventsv2
+Event Destinationsv2
+Files
+File Links
+Mandates
+Payment Intents
+Personsv2
+Person Tokensv2
+Setup Intents
+Setup Attempts
+Stripe Balance Debit Agreements
+3DS Authentications
+Payouts
+Refunds
+Confirmation Tokens
+Tokens
+Ephemeral Keys
+Payment Methods
+Payment Methods
+Payment Method Configurations
+Payment Method Domains
+Bank Accounts
+Cash Balances
+Cash Balance Transactions
+Cards
+Sources
+Money Management
+Products
+Products
+Prices
+Coupons
+Promotion Codes
+Discounts
+Tax Codes
+Tax Rates
+Shipping Rates
+Product Catalog
+Trial Offers
+Commerce
+Agentic Commerce
+Shared Payment Issued Tokens
+Shared Payment Granted Tokens
+Checkout
+Checkout Sessions
+Payment Links
+Payment Links
+Billing
+Alerts
+Credit Balance Summaries
+Credit Balance Transactions
+Credit Grants
+Credit Notes
+Customer Balance Transactions
+Customer Portal Configurations
+Customer Portal Sessions
+Feedback Options
+Invoices
+Invoice Items
+Invoice Line Items
+Invoice Payments
+Invoice Rendering Templates
+Billing Meters
+Billing Meter Events
+Billing Meter Event Adjustments
+Meter Event Adjustmentsv2
+Meter Event Streamsv2
+Billing Meter Event Summaries
+Meter Eventsv2
+Plans
+Quotes
+Subscriptions
+Subscription Items
+Subscription Schedules
+Tax IDs
+Test Clocks
+Capital
+Financing Offers
+Financing Summaries
+Connect
+Accounts
+Login Links
+Account Links
+Account Sessions
+Application Fees
+Application Fee Refunds
+Capabilities
+Country Specs
+Balance Settings
+External Bank Accounts
+External Account Cards
+Persons
+Top-ups
+Transfers
+Transfer Reversals
+Secrets
+App Installs
+Reserves
+Fraud
+Issuing
+Terminal
+Treasury for Platforms
+Payment Records
+Account Evaluation
+Entitlements
+Sigma
+Reporting
+Financial Connections
+Tax
+Identity
+Crypto
+Climate
+Tax Reporting
+Forwarding
+Privacy
+Webhooks
+2026-10-28.endive
+API Reference
+Docs
+Support
+Sign in →
+Charges v1
+Ask about this section
+Copy for LLM
+View as Markdown
+
+The Charge object represents a single attempt to move money into your Stripe account. PaymentIntent confirmation is the most common way to create Charges, but Account Debits may also create Charges. The create and capture methods are deprecated and will be deleted soon. If your integration uses either of them, you need to update it to use a different payment flow, such as the Payment Intents API.
+
+Was this section helpful?
+Yes
+No
+Endpoints
+Events
+Create a charge
+POST
+/v1/charges
+Update a charge
+POST
+/v1/charges/:id
+Retrieve a charge
+GET
+/v1/charges/:id
+List all charges
+GET
+/v1/charges
+Capture a charge
+POST
+/v1/charges/:id/capture
+Search charges
+GET
+/v1/charges/search
+The Charge object v1
+Ask about this section
+Copy for LLM
+View as Markdown
+Attributes
+id
+string
+
+Unique identifier for the object.
+
+amount
+integer
+
+Amount intended to be collected by this payment. A positive integer representing how much to charge in the smallest currency unit (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or equivalent in charge currency. The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).
+
+balance_transaction
+nullable string
+Expandable
+
+ID of the balance transaction that describes the impact of this charge on your account balance (not including refunds or disputes).
+
+billing_details
+object
+
+Billing information associated with the payment method at the time of the transaction.
+
+Show child attributes
+currency
+enum
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+customer
+nullable string
+Expandable
+
+ID of the customer this charge is for if one exists.
+
+description
+nullable string
+
+An arbitrary string attached to the object. Often useful for displaying to users.
+
+disputed
+boolean
+
+Whether the charge has been disputed.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
+
+payment_intent
+nullable string
+Expandable
+
+ID of the PaymentIntent associated with this charge, if one exists.
+
+payment_method_details
+nullable object
+
+Details about the payment method at the time of the transaction.
+
+Show child attributes
+receipt_email
+nullable string
+
+This is the email address that the receipt for this charge was sent to.
+
+refunded
+boolean
+
+Whether the charge has been fully refunded. If the charge is only partially refunded, this attribute will still be false.
+
+shipping
+nullable object
+
+Shipping information for the charge.
+
+Show child attributes
+statement_descriptor
+nullable string
+
+For a non-card charge, text that appears on the customer’s statement as the statement descriptor. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+For a card charge, this value is ignored unless you don’t specify a statement_descriptor_suffix, in which case this value is used as the suffix.
+
+statement_descriptor_suffix
+nullable string
+
+Provides information about a card charge. Concatenated to the account’s statement descriptor prefix to form the complete statement descriptor that appears on the customer’s statement. If the account has no prefix value, the suffix is concatenated to the account’s statement descriptor.
+
+status
+enum
+
+The status of the payment is either succeeded, pending, or failed.
+
+Possible enum values
+failed
+
+
+pending
+
+
+succeeded
+More attributes
+Expand all
+object
+string, value is "charge"
+amount_captured
+integer
+amount_refunded
+integer
+application
+nullable string
+Expandable
+Connect only
+application_fee
+nullable string
+Expandable
+Connect only
+application_fee_amount
+nullable integer
+Connect only
+calculated_statement_descriptor
+nullable string
+captured
+boolean
+created
+timestamp
+failure_balance_transaction
+nullable string
+Expandable
+failure_code
+nullable string
+failure_message
+nullable string
+fraud_details
+nullable object
+livemode
+boolean
+on_behalf_of
+nullable string
+Expandable
+Connect only
+outcome
+nullable object
+paid
+boolean
+payment_method
+nullable string
+presentment_details
+nullable object
+radar_options
+nullable object
+receipt_number
+nullable string
+receipt_url
+nullable string
+refunds
+nullable object
+Includable
+review
+nullable string
+Expandable
+source_transfer
+nullable string
+Expandable
+Connect only
+transfer
+nullable string
+Expandable
+Connect only
+transfer_data
+nullable object
+Connect only
+transfer_group
+nullable string
+Connect only
+THE CHARGE OBJECT
+{
+  "id": "ch_3MmlLrLkdIwHu7ix0snN0B15",
+  "object": "charge",
+  "amount": 1099,
+  "amount_captured": 1099,
+  "amount_refunded": 0,
+  "application": null,
+  "application_fee": null,
+  "application_fee_amount": null,
+  "balance_transaction": "txn_3MmlLrLkdIwHu7ix0uke3Ezy",
+  "billing_details": {
+    "address": {
+      "city": null,
+      "country": null,
+      "line1": null,
+      "line2": null,
+      "postal_code": null,
+      "state": null
+    },
+    "email": null,
+    "name": null,
+    "phone": null
+  },
+  "calculated_statement_descriptor": "Stripe",
+  "captured": true,
+  "created": 1679090539,
+  "currency": "usd",
+  "customer": null,
+  "description": null,
+  "disputed": false,
+  "failure_balance_transaction": null,
+  "failure_code": null,
+  "failure_message": null,
+  "fraud_details": {},
+  "livemode": false,
+  "metadata": {},
+  "on_behalf_of": null,
+  "outcome": {
+    "network_status": "approved_by_network",
+    "reason": null,
+    "risk_level": "normal",
+    "risk_score": 32,
+    "seller_message": "Payment complete.",
+    "type": "authorized"
+  },
+  "paid": true,
+  "payment_intent": null,
+  "payment_method": "card_1MmlLrLkdIwHu7ixIJwEWSNR",
+  "payment_method_details": {
+    "card": {
+      "brand": "visa",
+      "checks": {
+        "address_line1_check": null,
+        "address_postal_code_check": null,
+        "cvc_check": null
+      },
+      "country": "US",
+      "exp_month": 3,
+      "exp_year": 2024,
+      "fingerprint": "mToisGZ01V71BCos",
+      "funding": "credit",
+      "installments": null,
+      "last4": "4242",
+      "mandate": null,
+      "network": "visa",
+      "three_d_secure": null,
+      "wallet": null
+    },
+    "type": "card"
+  },
+  "receipt_email": null,
+  "receipt_number": null,
+  "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xTTJKVGtMa2RJd0h1N2l4KOvG06AGMgZfBXyr1aw6LBa9vaaSRWU96d8qBwz9z2J_CObiV_H2-e8RezSK_sw0KISesp4czsOUlVKY",
+  "refunded": false,
+  "review": null,
+  "shipping": null,
+  "source_transfer": null,
+  "statement_descriptor": null,
+  "statement_descriptor_suffix": null,
+  "status": "succeeded",
+  "transfer_data": null,
+  "transfer_group": null
+}
+Create a charge v1
+Deprecated
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/charges
+
+This method is deprecated and will be removed soon. If your integration uses it, you need to update it to use a different payment flow, such as the Payment Intents API.
+
+Parameters
+amount
+integer
+
+Amount intended to be collected by this payment. A positive integer representing how much to charge in the smallest currency unit (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or equivalent in charge currency. The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).
+
+currency
+enum
+
+Three-letter ISO currency code, in lowercase. Must be a supported currency.
+
+customer
+string
+
+The ID of an existing customer that will be charged in this request.
+
+The maximum length is 500 characters.
+
+description
+string
+
+An arbitrary string which you can attach to a Charge object. It is displayed when in the web interface alongside the charge. Note that if you use Stripe to send automatic email receipts to your customers, your receipt emails will include the description of the charge(s) that they are describing.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+receipt_email
+string
+
+The email address to which this charge’s receipt will be sent. The receipt will not be sent until the charge is paid, and receipts are only sent for payments in live mode. If this charge is for a Customer, the email address specified here will override the customer’s email address. If receipt_email is specified for a charge in live mode, a receipt will be sent regardless of your email settings.
+
+The maximum length is 800 characters.
+
+shipping
+object
+
+Shipping information for the charge. Helps prevent fraud on charges for physical goods.
+
+Show child parameters
+source
+string
+
+A payment source to be charged. This can be the ID of a card (i.e., credit or debit card), a bank account, a source, a token, or a connected account. For certain sources—namely, cards, bank accounts, and attached sources—you must also pass the ID of the associated customer.
+
+statement_descriptor
+string
+
+For a non-card charge, text that appears on the customer’s statement as the statement descriptor. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+For a card charge, this value is ignored unless you don’t specify a statement_descriptor_suffix, in which case this value is used as the suffix.
+
+The maximum length is 22 characters.
+
+statement_descriptor_suffix
+string
+
+Provides information about a card charge. Concatenated to the account’s statement descriptor prefix to form the complete statement descriptor that appears on the customer’s statement. If the account has no prefix value, the suffix is concatenated to the account’s statement descriptor.
+
+The maximum length is 22 characters.
+
+More parameters
+Expand all
+application_fee_amount
+integer
+Connect only
+capture
+boolean
+on_behalf_of
+string
+Connect only
+radar_options
+object
+transfer_data
+object
+Connect only
+transfer_group
+string
+Connect only
+Returns
+
+Returns the charge object if the charge succeeded. This call raises an error if something goes wrong. A common source of error is an invalid or expired card, or a valid card with insufficient available balance.
+
+Update a charge v1
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/charges/:id
+
+Updates the specified charge by setting the values of the parameters passed. Any parameters not provided will be left unchanged.
+
+Parameters
+customer
+string
+
+The ID of an existing customer that will be associated with this request. This field may only be updated if there is no existing associated customer with this charge.
+
+description
+string
+
+An arbitrary string which you can attach to a charge object. It is displayed when in the web interface alongside the charge. Note that if you use Stripe to send automatic email receipts to your customers, your receipt emails will include the description of the charge(s) that they are describing.
+
+metadata
+map
+
+Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to metadata.
+
+receipt_email
+string
+
+This is the email address that the receipt for this charge will be sent to. If this field is updated, then a new email receipt will be sent to the updated address.
+
+shipping
+object
+
+Shipping information for the charge. Helps prevent fraud on charges for physical goods.
+
+Show child parameters
+More parameters
+Expand all
+id
+string
+Required
+fraud_details
+object
+transfer_group
+string
+Connect only
+Returns
+
+Returns the charge object if the update succeeded. This call will raise an error if update parameters are invalid.
+
+Retrieve a charge v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/charges/:id
+
+Retrieves the details of a charge that has previously been created. Supply the unique charge ID that was returned from your previous request, and Stripe will return the corresponding charge information. The same information is returned when creating or refunding the charge.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+Returns
+
+Returns a charge if a valid identifier was provided, and raises an error otherwise.
+
+List all charges v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/charges
+
+Returns a list of charges you’ve previously created. The charges are returned in sorted order, with the most recent charges appearing first.
+
+Parameters
+customer
+string
+
+Only return charges for the customer specified by this customer ID.
+
+More parameters
+Expand all
+created
+object | integer
+ending_before
+string
+limit
+integer
+payment_intent
+string
+starting_after
+string
+transfer_group
+string
+Connect only
+Returns
+
+A dictionary with a data property that contains an array of up to limit charges, starting after charge starting_after. Each entry in the array is a separate charge object. If no more charges are available, the resulting array will be empty. If you provide a non-existent customer ID, this call raises an error.
+
+Capture a charge v1
+Deprecated
+Ask about this section
+Copy for LLM
+View as Markdown
+POST 
+/v1/charges/:id/capture
+
+This method is deprecated and will be removed soon. If your integration uses it, you need to update it to use a different payment flow, such as the Payment Intents API.
+
+Parameters
+id
+string
+Required
+
+Unique identifier for the object.
+
+amount
+integer
+
+The amount to capture, which must be less than or equal to the original amount.
+
+application_fee
+integer
+Connect only
+
+An application fee to add on to this charge.
+
+receipt_email
+string
+
+The email address to send this charge’s receipt to. This will override the previously-specified email address for this charge, if one was set. Receipts are only sent for payments in live mode.
+
+The maximum length is 800 characters.
+
+statement_descriptor
+string
+
+For a non-card charge, text that appears on the customer’s statement as the statement descriptor. This value overrides the account’s default statement descriptor. For information about requirements, including the 22-character limit, see the Statement Descriptor docs.
+
+For a card charge, this value is ignored unless you don’t specify a statement_descriptor_suffix, in which case this value is used as the suffix.
+
+The maximum length is 22 characters.
+
+statement_descriptor_suffix
+string
+
+Provides information about a card charge. Concatenated to the account’s statement descriptor prefix to form the complete statement descriptor that appears on the customer’s statement. If the account has no prefix value, the suffix is concatenated to the account’s statement descriptor.
+
+The maximum length is 22 characters.
+
+More parameters
+Expand all
+application_fee_amount
+integer
+Connect only
+transfer_data
+object
+Connect only
+transfer_group
+string
+Connect only
+Returns
+
+Returns the charge object, with an updated captured property (set to true). Capturing a charge will always succeed, unless the charge is already refunded, expired, captured, or an invalid capture amount is specified, in which case this method will raise an error.
+
+Search charges v1
+Ask about this section
+Copy for LLM
+View as Markdown
+GET 
+/v1/charges/search
+
+Search for charges you’ve previously created using Stripe’s Search Query Language. Don’t use search in read-after-write flows where strict consistency is necessary. Under normal operating conditions, data is searchable in less than a minute. Occasionally, propagation of new or updated data can be up to an hour behind during outages. Search functionality is not available to merchants in India.
+
+Parameters
+query
+string
+Required
+
+The search query string. See search query language and the list of supported query fields for charges.
+
+limit
+integer
+
+A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.
+
+page
+string
+
+A cursor for pagination across multiple pages of results. Don’t include this parameter on the first call. Use the next_page value returned in a previous response to request subsequent results.
+
+Returns
+
+A dictionary with a data property that contains an array of up to limit charges. If no objects match the query, the resulting array will be empty. See the related guide on expanding properties in lists.
+
+Need help? Contact Support.
+Chat with Stripe developers on Discord.
+Check out our changelog.
+Questions? Contact Sales.
+LLM? Read llms.txt.
+Powered by Markdoc

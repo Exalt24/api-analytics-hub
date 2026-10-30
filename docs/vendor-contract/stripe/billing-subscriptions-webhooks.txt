@@ -1,0 +1,455 @@
+URL: https://docs.stripe.com/billing/subscriptions/webhooks
+STATUS: 200
+
+Skip to content
+Search
+/
+Ask AI
+Create account
+Sign in
+Get started
+Payments
+Revenue
+Risk
+Data
+Money management
+Stablecoins
+Embedded finance
+Developer resources
+APIs & SDKs
+Help
+Overview
+BILLING
+Overview
+How the Billing APIs work
+Invoicing
+Quotes
+Subscriptions
+How subscriptions work
+GET STARTED
+Quickstart
+Design an integration
+Build an integration
+Embed a pricing table
+Collect a payment method with no initial payment
+Migrate subscriptions to Stripe
+Configure subscription events
+MANAGE SUBSCRIPTIONS
+Reduce subscription fraud and nonpayment risk
+Set billing cycles
+Configure trial offers
+Enable billing mode
+Use mixed interval subscriptions
+Apply coupons
+Entitlements
+Modify subscriptions
+Cancel subscriptions
+Pause subscriptions
+Bill customers in advance
+Manage subscriptions on iOS
+INVOICE AND COLLECT PAYMENTS
+Subscription invoices
+Configure collection methods
+Defer credit prorations
+Set payment method types per subscription
+Pause payment collection
+Integrate with third-party payment processing
+CALCULATE AND COLLECT TAXES
+Collect taxes on subscriptions
+Customer tax IDs
+Migrate subscriptions to Stripe Tax
+SALES-LED BILLING
+Contracts
+Subscription schedules
+Backdate subscriptions
+Analytics
+Usage-based billing
+Test your Billing integration
+Automations
+Scripts
+CUSTOMER MANAGEMENT
+Customer management
+Retention
+Revenue recovery
+TAX
+Overview
+Use Stripe Tax
+Tax rates
+Manage compliance
+ACCOUNTING
+Overview
+How Revenue Recognition works
+Get started
+Import data to Stripe
+Reports
+Examples
+Revenue Recognition for platforms
+United States
+English (United States)
+Home
+/
+Revenue
+/
+Subscriptions
+Using webhooks with subscriptions
+Learn to use webhooks to receive notifications of subscription activity.
+Ask about this page
+Copy for LLM
+View as Markdown
+Set up agent
+
+You receive notifications from Stripe in your app through webhook events. Process these events at a webhook endpoint or other destinations like Amazon EventBridge or Azure Event Grid by creating an event destination
+. A subscription
+ integration requires a destination that handles webhook events, because most subscription activity happens asynchronously.
+
+To use webhooks with your subscriptions:
+
+Create a webhook endpoint in your app.
+Register your webhook endpoint
+ in Workbench.
+Add logic to handle Stripe events. For subscriptions, these include payment failures and subscription status changes (like moving from trial to an active status). You can use the webhook quickstart
+ to build a minimal webhook endpoint. Be sure to verify that incoming events are from Stripe
+.
+Test your webhook endpoint to confirm that it’s working as expected.
+
+If your application runs on AWS, you can configure Stripe to send events directly to AWS EventBridge in your AWS account
+. If your application runs on Azure, you can configure Stripe to send events directly to Azure Event Grid in your Azure subscription
+.
+
+Subscription events
+
+Stripe triggers events every time a subscription is created or changed. Some events are sent immediately when a subscription is created, while others recur on regular billing periods.
+
+Make sure that your integration properly handles the events. For example, you might want to email a customer if a payment fails or revoke a customer’s access when a subscription is canceled.
+
+The following table describes the most common events related to subscriptions and, where applicable, suggests actions for handling the events.
+
+Public preview
+
+The Accounts v2 API is in GA for Connect users, and in public preview for other Stripe users.
+
+Regardless of whether you use Accounts v2
+ objects or Customer objects to represent your customers, use the customer.subscription events to track subscription events.
+
+EVENT
+	
+DESCRIPTION
+
+
+
+v2.core.account.created	Sent when a v2 Account is successfully created.
+customer.created	Sent when a Customer is successfully created.
+customer.subscription.created	Sent when the subscription is created. The subscription status might be incomplete if customer authentication is required to complete the payment or if you set payment_behavior to default_incomplete.
+customer.subscription.deleted	Sent when a customer’s subscription ends.
+customer.subscription.paused	Sent when a subscription’s status changes to paused. For example, we send this when you configure a subscription to pause when a free trial ends without a payment method
+. Invoicing won’t occur until the subscription resumes. We don’t send this event if you pause payment collection
+ because invoices continue to be created during that time period.
+customer.subscription.resumed	Sent when you resume a subscription previously in a paused status. This doesn’t apply when you unpause payment collection
+.
+customer.subscription.trial_will_end	Sent 3 days before the trial period ends
+. If the trial is less than 3 days, this event is triggered.
+customer.subscription.updated	Sent when a subscription starts or changes
+. For example, renewing a subscription, adding a coupon, applying a discount, adding an invoice item, and changing plans all trigger this event.
+entitlements.active_entitlement_summary.updated	Sent when a customer’s active entitlements are updated. When you receive this event, you can provision or de-provision access to your product’s features. Read more about integrating with entitlements
+.
+invoice.created	Sent when an invoice is created for a new or renewing subscription. If Stripe fails to receive a successful response to invoice.created, then finalizing all invoices with automatic collection
+ is delayed for up to 72 hours. Read more about finalizing invoices
+.
+Respond to the notification by sending a request to the Finalize an invoice API.
+
+invoice.finalized	Sent when an invoice is successfully finalized and ready to be paid.
+You can send the invoice to the customer. View invoice finalization
+ to learn more.
+Depending on your settings, we automatically charge the default payment method or attempt collection. View emails after finalization
+ to learn more.
+
+invoice.finalization_failed	The invoice failed to finalize. Learn more about how to handle invoice finalization failures
+ and invoice finalization
+.
+Inspect the invoice’s last_finalization_error to determine the cause of the error.
+If you’re using Stripe Tax, check the Invoice object’s automatic_tax field.
+If automatic_tax[status]=requires_location_inputs, the invoice fails to finalize and payments can’t be collected. Notify your customer, and collect the required customer location
+.
+If automatic_tax[status]=failed, retry the request later.
+
+invoice.paid	Sent when the invoice is successfully paid. You can provision access to your product when you receive this event and the subscription status is active.
+invoice.payment_action_required	Sent when the invoice requires customer authentication. Learn how to handle the subscription when the invoice requires action
+.
+
+
+invoice.payment_failed
+
+	
+
+A payment for an invoice failed. The PaymentIntent status changes to requires_action. The status of the subscription continues to be incomplete only for the subscription’s first invoice. If a payment fails, you can take several possible actions:
+
+Notify the customer.
+Configure your subscription settings in the Dashboard to enable Smart Retries
+ and other revenue recovery features.
+If you’re using PaymentIntents, collect new payment information and confirm the PaymentIntent.
+Update the default payment method on the subscription.
+
+invoice.upcoming	Sent a few days prior to the renewal of the subscription. The number of days is based on the number set for Upcoming renewal events in the Dashboard. For existing subscriptions, changing the number of days takes effect on the next billing period. You can still add extra invoice items
+, if needed.
+invoice.updated	Sent when a payment succeeds or fails. If payment is successful the paid attribute is set to true and the status is paid. If payment fails, paid is set to false and the status remains open. Payment failures also trigger an invoice.payment_failed event.
+payment_intent.created	Sent when a PaymentIntent is created.
+payment_intent.succeeded	Sent when a PaymentIntent has successfully completed payment.
+subscription_schedule.aborted	Sent when a subscription schedule is canceled because payment delinquency terminated the related subscription.
+subscription_schedule.canceled	Sent when a subscription schedule is canceled, which also cancels any active associated subscription.
+subscription_schedule.completed	Sent when all phases
+ of a subscription schedule complete.
+subscription_schedule.created	Sent when a new subscription schedule is created.
+subscription_schedule.expiring	Sent 7 days before a subscription schedule is set to expire.
+subscription_schedule.released	Sent when a subscription schedule is released, or stopped and disassociated from the subscription, which remains.
+subscription_schedule.updated	Sent when a subscription schedule is updated.
+Handle risk and customer data events
+
+The subscription lifecycle events above notify your integration about billing and entitlement changes. If your production integration accepts payments, also handle events for refunds, disputes, and fraud warnings. Otherwise, your integration won’t receive notifications when someone disputes a charge or flags it for potential fraud.
+
+If your integration stores Customer data locally, also consider handling customer.updated.
+
+EVENT	WHY IT MATTERS FOR SUBSCRIPTIONS
+charge.dispute.created	A customer or their bank disputed a charge. Use this event to decide whether to submit evidence, restrict account access, or take another action. See Handle refund, dispute, and early fraud warning events
+ to resolve the associated subscription.
+charge.refunded	A charge associated with a subscription invoice received a full or partial refund. See Handle refund, dispute, and early fraud warning events
+ to resolve the associated subscription.
+radar.early_fraud_warning.created	A card issuer or network identified a charge as potentially fraudulent, typically before a formal dispute. See Handle refund, dispute, and early fraud warning events
+ to resolve the associated subscription.
+customer.updated	Stripe sends this event when any property of a Customer changes. Customer Portal
+ flows can update Customer-level details, such as billing information or the default payment method. Listen for this event if you store Customer data locally or depend on Customer field changes. If you use Accounts v2
+ to represent customers, listen for v2.core.account[configuration.customer].updated for customer configuration changes and v2.core.account[identity].updated for identity changes instead.
+
+Subscribe only to the events your integration requires. If you omit risk events, your application won’t learn about disputes or fraud warnings until you check the Dashboard.
+
+Handle payment failures
+
+Events provide a reliable way for Stripe to notify you of payment failures on subscription invoices. Some payment failures are temporary-for example, a card issuer might decline the initial charge but allow an automatic retry. Other payment failures are final and require action, like not having a usable payment method for the customer.
+
+EVENT	DESCRIPTION
+
+
+invoice.payment_failed
+
+	
+
+A payment for an invoice failed. The status of the PaymentIntent changes to requires_payment_method. The status of the subscription changes to incomplete. If a payment fails, there are several possible actions to take:
+
+Notify the customer.
+If you’re using PaymentIntents, collect new payment information and confirm the PaymentIntent.
+Update the default payment method on the subscription.
+Consider enabling Smart Retries
+.
+Handle payments that require additional action
+
+Some payment methods might require additional steps to complete, such as customer authentication. If you receive these events, your app must notify the customer to complete the required action. To learn how to handle events that require additional action
+, read the subscription overview guide.
+
+EVENT	DESCRIPTION
+invoice.finalization_failed	The invoice couldn’t be finalized. Learn how to handle invoice finalization failures
+ by reading the guide. Learn more about invoice finalization
+ in the invoices overview guide.
+Inspect the Invoice’s last_finalization_error to determine the cause of the error.
+If you’re using Stripe Tax, check the Invoice object’s automatic_tax field.
+If automatic_tax[status]=requires_location_inputs, the invoice can’t be finalized and payments can’t be collected. Notify your customer and collect the required customer location
+.
+If automatic_tax[status]=failed, retry the request later.
+
+
+
+invoice.payment_failed
+
+	
+
+A payment for an invoice failed. The PaymentIntent status changes to requires_action. The status of the subscription changes to incomplete. If a payment fails, there are several possible actions to take:
+
+Notify the customer.
+If you’re using PaymentIntents, collect new payment information and confirm the PaymentIntent.
+Update the default payment method on the subscription.
+Consider enabling Smart Retries
+.
+
+invoice.payment_action_required	Sent when the invoice requires customer authentication. Learn how to handle the subscription when the invoice requires action
+.
+Handle refund, dispute, and early fraud warning events
+
+When a charge associated with a subscription is refunded, disputed, or flagged for fraud, Stripe sends one of the following events:
+
+charge.refunded: Contains the updated Charge.
+charge.dispute.created: Contains a Dispute, which exposes charge and a nullable payment_intent.
+radar.early_fraud_warning.created: Contains an EarlyFraudWarning, which exposes charge and a nullable payment_intent.
+
+Some charges and PaymentIntents aren’t associated with an invoice or subscription. How you identify the subscription depends on your API version.
+
+API version 2025-03-31.basil or later
+Get the PaymentIntent ID. For charge.refunded, use the payment_intent field on the Charge. For charge.dispute.created or radar.early_fraud_warning.created, use the payment_intent field on the Dispute or EarlyFraudWarning object. If payment_intent is null, retrieve the Charge and use its payment_intent field. If the Charge also has no payment_intent (for example, a legacy direct charge), this procedure doesn’t apply.
+Use the List all payments for an invoice endpoint with payment.type set to payment_intent, payment.payment_intent set to the PaymentIntent ID, and status set to paid. If the list is empty, this procedure can’t resolve an associated invoice.
+A PaymentIntent can be associated with multiple invoices, so this endpoint may return more than one InvoicePayment. Paginate through all results while has_more is true—each InvoicePayment contains an invoice field with the associated Invoice ID.
+For each Invoice ID, retrieve the Invoice and verify parent.type is subscription_details. Then use parent.subscription_details.subscription to get the Subscription.
+API versions earlier than 2025-03-31.basil
+
+On older API versions, the Charge object includes an invoice field.
+
+Get the Charge. For charge.refunded, use the Charge from the event. For charge.dispute.created or radar.early_fraud_warning.created, the charge field on the Dispute or EarlyFraudWarning is an ID. Retrieve the Charge using that ID.
+If the Charge’s invoice field is null, this procedure can’t resolve an associated invoice. Otherwise, retrieve the Invoice and use its subscription field to get the Subscription.
+Track active subscriptions
+
+Subscriptions require coordination between your site and Stripe-the success or failure of a customer’s recurring payments determines whether they can continue to access your product or service.
+
+For typical integrations, you store customers’ credentials and a mapped timestamp value that represents the access expiration date for that customer on your site when a customer subscribes. When the customer logs in, you check whether the timestamp is still in the future. If the timestamp is in the future when the customer logs in, the account is active and the customer should still have access to the service.
+
+When the subscription renews
+, Stripe bills the customer and tries to collect payment by either automatically charging
+ the payment method on file, or emailing the invoice
+ to customers. Stripe notifies your site of the invoice status by sending a webhook event:
+
+Your site receives an invoice.paid event.
+
+When automatically charging a payment method, your site first receives an invoice.upcoming event to your configured webhook endpoint
+ a few days before renewal. You can listen for this event to add extra invoice items
+ to the upcoming invoice. If collection_method=send_invoice, Stripe doesn’t send an invoice.upcoming event.
+
+Your application finds the customer the payment was made for.
+
+After receiving invoice.paid, retrieve the associated subscription and confirm that its status is active before extending the customer’s access expiration date. A paid invoice doesn’t necessarily transition the subscription to active when status resolution uses all invoices.
+
+Catch subscription status changes
+
+Make sure that your integration properly monitors and handles transitions between the subscription statuses described in the following table.
+
+Some status changes require special attention:
+
+A few days before a trial ends and the subscription moves from trialing to active, you receive a customer.subscription.trial_will_end event. When you receive this event, verify that you have a payment method on the customer so you can bill them. Optionally, notify the customer that they will be charged.
+
+When a subscription changes to past_due, notify the customer directly and ask them to update their payment details. Stripe offers several features that help automate this process-read more about revenue recovery
+.
+
+When a subscription changes to canceled or unpaid, revoke access to your product.
+
+STATUS	DESCRIPTION
+trialing	The subscription is currently in a trial period and you can safely provision your product for your customer. The subscription transitions automatically to active when a customer makes the first payment.
+
+
+active
+
+	
+
+The subscription is in good standing. Your subscription settings determine which invoices must be settled to transition a past_due subscription to active. When status resolution uses the most recent invoice, Stripe uses the most recent non-voided invoice to determine the subscription’s status. Paying that invoice or manually marking it as uncollectible transitions the subscription to active. When status resolution uses all invoices, settle all applicable outstanding invoices to transition the subscription to active.
+
+active doesn’t necessarily indicate that all outstanding invoices associated with the subscription have been paid. When status resolution uses the most recent invoice, you can leave other outstanding invoices open for payment, mark them as uncollectible, or void them as you see fit.
+
+
+incomplete	The customer must make a successful payment within 23 hours to activate the subscription. Or the payment requires action
+, such as customer authentication. Subscriptions can also be incomplete if there’s a pending payment and the PaymentIntent status is processing.
+incomplete_expired	The initial payment on the subscription failed and the customer didn’t make a successful payment within 23 hours of subscription creation. These subscriptions don’t bill customers. This status exists so you can track customers that failed to activate their subscriptions.
+
+
+past_due
+
+	
+
+Payment on the latest finalized invoice either failed or wasn’t attempted. When status resolution uses all invoices, past_due can also indicate that an earlier applicable invoice remains outstanding. The subscription continues to create invoices. Stripe might retry payment while the subscription is past_due, but this status doesn’t guarantee another payment attempt. Your Dashboard subscription settings determine the subscription’s next status. If an invoice is still unpaid after all payment retries
+, you can configure the subscription to move to canceled or unpaid, or to remain past_due.
+
+To reactivate the subscription, pay the most recent non-voided invoice or manually mark it as uncollectible when status resolution uses the most recent invoice, or settle applicable outstanding invoices when status resolution uses all invoices. The subscription becomes active regardless of whether you settle the required invoices before or after their due dates.
+
+
+canceled	The subscription was canceled. During cancellation, automatic collection for all unpaid invoices is disabled (auto_advance=false). This is a terminal state that can’t be updated.
+unpaid	Stripe sets a subscription’s status to unpaid only when your Dashboard subscription settings select this outcome. The invoice or invoices governing subscription status haven’t been settled, but the subscription remains in place. The subscription continues to generate invoices but doesn’t attempt payment. Revoke access to your product when the subscription is unpaid because Stripe already attempted and retried payment while the subscription was past_due. To move the subscription to active, pay the most recent non-voided invoice or manually mark it as uncollectible when status resolution uses the most recent invoice, or settle applicable outstanding invoices when status resolution uses all invoices.
+paused	The subscription has ended its trial period without a default payment method and the trial_settings.end_behavior.missing_payment_method
+ is set to pause. Invoices are no longer created for the subscription. After attaching a default payment method to the customer, you can resume the subscription
+.
+Webhook endpoints and invoices
+
+Register a webhook endpoint to keep track of invoice statuses. Your subscription integration depends on correctly finalizing invoices and properly handling invoice finalization failures.
+
+When you enable automatic collection
+, Stripe automatically finalizes and begins automatic collection of the invoice
+.
+
+If Stripe fails to receive a successful response to invoice.created, we delay finalizing all invoices with automatic collection
+ for up to 72 hours, excluding those where you have set a custom scheduled finalization time
+.
+Responding properly to invoice.created includes handling all webhook endpoints configured for your account, along with the webhook endpoints of any platforms that you’ve connected to. This doesn’t include any webhook endpoints configured in an organization
+. While you can listen to invoice.created at the organization, a successful response doesn’t affect invoice finalization when using automatic collection.
+Updating a subscription in a way that synchronously attempts payment (on the initial invoice, and on some kinds of updates) doesn’t cause this delay.
+Invoice finalization failure prevents payment collection for the invoice. Make sure you listen for the invoice.finalization_failed event in your webhook endpoint.
+Webhook events related to invoice finalization
+
+See a complete list of invoice event types.
+
+EVENT	DESCRIPTION
+invoice.created	The invoice was successfully created and is ready to be finalized. Read the docs to learn more about finalizing invoices
+.
+Respond to the notification by sending a request to the Finalize an invoice API.
+
+invoice.finalized	The invoice was successfully finalized and is ready to be paid.
+You can send the invoice to the customer. Read more about invoice finalization
+.
+Depending on your settings, Stripe automatically charges the default payment method or attempts collection. Read more about emails after finalization
+.
+
+invoice.finalization_failed	The invoice couldn’t be finalized. Learn how to handle invoice finalization failures
+ by reading the guide. Learn more about invoice finalization
+ in the invoices overview guide.
+Inspect the Invoice’s last_finalization_error to determine the cause of the error.
+If you’re using Stripe Tax, check the Invoice object’s automatic_tax field.
+If automatic_tax[status]=requires_location_inputs, the invoice can’t be finalized and payments can’t be collected. Notify your customer and collect the required customer location
+.
+If automatic_tax[status]=failed, retry the request later.
+Successful invoice finalization
+
+Stripe waits an hour after receiving a successful response to the invoice.created event before attempting payment. If we don’t receive a successful response within 72 hours, we attempt to finalize and send the invoice.
+
+In case you want to treat one-off invoices differently than subscription invoices, check the subscription property in the webhook body. This indicates whether the invoice was created for a subscription.
+
+In live mode, if your webhook endpoint doesn’t respond properly, Stripe continues retrying the webhook notification for up to 3 days with an exponential back off. In a sandbox, we retry three times over a few hours. During that time, we won’t attempt to charge the customer unless we receive a successful response. We’ll also send you an email to notify you that the webhook is failing.
+
+This behavior applies to all webhook endpoints defined on your account, including cases where a Connect application or other third-party service is having trouble handling incoming webhooks.
+
+Invoice finalization failure
+
+If Stripe can’t finalize an invoice, it sends a invoice.finalization_failed event to your webhook endpoint. Subscriptions remain active if invoices can’t be finalized, which means that users may still be able to access your product while you’re not able to collect payments. Make sure to take action on invoices that fail finalization. You can’t collect payments on an invoice that isn’t finalized.
+
+To determine why the invoice finalization failed, look at the Invoice object’s last_finalization_error field, which provides more information about the failure, including how to proceed.
+
+If you’re using Stripe Tax, check if the automatic_tax.status field is requires_location_inputs, indicating that the address details are invalid or insufficient. If Stripe Tax can’t find a recognized customer location, we can’t finalize the invoice. Learn how to handle invoice finalization failures
+.
+
+Testing
+
+To test your webhook endpoint or event destination
+, choose one of these two options:
+
+Perform actions in a sandbox that trigger real events to your event destination. For example, to trigger the charge.succeeded event, you can use a test card that produces a successful charge
+.
+Trigger events using the Stripe CLI
+ or using Stripe for Visual Studio Code
+.
+See also
+Subscription lifecycle
+Testing subscriptions
+Was this page helpful?
+Yes
+No
+Need help? Contact Support.
+Chat with Stripe developers on Discord.
+Check out our changelog.
+Questions? Contact Sales.
+LLM? Read llms.txt.
+Powered by Markdoc
+ON THIS PAGE
+Subscription events
+Handle risk and customer data events
+Handle payment failures
+Handle payments that require additional action
+Handle refund, dispute, and early fraud warning events
+API version 2025-03-31.basil or later
+API versions earlier than 2025-03-31.basil
+Track active subscriptions
+Catch subscription status changes
+Webhook endpoints and invoices
+Webhook events related to invoice finalization
+Successful invoice finalization
+Invoice finalization failure
+Testing
+See also
