@@ -39,7 +39,7 @@ import psycopg
 
 ROOT = Path(__file__).resolve().parents[1]
 IGNORED = shutil.ignore_patterns(".git", ".venv", "node_modules", "web", "__pycache__", ".pytest_cache", ".shopify", "*.mp4", "*.gif", "*.png", "*.br")
-DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
+DEFAULT_DSN = "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 
 
 def load_tool(path: str):

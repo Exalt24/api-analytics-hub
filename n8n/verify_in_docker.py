@@ -54,7 +54,7 @@ from app.report.demo_data import DEMO_RUNS, demo_points  # noqa: E402
 import build_sample_report as sample  # noqa: E402
 from build_workflow import WORKFLOW_ID, render  # noqa: E402
 
-DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
+DEFAULT_DSN = "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 MONTH = "2026-10"
 AS_OF = sample.AS_OF.isoformat()
 DOCKER_TIMEOUT = 300

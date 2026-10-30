@@ -34,7 +34,7 @@ docker compose up -d --wait               # exposes 5433, deliberately not 5432;
 python -m venv .venv
 . .venv/Scripts/activate                  # Windows, Git Bash. macOS or Linux: . .venv/bin/activate
 pip install -r requirements.txt
-export DATABASE_URL="postgresql://analytics:analytics@localhost:5433/analytics"
+export DATABASE_URL="postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 export CREDENTIAL_KEYS="1:$(python -c 'from app.crypto import generate_key; print(generate_key())')"
 export DASHBOARD_ORIGIN="http://localhost:3100"
 

@@ -58,7 +58,7 @@ KNOWN_LIMITS = {
 #: the cases the old code failed and this change fixed; each is checked by its own predicate below
 FIXED = {17, 18, 22}
 
-DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics")
+DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics")
 NODE = shutil.which("node")
 
 try:

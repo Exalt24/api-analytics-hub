@@ -175,7 +175,7 @@ What follows for this design. The daily file here is an invented one row per car
 docker compose up -d                                   # Postgres on 5433, the compose database is named analytics
 # a scratch database for everything below (the tests and the measuring script drop and create things in the database they are given)
 docker compose exec db psql -U analytics -d postgres -c "create database changes_scratch"
-export ANALYTICS_TEST_DSN="postgresql://analytics:analytics@localhost:5433/changes_scratch"
+export ANALYTICS_TEST_DSN="postgresql://analytics:analytics@127.0.0.1:5433/changes_scratch"
 export DATABASE_URL="$ANALYTICS_TEST_DSN"
 for f in migrations/00*.sql; do psql "$DATABASE_URL" -f "$f"; done          # the loader does not migrate: nothing is there until this runs
 python scripts/make_carrier_snapshot.py --out-dir <folder> --n 400000 --flappers 100    # day 1 and 2, and day 3 and 4 for the flapping carriers

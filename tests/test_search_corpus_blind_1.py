@@ -229,7 +229,7 @@ REPORT_CALLS = {
 
 # ---------------------------------------------------------------- case 39: the real runner into Postgres
 
-DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics")
+DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics")
 
 try:
     import psycopg

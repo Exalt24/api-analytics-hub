@@ -36,7 +36,7 @@ pytest.importorskip("asyncpg")
 pytest.importorskip("fastapi")
 
 DSN = os.environ.get(
-    "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics"
+    "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 )
 
 

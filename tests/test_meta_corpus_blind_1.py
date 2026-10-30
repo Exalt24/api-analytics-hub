@@ -172,7 +172,7 @@ def paid(inp: dict) -> str:
 
 # ---------------------------------------------------------------- case 35: the sync and the deck through the real runner into Postgres
 
-DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics")
+DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics")
 TOKEN = "tok-adv-meta"
 ACCOUNT = "990001"
 

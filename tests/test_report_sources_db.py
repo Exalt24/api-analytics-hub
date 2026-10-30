@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 psycopg = pytest.importorskip("psycopg", reason="psycopg not installed")
 pytest.importorskip("asyncpg")
 
-DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics")
+DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics")
 
 
 def _reachable() -> bool:

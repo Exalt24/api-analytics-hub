@@ -11,7 +11,7 @@ A tenant has one store (Shopify) and may have three more sources: a website (Goo
 Commands below assume the virtual environment from the README is active, so `python` is its interpreter (activate with `. .venv/Scripts/activate` in Git Bash on Windows, `. .venv/bin/activate` on macOS or Linux). Everything here was run on Windows 11 with Git Bash; the macOS and Linux forms are the standard venv layout and were not run.
 
 ```bash
-export DATABASE_URL="postgresql://analytics:analytics@localhost:5433/analytics"
+export DATABASE_URL="postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 python scripts/monthly_report.py --month 2026-10 --tenant <tenant uuid> --dump
 ```
 

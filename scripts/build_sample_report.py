@@ -59,7 +59,7 @@ from app.report.demo_data import (  # noqa: E402
 from app.report.service import generate  # noqa: E402
 from app.sync.runner import SyncRunner  # noqa: E402
 
-DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
+DEFAULT_DSN = "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 YEAR, MONTH = 2026, 10
 #: The date the sample treats as today, so the deck is the same on every machine and day.
 AS_OF = date(2026, 11, 2)

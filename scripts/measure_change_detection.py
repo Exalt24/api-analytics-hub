@@ -31,7 +31,7 @@ from app.changes import apply_snapshot, daily_report, deliver_pending, format_re
 from app.changes_fake_sink import FakeSink  # noqa: E402
 from make_carrier_snapshot import generate  # noqa: E402
 
-DEFAULT_DSN = "postgresql://analytics:analytics@localhost:5433/analytics"
+DEFAULT_DSN = "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 
 
 class Crash(RuntimeError):

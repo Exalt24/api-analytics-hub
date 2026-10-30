@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "migrations" / "001_init.sql"
 
 DSN = os.environ.get(
-    "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics"
+    "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 )
 
 psycopg = pytest.importorskip("psycopg", reason="psycopg not installed")

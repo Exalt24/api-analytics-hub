@@ -29,7 +29,7 @@ from app.connectors.shopify import ShopifyConnector
 from app.crypto import CredentialCipher, generate_key as gen_crypto_key
 
 DSN = os.environ.get(
-    "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@localhost:5433/analytics"
+    "ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics"
 )
 ROOT = Path(__file__).resolve().parent
 
