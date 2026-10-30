@@ -5,7 +5,7 @@
 -- spread over 20 tenants, `limit 20` for one tenant returned 1.87 rows on average and sometimes none, with no error
 -- (pgvector 0.8.7, Postgres 17.11, measured 2026-10-30; the run is in docs/test-runs/). `hnsw.iterative_scan =
 -- strict_order` (exact distance order; relaxed_order measured the same but pgvector says it may return rows slightly out of
--- order) keeps scanning the index until the filter has produced enough rows and returned all 20 in all 30 queries of that run
+-- order) keeps scanning the index until the filter has produced enough rows or it reaches hnsw.max_scan_tuples (20000 by default), and it returned all 20 in all 30 queries of that run
 -- (one synthetic dataset, one tenant; a much smaller tenant can hit hnsw.max_scan_tuples, 20000 by default, and still come back short);
 -- raising ef_search to 200 only got to about 10. app/similar_queries.py sets it for every lookup and
 -- tests/test_similar_queries_db.py fails if it does not.
