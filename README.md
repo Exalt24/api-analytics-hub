@@ -6,7 +6,7 @@
 
 *Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard) with `scripts/record_dashboard.cjs`. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are four connectors: **Shopify Admin GraphQL**, verified against a real development store, and **Google Analytics 4**, **Meta Ads** and **Google Search Console**, each tested only against a stand-in server written from the vendor's pages and never run live. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts the store, the website, the ads and search side by side, and an n8n workflow builds it for each tenant on the first of the month.
+Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are four connectors: **Shopify Admin GraphQL**, verified against a real development store, and **Google Analytics 4**, **Meta Ads** and **Google Search Console**, the last three tested only against stand-in servers and never run live. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side; an n8n workflow builds it for each tenant on the first of the month.
 
 | Source | Run against | Not run |
 |---|---|---|
@@ -18,7 +18,7 @@ Multi-tenant analytics hub: external APIs are synced, normalised, stored in Post
 
 ## Live
 
-The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app) and loads, but **the API behind it has been offline since 2026-09-19**: the free Render PostgreSQL instance expired that day, so the demo key signs in to nothing. There is no live demo until a database is provisioned; run it locally with the steps below.
+The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app) and loads, but **the API behind it has been offline since 2026-09-19**: the free Render PostgreSQL instance expired that day, so the demo key signs in to nothing. Run it locally with the steps below.
 
 ---
 
@@ -50,7 +50,7 @@ cd web && npm install && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run buil
 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store (domain and token in a two-line file, `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` (invented figures, same keys). Both drop the `public` schema; `seed_demo.py` applies every migration, `seed_local.py` only 001 to 003 (run 004 to 010 after). `seed_local.py` loads real figures (the last 120 days, `SEED_DAYS` changes it); each prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started rather than run with `npm run dev`, because the development server did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` needs the owner's Shopify development store (a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` (invented figures, same keys). Both drop the `public` schema; `seed_demo.py` applies every migration, `seed_local.py` only 001 to 003 (run 004 to 011 after). `seed_local.py` loads real figures (the last 120 days, `SEED_DAYS` changes it); each prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started, not run with `npm run dev`, which did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
 
 Paste a key into the box: the viewer key can read, and Sync now comes back 403 with the reason.
 
@@ -113,11 +113,17 @@ reaper turns a silently dead worker into a visible failure.
 
 ---
 
+## Competitor price watch
+
+`app/price_watch/` reads competitor pages in Chromium (Playwright), matches them to the catalogue (an uncertain match waits for a person), estimates missing shipping from the tenant's rate table and labels it ESTIMATED, reports where a competitor's landed price beats ours without breaking a floor, and syncs person-approved prices to Shopify and Zoho Inventory. Invented pages and fake vendors only: the vendor calls come from their [documentation](docs/vendor-contract/README.md) and never touched a live account. Details and the demo: [docs/price-watch.md](docs/price-watch.md).
+
+---
+
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck: seven slides for a store, up to ten with a website, an ad account and a search property. Each added source gets a slide, a headline row in the summary table and a row on the data health slide naming its days with no data. Ads are in the ad account's own currency and never added to a store figure, rates come from the sums, average position is weighted by impressions, and the last days before the report date are marked provisional. Every number is computed in code. The narrative is a fixed template without a model key; a model's text is used only if every figure in it is a computed one, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role.
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck: seven slides for a store, up to ten with a website, an ad account and a search property. Each added source gets a slide, a headline row in the summary table and a row on the data health slide naming its days with no data. Ads are in the ad account's own currency and never added to a store figure, rates come from the sums, average position is weighted by impressions, and the last days before the report date are marked provisional. The narrative is a fixed template without a model key; a model's text is used only if every figure in it is a computed one, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role.
 
-**The monthly run.** `POST /api/reports/monthly` builds the deck for the caller's tenant and answers the same deck, byte for byte, for the same month, and says whether it was delivered, so a rerun builds nothing and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month, after the syncs' 12 hour settled window, with a tenant's connection ids when it has two ad accounts; a failing tenant goes down an error output so the others still run, and the execution ends as an error naming who failed. Slack and email are off until switched on. Running it in a real n8n container found two faults in the first version that a file check could not (a condition that read its left side as text, and a Send Email node that passed its input on after a credential error), both fixed and pinned; only the seven runs of the fixed version are saved ([output](docs/test-runs/2026-10-26-n8n.txt)). Make and Zapier were not built or run.
+**The monthly run.** `POST /api/reports/monthly` builds the deck for the caller's tenant and answers the same deck, byte for byte, for the same month, and says whether it was delivered, so a rerun builds nothing and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month, after the syncs' 12 hour settled window, with a tenant's connection ids when it has two ad accounts; a failing tenant goes down an error output so the others still run, and the execution ends as an error naming who failed. Slack and email are off until switched on. Running it in a real n8n container found two faults a file check could not (a condition that read its left side as text, and a Send Email node that passed its input on after a credential error), both fixed and pinned; only the seven runs of the fixed version are saved ([output](docs/test-runs/2026-10-26-n8n.txt)).
 
 **What was and was not run.** Meta and Search Console ran only against stand-in servers on 127.0.0.1 written from the vendors' documentation. The sample deck's figures are invented, and the model path is tested only through a mocked transport. Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
@@ -132,14 +138,14 @@ reaper turns a silently dead worker into a visible failure.
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 4,696 tests: 4,691 passed, 5 known limits (the run of 2026-10-26 had 4,694; two link guard tests came after it)
-python tests/mutation_check.py            # all 229 hand matched guards; edits source in place, run it in a copy (--help)
+python -m pytest tests/ -q                # 5,013 tests: 5,005 passed, 3 skipped, 5 known limits
+python tests/mutation_check.py            # all 254 hand matched guards; edits source in place (a killed run can leave a weakened line), so use a copy (--help)
 python live_check.py                      # against the real store
 ```
 
-Counts are from the run of 2026-10-26 ([output](docs/test-runs/2026-10-26-output-round-2-pytest.txt)). The database tests (the compose Postgres, or `ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public` schema of whatever database they point at, so aim them at a scratch database. The mutation harness edits the real source file and restores it, also on Ctrl-C or SIGTERM, but a killed process can leave a weakened line behind: run it in a copy.
+Counts are from the run of 2026-10-30 ([output](docs/test-runs/2026-10-30-price-watch-pytest.txt)). The database tests (the compose Postgres, or `ANALYTICS_TEST_DSN`) skip without one, CI starts one, and they drop and recreate the `public` schema of whatever database they point at, so aim them at a scratch database.
 
-Of the 229 hand matched guards, 20 are new; the 97 aimed at the report, the services and the migrations went red on 2026-10-26, run in a copy, and the other 132 were not rerun. The new code was also mutated from its syntax tree (`tests/derived_guards.py`, driven by the author's `mutate_ast.py`, which is not in this repository): 2,779 mutants in 14 files, 2,662 killed, 117 survived, 90 of them a `|` in a type annotation and 27 read and equivalent ([table and reasons](docs/test-runs/2026-10-26-derived-guards.txt)). Blind review ran 159 cases against the ads, search and monthly run code (116 in three passes, then 43 from a fourth on another model family): seven findings were fixed by class with generated tables, six were left as known limits pinned by tests, and the fixes were mutated, 191 of 201 killed and the rest read ([cases](tests/corpus), [round 2](docs/test-runs/2026-10-26-output-round-2-mutation.txt), [limits](docs/MONTHLY_REPORT.md#limits)). No pass after the second round was run and no live Meta, Search Console, Slack or SMTP account was used. The work is pushed and the CI badge above shows the run on the latest commit.
+Of the 254 hand matched guards, 45 are new; the 97 aimed at the report, the services and the migrations went red on 2026-10-26 and the 25 for price watch on 2026-10-30 ([output](docs/test-runs/2026-10-30-price-watch-mutation.txt)), each run in a copy, and the other 132 were not rerun. The 2026-10-26 code was also mutated from its syntax tree (`tests/derived_guards.py`, driven by the author's `mutate_ast.py`, which is not in this repository): 2,779 mutants in 14 files, 2,662 killed, 117 survived, 90 of them a `|` in a type annotation and 27 read and equivalent ([table](docs/test-runs/2026-10-26-derived-guards.txt)). Blind review ran 159 cases against the ads, search and monthly run code (four passes, the last on another model family): seven findings were fixed by class with generated tables, six were left as known limits pinned by tests, and the fixes were mutated, 191 of 201 killed and the rest read ([cases](tests/corpus), [round 2](docs/test-runs/2026-10-26-output-round-2-mutation.txt), [limits](docs/MONTHLY_REPORT.md#limits)). No pass after the second round was run.
 
 ---
 
@@ -151,16 +157,15 @@ actually do it.
 1. **The deployment is down and was never hardened** (see Live): no managed Postgres with backups, no uptime monitoring.
 2. **The syncs have no clock.** The monthly report has one (n8n, run for real), but
    `sync/runner.py` claims, leases, heartbeats and resumes correctly and nothing calls it on a
-   cadence; the three `scripts/sync_*.py` run one window by hand. The schedule table exists; the daemon does not.
+   cadence; the three `scripts/sync_*.py` run one window by hand.
 3. **Key management is an environment variable.** `CREDENTIAL_KEYS` should be a KMS or
    secrets manager with audited rotation; the versioned envelope makes rotation a config change.
 4. **API keys are the whole auth model.** No users, sessions, SSO or per-key scoping
    beyond three roles: fine for a service integration, not for a team.
 5. **`customers` and `users` are per-day distinct counts and cannot be summed.** The
    dashboard shows buyers per day, and the report averages users over the days that have data.
-6. **Three connectors never run live.** GA4, Meta and Search Console have run only against
-   stand-in servers written from the vendors' pages, whose sources files list what is UNVERIFIED,
-   and they take an issued access token and cannot get or refresh one. The next step is one real ad account and one real property.
+6. **Three connectors never run live.** GA4, Meta and Search Console ran only against stand-ins
+   (their sources files list what is UNVERIFIED), and take an issued access token without refreshing it. Next: one real ad account and one real property.
 7. **Alerting stops at one Slack channel.** A stuck or stale sync posts to a webhook ([docs/observability.md](docs/observability.md)); there is no paging or escalation.
 8. **Quarantine is a table, not a workflow.** Rows that will not normalise are captured, not reviewable or replayable.
 9. **No traces.** JSON logs, a request id and per process Prometheus metrics that reset on restart.
