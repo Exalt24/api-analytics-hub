@@ -1,0 +1,60 @@
+# Real run against the compose Postgres 17 on this machine, 2026-10-30. Commands as written in scripts/db_backup.py.
+
+$ python scripts/db_backup.py backup --dir D --keep 3   (exit code follows)
+2026-10-30 09:37:21,087 INFO backup written
+exit 0
+
+$ python scripts/db_backup.py prove --dir D   (exit code follows)
+2026-10-30 09:37:21,807 ERROR pg_restore failed (exit 1): pg_restore: error: could not execute query: ERROR:  function carrier_clean_text(text) does not exist
+LINE 2:     select upper(carrier_clean_text(raw))
+                         ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  
+    sele
+exit 1
+
+$ python scripts/db_backup.py check --dir D   (exit code follows)
+2026-10-30 09:37:21,896 INFO 1 backup problem(s):
+- the last restore test FAILED (1 minutes)
+exit 1
+
+# files written
+ 
+76045 hub-20261030T013720Z.dump
+1049 hub-20261030T013720Z.dump.json
+448 restore_proof.json
+
+{
+ "backup_file": "hub-20261030T013720Z.dump",
+ "detail": "pg_restore failed (exit 1): pg_restore: error: could not execute query: ERROR:  function carrier_clean_text(text) does not exist\nLINE 2:     select upper(carrier_clean_text(raw))\n                         ^\nHINT:  No function matches the given name and argument types. You might need to add explicit type casts.\nQUERY:  \n    sele",
+ "ok": false,
+ "proved_at": 1793324241.1734397
+}
+# a dump with one flipped byte
+2026-10-30 09:37:22,144 ERROR the dump does not match its recorded checksum (changed or damaged since it was written)
+exit 1
+2026-10-30 09:37:22,232 INFO 1 backup problem(s):
+- the last restore test FAILED (1 minutes)
+exit 1
+
+# ==========================================================================================
+# The first prove above FAILED on the real schema: migration 005's carrier_clean_code and carrier_clean_date called carrier_clean_text without a schema, and pg_restore runs with an empty search_path. Fixed in migrations/005_change_detection.sql (calls now read public.carrier_clean_text), and tests/test_db_backup.py::test_the_hub_schema_itself_restores goes red on the old file and green on the new one. Same commands, every migration applied to a fresh database, after the fix:
+
+$ python scripts/db_backup.py backup --dir D --keep 3   (exit code follows)
+2026-10-30 09:40:28,033 INFO backup written
+exit 0
+
+$ python scripts/db_backup.py prove --dir D   (exit code follows)
+2026-10-30 09:40:30,092 INFO restored 20 tables, every row count inside the dump's bracket
+exit 0
+
+$ python scripts/db_backup.py check --dir D   (exit code follows)
+2026-10-30 09:40:30,183 INFO The database has a recent backup and a recent proven restore.
+exit 0
+
+{
+ "backup_file": "hub-20261030T014027Z.dump",
+ "detail": "restored 20 tables, every row count inside the dump's bracket",
+ "ok": true,
+ "proved_at": 1793324428.115658
+}

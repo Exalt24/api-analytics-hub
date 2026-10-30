@@ -62,7 +62,7 @@ Postgres is on **5433** and the dashboard on **3100**, because a clash on 5432 o
 
 ## Layout
 
-`app/` holds the connectors, sync runner, API, change detection and monthly report, `migrations/` the SQL in order, `n8n/` the monthly workflow, `web/` the dashboard and `tests/` the suite and guards. File by file: [docs/layout.md](docs/layout.md).
+`app/` holds the connectors, sync runner, API, change detection and monthly report, `migrations/` the SQL in order, `n8n/` the monthly workflow, `web/` the dashboard and `tests/` the suite and guards. File by file: [docs/layout.md](docs/layout.md). Backups with a proven restore: [docs/backups.md](docs/backups.md).
 
 ---
 

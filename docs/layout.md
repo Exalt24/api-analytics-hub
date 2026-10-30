@@ -27,12 +27,14 @@ app/
     reports.py       the monthly report as an HTTP call: build, fetch the deck, mark delivered, all idempotent
   obs.py             JSON log formatter, request ids, Prometheus text page
   health.py          stuck-sync gauges and the alert policy
+  backup.py          backup manifest, restore proof, row count window and the backup alert problems (pure)
   changes.py         daily snapshot compare, events, company matching, alert outbox
   changes_fake_sink.py  stand-in CRM sinks for tests
   report/            monthly report: KPI math, website (web.py), ads (paid.py), search (search.py), grounded narrative, PowerPoint deck
     sources.py       what the ad and search halves share: provisional days, the KPI table builder, headline wording
     runs.py          the record of each report a tenant asked for: one deck for each key, delivered flag, takeover of a dead run
 scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
+scripts/db_backup.py           pg_dump with a manifest, a scratch restore that compares row counts, and the backup alert
 scripts/monthly_report.py      builds the monthly deck from stored snapshots: store, website, ads and search
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container

@@ -52,15 +52,17 @@ language sql immutable parallel safe as $$
     select nullif(btrim(regexp_replace(coalesce(raw, ''), '\s+', ' ', 'g')), '')
 $$;
 
+-- The calls below are schema qualified on purpose. pg_restore runs with an empty search_path, and the generated columns on carrier_stage run these functions again while the rows are
+-- copied back in, so an unqualified name there made a restore of this database fail with "function carrier_clean_text(text) does not exist" (found by the restore proof, scripts/db_backup.py).
 create function carrier_clean_code(raw text) returns text
 language sql immutable parallel safe as $$
-    select upper(carrier_clean_text(raw))
+    select upper(public.carrier_clean_text(raw))
 $$;
 
 -- An ISO date or nothing. Any other text fails the whole load rather than being read as some other date under another DateStyle.
 create function carrier_clean_date(raw text) returns date
 language plpgsql immutable parallel safe as $$
-declare t text := carrier_clean_text(raw);
+declare t text := public.carrier_clean_text(raw);
 begin
     if t is null then return null; end if;
     if t !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'not an ISO date: %', left(t, 40); end if;

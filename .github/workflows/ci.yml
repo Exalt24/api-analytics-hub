@@ -33,4 +33,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: python -m pytest tests -q
+      # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
+      - name: Backup and restore proof against the service container
+        run: |
+          CID=$(docker ps --filter ancestor=postgres:17-alpine --format '{{.ID}}' | head -n 1)
+          PG_CMD_PREFIX="docker exec -i $CID" python -m pytest tests/test_db_backup.py -q -rs
       - run: python tests/mutation_check.py --check-targets

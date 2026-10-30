@@ -318,7 +318,7 @@ MUTATIONS = [
     (
         "health",
         "a cleared set sends no recovery",
-        'return ("Recovered. " + describe([]) if old else None), {"keys": [], "alerted_at": 0.0}',
+        'return ("Recovered. " + describer([]) if old else None), {"keys": [], "alerted_at": 0.0}',
         'return None, {"keys": [], "alerted_at": 0.0}',
         "the channel must be told when the problem is gone",
     ),
@@ -404,8 +404,8 @@ MUTATIONS = [
     (
         "m005",
         "codes are no longer upper-cased before the hash",
-        "    select upper(carrier_clean_text(raw))",
-        "    select carrier_clean_text(raw)",
+        "    select upper(public.carrier_clean_text(raw))",
+        "    select public.carrier_clean_text(raw)",
         "a lower case status is the same status",
     ),
     (

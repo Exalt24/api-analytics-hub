@@ -65,14 +65,16 @@ def _age(seconds: int) -> str:
     return "%d minutes" % max(1, seconds // 60)
 
 
-def decide(state: dict, problems: list[Problem], now: float, repeat_seconds: int) -> tuple[str | None, dict]:
-    """Returns (message or None, new state). State is {"keys": [...], "alerted_at": float}."""
+def decide(state: dict, problems: list[Problem], now: float, repeat_seconds: int, describer=describe) -> tuple[str | None, dict]:
+    """Returns (message or None, new state). State is {"keys": [...], "alerted_at": float}.
+
+    `describer` words the message, so another checker (the backup check) reuses this exact repeat and recovery policy instead of copying it."""
     keys = sorted(p.key for p in problems)
     old = sorted(state.get("keys", []))
     if not keys:
-        return ("Recovered. " + describe([]) if old else None), {"keys": [], "alerted_at": 0.0}
+        return ("Recovered. " + describer([]) if old else None), {"keys": [], "alerted_at": 0.0}
     if keys != old or now - float(state.get("alerted_at", 0.0)) >= repeat_seconds:
-        return describe(problems), {"keys": keys, "alerted_at": now}
+        return describer(problems), {"keys": keys, "alerted_at": now}
     return None, state
 
 
