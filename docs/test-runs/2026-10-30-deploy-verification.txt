@@ -19,11 +19,12 @@ Deploy kit verification, 2026-10-30. Machine: Windows 11, Docker 29.9.2 (Linux c
 
 4. tests/test_deploy_files.py (13 tests, all pass). Turned red on purpose, then restored, 3 times:
    - Caddyfile `handle @private {` changed to `@x {`: test_caddy_never_proxies_metrics_and_does_it_inside_a_handle FAILED (1 failed, 11 passed)
-   - hub-backup.timer Persistent=true changed to false: test_timers_catch_up_after_downtime[hub-backup.timer] FAILED
+   - hub-backup.timer Persistent=true changed to false: test_the_calendar_timer_catches_up_after_downtime FAILED (the test was renamed after this run when the two timers got separate tests)
    - Persistent=true appended to hub-backup-check.timer: test_the_interval_timer_does_not_rely_on_persistent FAILED
    all green again after restoring each file.
 
-Not run: a real systemd starting a timer, a Caddy reload on a host, an alert delivered from a timer, anything on a rented server.
 
 5. tests/test_similar_queries_db.py against Postgres with pgvector (migration 010 applied), checked red on purpose:
    the `set_config('hnsw.iterative_scan', 'strict_order', true)` line deleted from app/similar_queries.py: test_a_tenant_gets_a_full_page_back_under_row_level_security FAILED (1 failed, 5 passed); line restored: 6 passed.
+
+Not run: a real systemd starting a timer, a Caddy reload on a host, an alert delivered from a timer, anything on a rented server.
