@@ -41,6 +41,7 @@ n8n/                 the monthly run: workflow JSON, its generator, and the scri
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
 migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs
 docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
+deploy/              Caddyfile, systemd units for the nightly backup and its alert, and the script that verifies them (docs/deploy.md)
 web/                 Next.js dashboard
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
 ```

@@ -1,0 +1,18 @@
+[Unit]
+Description=Analytics hub: alert when the backup or its restore proof is stale
+
+[Service]
+Type=oneshot
+User=hub
+Group=hub
+EnvironmentFile=/etc/hub/hub.env
+# Exit 0 fine, 1 a problem exists (alert sent once, then repeated every six hours), 2 the check could not run or the
+# alert could not be delivered. Neither 1 nor 2 is ever reported as healthy.
+ExecStart=/opt/hub/.venv/bin/python /opt/hub/scripts/db_backup.py check --dir /var/backups/hub --state /var/lib/hub/backup_alert.json
+TimeoutStartSec=5min
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/hub
+ReadOnlyPaths=/var/backups/hub

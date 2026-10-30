@@ -1,0 +1,10 @@
+[Unit]
+Description=Analytics hub: check backup freshness every 30 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+# No Persistent= here: systemd only honours it for OnCalendar= timers, and this one is relative to boot and to the last run.
+
+[Install]
+WantedBy=timers.target

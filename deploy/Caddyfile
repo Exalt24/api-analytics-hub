@@ -1,0 +1,44 @@
+# Reverse proxy for one host: Caddy terminates TLS and sends /api, /health, /ready and /metrics to the FastAPI service
+# and everything else to the dashboard. The upstreams come from the environment so the same file runs on a server
+# (127.0.0.1) and in the test below (a container reaching the host).
+#
+#   HUB_SITE          site address, default hub.localhost (Caddy issues its own local certificate for it)
+#   HUB_API_UPSTREAM  default 127.0.0.1:8000
+#   HUB_WEB_UPSTREAM  default 127.0.0.1:3100
+#
+# /metrics is the Prometheus endpoint: it is never published through the proxy, only scraped on the loopback port.
+
+{$HUB_SITE:hub.localhost} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	# Inside a handle on purpose: a bare `respond` is ordered after `handle`, so the catch-all handle below answered /metrics first.
+	@private path /metrics /metrics/*
+	handle @private {
+		respond 404
+	}
+
+	@api path /api/* /health /ready
+	handle @api {
+		reverse_proxy {$HUB_API_UPSTREAM:127.0.0.1:8000} {
+			health_uri /health
+			health_interval 10s
+			fail_duration 30s
+		}
+	}
+
+	handle {
+		reverse_proxy {$HUB_WEB_UPSTREAM:127.0.0.1:3100}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

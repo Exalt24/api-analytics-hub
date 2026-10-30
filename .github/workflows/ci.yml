@@ -38,4 +38,8 @@ jobs:
         run: |
           CID=$(docker ps --filter ancestor=postgres:17-alpine --format '{{.ID}}' | head -n 1)
           PG_CMD_PREFIX="docker exec -i $CID" python -m pytest tests/test_db_backup.py -q -rs
+      - name: Caddyfile and systemd units
+        run: |
+          docker run --rm -v "$PWD/deploy:/etc/caddy:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile
+          docker run --rm -v "$PWD/deploy:/deploy:ro" debian:bookworm-slim sh /deploy/verify_units.sh
       - run: python tests/mutation_check.py --check-targets

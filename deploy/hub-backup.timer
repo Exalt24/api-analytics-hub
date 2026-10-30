@@ -1,0 +1,11 @@
+[Unit]
+Description=Analytics hub: nightly backup and restore proof
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=10min
+# A machine that was off at 02:30 runs the missed backup at the next boot instead of skipping the night.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

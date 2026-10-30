@@ -1,0 +1,23 @@
+[Unit]
+Description=Analytics hub: Postgres backup and scratch restore proof
+Wants=network-online.target
+After=network-online.target
+# A failed backup or restore proof runs the alert check at once instead of waiting for the next 30 minute tick.
+OnFailure=hub-backup-check.service
+
+[Service]
+Type=oneshot
+User=hub
+Group=hub
+EnvironmentFile=/etc/hub/hub.env
+# The dump is written under its final name only when complete, then the newest dump is restored into a throwaway
+# database and every table's row count is compared. A failed step exits 1 and systemd marks the unit failed.
+ExecStart=/opt/hub/.venv/bin/python /opt/hub/scripts/db_backup.py backup --dir /var/backups/hub --keep 14
+ExecStart=/opt/hub/.venv/bin/python /opt/hub/scripts/db_backup.py prove --dir /var/backups/hub
+TimeoutStartSec=30min
+Nice=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/backups/hub /var/lib/hub
