@@ -13,7 +13,7 @@ jobs:
     # observability suites run here instead of skipping.
     services:
       postgres:
-        image: postgres:17-alpine
+        image: pgvector/pgvector:0.8.7-pg17
         env:
           POSTGRES_DB: analytics
           POSTGRES_USER: analytics
@@ -36,7 +36,7 @@ jobs:
       # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
       - name: Backup and restore proof against the service container
         run: |
-          CID=$(docker ps --filter ancestor=postgres:17-alpine --format '{{.ID}}' | head -n 1)
+          CID=$(docker ps --filter ancestor=pgvector/pgvector:0.8.7-pg17 --format '{{.ID}}' | head -n 1)
           PG_CMD_PREFIX="docker exec -i $CID" python -m pytest tests/test_db_backup.py -q -rs
       - name: Caddyfile and systemd units
         run: |

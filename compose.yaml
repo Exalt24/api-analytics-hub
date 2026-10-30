@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:0.8.7-pg17
     environment:
       POSTGRES_DB: analytics
       POSTGRES_USER: analytics

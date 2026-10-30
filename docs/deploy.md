@@ -11,6 +11,8 @@ caddy validate --config deploy/Caddyfile
 HUB_SITE=hub.example.com caddy run --config deploy/Caddyfile
 ```
 
+Caddy itself runs from its own official systemd unit (`caddy.service` from the Caddy packages, which already sets `User=caddy` and hardening); `deploy/` ships only the Caddyfile for it. After an edit, `caddy validate` then `systemctl reload caddy`, not a restart, and read the log with `journalctl -u caddy`.
+
 ## The units
 
 | Unit | Does |

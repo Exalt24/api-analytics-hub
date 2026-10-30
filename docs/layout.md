@@ -39,9 +39,10 @@ scripts/monthly_report.py      builds the monthly deck from stored snapshots: st
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security)
 docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
 deploy/              Caddyfile, systemd units for the nightly backup and its alert, and the script that verifies them (docs/deploy.md)
+app/similar_queries.py hashed-trigram embedding and the tenant-scoped nearest-query lookup (docs/test-runs/2026-10-30-pgvector-rls-recall.md)
 web/                 Next.js dashboard
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
 ```
