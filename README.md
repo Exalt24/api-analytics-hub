@@ -39,7 +39,7 @@ export CREDENTIAL_KEYS="1:$(python -c 'from app.crypto import generate_key; prin
 export DASHBOARD_ORIGIN="http://localhost:3100"
 
 # migrations, in order, with the psql client
-for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
+cat migrations/*.sql | psql "$DATABASE_URL" -v ON_ERROR_STOP=1
 # or through the container, no client needed (run on Windows, in a scratch database)
 for f in migrations/*.sql; do docker compose exec -T db psql -q -U analytics -d analytics -v ON_ERROR_STOP=1 < "$f"; done
 

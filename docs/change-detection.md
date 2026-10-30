@@ -177,7 +177,7 @@ docker compose up -d                                   # Postgres on 5433, the c
 docker compose exec db psql -U analytics -d postgres -c "create database changes_scratch"
 export ANALYTICS_TEST_DSN="postgresql://analytics:analytics@127.0.0.1:5433/changes_scratch"
 export DATABASE_URL="$ANALYTICS_TEST_DSN"
-for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done          # the loader does not migrate: nothing is there until this runs
+cat migrations/*.sql | psql "$DATABASE_URL" -v ON_ERROR_STOP=1          # the loader does not migrate: nothing is there until this runs
 python scripts/make_carrier_snapshot.py --out-dir <folder> --n 400000 --flappers 100    # day 1 and 2, and day 3 and 4 for the flapping carriers
 python scripts/load_carrier_snapshot.py <folder>/carriers_day1.csv --date 2026-10-24    # the first load is the baseline: no alerts
 python scripts/load_carrier_snapshot.py <folder>/carriers_day2.csv --date 2026-10-25    # prints the daily report
