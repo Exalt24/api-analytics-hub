@@ -25,6 +25,10 @@ KIND_NEVER = "never_backed_up"
 KIND_STALE = "backup_stale"
 KIND_UNPROVEN = "restore_unproven"
 KIND_FAILED = "restore_failed"
+# The last nightly run (backup or prove) ended in an error and no later dump exists. Found under a real systemd 2026-10-30: OnFailure started the
+# check, but the check only judged the age of the newest dump and the proof, so the first failed night said "healthy" and stayed silent for
+# about a day and a half.
+KIND_RUN_FAILED = "run_failed"
 
 
 @dataclass(frozen=True)
@@ -95,7 +99,8 @@ def plan_prune(dumps: list[tuple[str, float]], keep: int) -> list[str]:
 
 
 def backup_problems(now: float, manifest: Manifest | None, proof: Proof | None,
-                    max_backup_age: int = DEFAULT_MAX_BACKUP_AGE, max_proof_age: int = DEFAULT_MAX_PROOF_AGE) -> list[Problem]:
+                    max_backup_age: int = DEFAULT_MAX_BACKUP_AGE, max_proof_age: int = DEFAULT_MAX_PROOF_AGE,
+                    last_run: dict | None = None) -> list[Problem]:
     def p(kind: str, age: float) -> Problem:
         return Problem("database", "postgres", kind, max(0, int(age)))
 
@@ -110,6 +115,9 @@ def backup_problems(now: float, manifest: Manifest | None, proof: Proof | None,
         out.append(p(KIND_FAILED, now - proof.proved_at))
     elif now - proof.proved_at > max_proof_age:
         out.append(p(KIND_UNPROVEN, now - proof.proved_at))
+    # a failed run newer than the newest dump: the dump is old news and tonight's run did not replace it
+    if last_run and last_run.get("ok") is False and float(last_run.get("at", 0)) > manifest.created_at:
+        out.append(p(KIND_RUN_FAILED, now - float(last_run["at"])))
     return out
 
 
@@ -118,6 +126,7 @@ _WORDS = {
     KIND_STALE: "the newest backup is too old",
     KIND_UNPROVEN: "no restore has been proven recently",
     KIND_FAILED: "the last restore test FAILED",
+    KIND_RUN_FAILED: "the last nightly backup run FAILED",
 }
 
 

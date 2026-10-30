@@ -277,6 +277,48 @@ def test_a_problem_with_no_slack_webhook_is_logged_and_not_remembered_as_alerted
     assert len(sent) == 1 and state.exists()          # the first run after the variable is set sends it at once
 
 
+def _manifest(created_at):
+    return db_backup.Manifest("hub-x.dump", created_at, "0" * 64, 10, {"t": 1}, {"t": 1})
+
+
+def _ok_proof(at):
+    return db_backup.Proof("hub-x.dump", at, True, "ok")
+
+
+def test_a_failed_nightly_run_newer_than_the_newest_dump_is_a_problem_at_once():
+    """Found under a real systemd 2026-10-30: OnFailure started the check, which said healthy because the old dump was only 24 hours old."""
+    now = 10_000_000.0
+    dump_at = now - 24 * 3600
+    ok = backup_problems_for(now, dump_at, last_run={"cmd": "backup", "ok": False, "at": now - 60})
+    assert [p.kind for p in ok] == ["run_failed"]
+    # both directions: a failure OLDER than the newest dump, a success, and no record at all are not problems
+    assert backup_problems_for(now, dump_at, last_run={"cmd": "backup", "ok": False, "at": dump_at - 60}) == []
+    assert backup_problems_for(now, dump_at, last_run={"cmd": "backup", "ok": True, "at": now - 60}) == []
+    assert backup_problems_for(now, dump_at, last_run=None) == []
+
+
+def backup_problems_for(now, dump_at, last_run):
+    from app.backup import backup_problems
+    return backup_problems(now, _manifest(dump_at), _ok_proof(now - 3600), last_run=last_run)
+
+
+def test_a_failed_run_is_recorded_and_the_check_reports_it_and_a_later_success_clears_it(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", "mysql://nope")                      # a tool error on the first line, like a database that is down
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    d = tmp_path / "bk"
+    d.mkdir()
+    now = db_backup.time.time()
+    (d / "hub-20260101T000000Z.dump.json").write_text(_manifest(now - 24 * 3600).to_json().replace("hub-x.dump", "hub-20260101T000000Z.dump"), encoding="utf-8")
+    (d / db_backup.PROOF_FILE).write_text(_ok_proof(now - 3600).to_json(), encoding="utf-8")
+    assert db_backup.main(["backup", "--dir", str(d)]) == 2
+    assert db_backup.load_last_run(d)["ok"] is False and db_backup.load_last_run(d)["cmd"] == "backup"
+    problems = db_backup.backup_problems(now, db_backup.newest_manifest(d), db_backup.load_proof(d), last_run=db_backup.load_last_run(d))
+    assert "run_failed" in [p.kind for p in problems]
+    db_backup.write_last_run(d, "backup", True, now + 5)
+    problems = db_backup.backup_problems(now + 10, db_backup.newest_manifest(d), db_backup.load_proof(d), last_run=db_backup.load_last_run(d))
+    assert "run_failed" not in [p.kind for p in problems]
+
+
 def test_a_bad_database_url_is_a_tool_error_not_a_traceback(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("DATABASE_URL", "mysql://nope")
     assert db_backup.main(["backup", "--dir", str(tmp_path)]) == 2

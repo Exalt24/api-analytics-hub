@@ -18,6 +18,7 @@ The password is passed in the child's environment, never on a command line, and 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import re
@@ -156,6 +157,28 @@ def do_prove(dsn: dict[str, str], directory: Path, now: float) -> int:
     return 0 if ok else 1
 
 
+LAST_RUN_FILE = "last_run.json"
+
+
+def write_last_run(directory: Path, cmd: str, ok: bool, now: float) -> None:
+    """One small record of how the latest backup or prove run ended, so `check` can see a failed night. Never raises: a full disk must not hide the real error."""
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        tmp = directory / (LAST_RUN_FILE + ".tmp")
+        tmp.write_text(json.dumps({"cmd": cmd, "ok": ok, "at": now}), encoding="utf-8")
+        os.replace(tmp, directory / LAST_RUN_FILE)
+    except OSError as exc:
+        log.warning("could not write %s: %s", LAST_RUN_FILE, type(exc).__name__)
+
+
+def load_last_run(directory: Path) -> dict | None:
+    try:
+        data = json.loads((directory / LAST_RUN_FILE).read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
 def load_proof(directory: Path) -> Proof | None:
     try:
         return Proof.from_json((directory / PROOF_FILE).read_text(encoding="utf-8"))
@@ -177,7 +200,7 @@ def do_check(directory: Path, args, now: float) -> int:
     manifest = newest_manifest(directory)
     proof = load_proof(directory)
     # A proof of an OLDER dump does not vouch for the newest one only if that older dump is gone; a proof is about restoring at all, so it stays valid while it is recent.
-    problems = backup_problems(now, manifest, proof, args.max_backup_age, args.max_proof_age)
+    problems = backup_problems(now, manifest, proof, args.max_backup_age, args.max_proof_age, last_run=load_last_run(directory))
     log.info(describe_backup(problems), extra={"event": "backup_check", "findings": len(problems)})
     state = load_state(args.state) if args.state else {}
     message, new_state = decide(state, problems, now, args.repeat_seconds, describer=describe_backup)
@@ -216,10 +239,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "check":
             return do_check(directory, args, now)
         dsn = parse_dsn(os.environ.get("DATABASE_URL", ""))
-        return do_backup(dsn, directory, args.keep, now) if args.cmd == "backup" else do_prove(dsn, directory, now)
+        rc = do_backup(dsn, directory, args.keep, now) if args.cmd == "backup" else do_prove(dsn, directory, now)
+        write_last_run(directory, args.cmd, rc == 0, time.time())
+        return rc
     except ToolError as exc:
         log.error(str(exc), extra={"event": "backup_tool_failed"})
+        write_last_run(directory, args.cmd, False, time.time())
         return 2
+    except Exception:
+        write_last_run(directory, args.cmd, False, time.time())
+        raise
 
 
 if __name__ == "__main__":
