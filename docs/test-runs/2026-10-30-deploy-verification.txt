@@ -27,4 +27,5 @@ Deploy kit verification, 2026-10-30. Machine: Windows 11, Docker 29.9.2 (Linux c
 5. tests/test_similar_queries_db.py against Postgres with pgvector (migration 010 applied), checked red on purpose:
    the `set_config('hnsw.iterative_scan', 'strict_order', true)` line deleted from app/similar_queries.py: test_a_tenant_gets_a_full_page_back_under_row_level_security FAILED (1 failed, 5 passed); line restored: 6 passed.
 
-Not run: a real systemd starting a timer, a Caddy reload on a host, an alert delivered from a timer, anything on a rented server.
+Run later the same day: a real systemd starting the timer and the service in a container, see 2026-10-30-systemd-real-run.txt.
+Not run: a Caddy reload on a host, an alert delivered from a timer to a real channel, anything on a rented server.

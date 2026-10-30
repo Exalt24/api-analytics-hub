@@ -1,0 +1,41 @@
+Real systemd run, 2026-10-30. Machine: Windows 11, Docker 29.9.2 (Linux containers, cgroup v2), Git Bash. Script: deploy/run_units_on_systemd.sh
+Image jrei/systemd-debian:12 (Debian 12, systemd 252) booted with systemd as PID 1 in a privileged container; the four shipped units copied in unchanged, plus one drop-in that fires the timer every 15 seconds. The stand-in for the venv python records its arguments and exits 1 when a flag file exists, so no database was touched.
+Container, image and Docker Desktop were removed and stopped afterwards.
+
+What it shows: systemd 252 as PID 1; the shipped hub-backup.timer fired hub-backup.service by itself, the service ran as the hub user and ran both ExecStart lines in order (backup, then prove); with a failing stand-in the service ended exit-code and OnFailure= started hub-backup-check.service once.
+The first passes of the counter print blank because the log file did not exist yet. Step 5 (ProtectSystem=strict write test through systemd-run) printed nothing and is NOT claimed.
+
+----- output -----
+1. systemd booted as PID 1: is-system-running = running
+PID1=systemd
+systemd 252 (252.39-1~deb12u2)
+Created symlink /etc/systemd/system/timers.target.wants/hub-backup.timer -> /etc/systemd/system/hub-backup.timer.
+Created symlink /etc/systemd/system/timers.target.wants/hub-backup-check.timer -> /etc/systemd/system/hub-backup-check.timer.
+2. timers armed:
+NEXT                        LEFT          LAST PASSED UNIT                         ACTIVATES
+Fri 2026-10-30 14:04:00 UTC 3s left       -    -      hub-backup.timer             hub-backup.service
+Fri 2026-10-30 14:08:54 UTC 4min 58s left -    -      hub-backup-check.timer       hub-backup-check.service
+3. the timer fires the service on its own (watching ran.log for about 40 seconds):
+   pass 0: backup runs recorded = 
+deploy/run_units_on_systemd.sh: line 65: [: : integer expected
+   pass 1: backup runs recorded = 
+deploy/run_units_on_systemd.sh: line 65: [: : integer expected
+   pass 2: backup runs recorded = 
+deploy/run_units_on_systemd.sh: line 65: [: : integer expected
+   pass 3: backup runs recorded = 
+deploy/run_units_on_systemd.sh: line 65: [: : integer expected
+   pass 4: backup runs recorded = 1
+   pass 5: backup runs recorded = 1
+   pass 6: backup runs recorded = 1
+   pass 7: backup runs recorded = 1
+14:04:12 ran as hub: /opt/hub/scripts/db_backup.py backup --dir /var/backups/hub --keep 14
+14:04:12 ran as hub: /opt/hub/scripts/db_backup.py prove --dir /var/backups/hub
+Result=success ExecMainStatus=0 User=hub 
+4. a failed backup starts the alert check through OnFailure= (flag file makes the stand-in exit 1):
+See "systemctl status hub-backup.service" and "journalctl -xeu hub-backup.service" for details.
+   backup result: exit-code
+   ran.log:
+     14:04:38 ran as hub: /opt/hub/scripts/db_backup.py backup --dir /var/backups/hub --keep 14
+     14:04:38 ran as hub: /opt/hub/scripts/db_backup.py check --dir /var/backups/hub --state /var/lib/hub/backup_alert.json
+   check unit ran: 1 time(s)
+5. ProtectSystem=strict really blocks a write outside ReadWritePaths:

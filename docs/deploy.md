@@ -71,4 +71,4 @@ systemctl enable --now hub-backup.timer hub-backup-check.timer
 
 ## Not run
 
-No unit was started by a real systemd (a container without an init cannot), no alert was delivered from a timer, and nothing ran on a rented server. `systemd-analyze verify` proves the files parse and name real binaries, not that a nightly run succeeds on a host.
+The units were started by a real systemd, but only in a container with systemd as PID 1 ([the run](test-runs/2026-10-30-systemd-real-run.txt), `deploy/run_units_on_systemd.sh`): the timer fired the service on its own schedule, it ran as the `hub` user, and a failed backup started the alert check through `OnFailure=`. The stand-in python replaced the real backup script, so no dump or restore ran there. No alert was delivered from a timer to a real channel, `ProtectSystem=strict` was not tested by that run, a Caddy reload was not run on a host, and nothing ran on a rented server. `systemd-analyze verify` proves the files parse and name real binaries, not that a nightly run succeeds on a host.
