@@ -6,6 +6,7 @@ Postgres on 5433), so aim it at a scratch database. It applies the migrations bi
 """
 from __future__ import annotations
 
+import os
 import sys
 import uuid
 from pathlib import Path
@@ -14,7 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from price_watch_fixtures import DSN, add_tenant, needs_db, psycopg, reset_schema, run  # noqa: E402,F401
+from price_watch_fixtures import DSN, add_tenant, needs_db, psycopg, reachable, reset_schema, run  # noqa: E402,F401
+
+# CI sets BILLING_REQUIRE_DB so that a Postgres that did not start FAILS the collection of the database suites instead of skipping all of them green.
+if os.environ.get("BILLING_REQUIRE_DB") == "1" and not reachable():
+    raise RuntimeError("BILLING_REQUIRE_DB is set but Postgres is not reachable at %s" % DSN)
 
 from app.billing.demo import CURRENCY, PLANS, SECRETS  # noqa: E402,F401
 from app.billing.fake_provider import FAKE_API_KEY, Events, FakeStripe  # noqa: E402,F401
