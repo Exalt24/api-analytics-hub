@@ -158,11 +158,8 @@ create trigger billing_apply_entry after insert on billing_entry for each row ex
 -- also has no UPDATE or DELETE grant (below); this trigger holds for the table's owner too.
 create or replace function billing_append_only() returns trigger language plpgsql as $$
 begin
-    if tg_op = 'UPDATE' then
-        raise exception '% rows are append only; an update of % was refused', tg_table_name, old.id using errcode = 'restrict_violation';
-    end if;
-    if exists (select 1 from tenant where id = old.tenant_id) then
-        raise exception '% rows are append only; a delete of % was refused', tg_table_name, old.id using errcode = 'restrict_violation';
+    if tg_op = 'UPDATE' or exists (select 1 from tenant where id = old.tenant_id) then
+        raise exception '% rows are append only; a % of % was refused', tg_table_name, lower(tg_op), old.id using errcode = 'restrict_violation';
     end if;
     return old;
 end;

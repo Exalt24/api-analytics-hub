@@ -1909,10 +1909,10 @@ MUTATIONS = [
     ),
     (
         'm012',
-        "billing: ledger entries can be updated by the table's owner",
-        "    if tg_op = 'UPDATE' then",
+        "billing: ledger entries can be updated or deleted by the table's owner",
+        "    if tg_op = 'UPDATE' or exists (select 1 from tenant where id = old.tenant_id) then",
         '    if false then',
-        'an entry is never changed after it is written',
+        'an entry is never changed or deleted after it is written',
     ),
     (
         'm012',

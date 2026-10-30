@@ -40,6 +40,12 @@ jobs:
         env:
           PRICE_WATCH_REQUIRE_BROWSER: "1"
         run: python -m pytest tests/test_price_watch_scraper.py tests/test_price_watch_matching.py tests/test_price_watch_report.py tests/test_price_watch_adapters.py tests/test_price_watch_db.py tests/test_price_watch_sync_db.py tests/test_price_watch_loop.py -q -rs
+      # The billing module (signature, proration, provider client, ledger, wallet, payments, webhook receiver, reports, the seeded simulation and the command line), named so a skipped
+      # database suite shows in the log. BILLING_REQUIRE_DB makes an unreachable Postgres FAIL here instead of skipping, and -rs prints any skip reason.
+      - name: Billing (ledger, wallet, payments, webhooks, reports against the service container)
+        env:
+          BILLING_REQUIRE_DB: "1"
+        run: python -m pytest tests/test_billing_signature.py tests/test_billing_proration.py tests/test_billing_provider.py tests/test_billing_ledger_db.py tests/test_billing_payments_db.py tests/test_billing_webhooks_db.py tests/test_billing_reports_db.py tests/test_billing_simulation.py tests/test_billing_demo_cli.py -q -rs
       # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
       - name: Backup and restore proof against the service container
         run: |
