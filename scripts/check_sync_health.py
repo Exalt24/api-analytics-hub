@@ -53,7 +53,11 @@ async def run(args) -> int:
 
     state = load_state(args.state) if args.state else {}
     message, new_state = decide(state, problems, time.time(), args.repeat_seconds)
-    if message and os.environ.get("SLACK_WEBHOOK_URL"):
+    if message and not os.environ.get("SLACK_WEBHOOK_URL"):
+        # Same shape as scripts/db_backup.py: an unset variable used to drop the alert silently and save it as sent.
+        log.error("a sync problem was found and SLACK_WEBHOOK_URL is not set, so nobody was told", extra={"event": "alert_not_configured"})
+        return 1                           # state is NOT saved, so the first run after the variable is set sends the alert
+    if message:
         try:
             post_slack(os.environ["SLACK_WEBHOOK_URL"], message)
         except RuntimeError as exc:

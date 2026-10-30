@@ -327,6 +327,19 @@ def test_a_failed_delivery_exits_2_keeps_the_state_and_never_prints_the_webhook(
     assert again.returncode == 1 and len(_Slack.posts) == 2                 # the failed attempt was recorded by the server too; this one delivered
 
 
+def test_a_problem_with_no_webhook_is_logged_and_not_remembered_as_alerted(world, slack, tmp_path):
+    state = tmp_path / "state.json"
+    env = {k: v for k, v in os.environ.items() if k != "SLACK_WEBHOOK_URL"}
+    env["DATABASE_URL"] = DSN
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "check_sync_health.py"), "--state", str(state)],
+                       env=env, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    assert r.returncode == 1 and '"event":"alert_not_configured"' in r.stdout + r.stderr
+    assert not state.exists()
+    posts_before = len(_Slack.posts)
+    again = _script(slack, state)
+    assert again.returncode == 1 and len(_Slack.posts) == posts_before + 1   # set later, the alert goes out at once
+
+
 def test_an_unreachable_database_is_exit_2_never_exit_0(slack, tmp_path):
     env = {**os.environ, "DATABASE_URL": "postgresql://analytics:analytics@127.0.0.1:1/analytics", "SLACK_WEBHOOK_URL": slack}
     r = subprocess.run([sys.executable, str(ROOT / "scripts" / "check_sync_health.py")], env=env, capture_output=True, text=True, encoding="utf-8", timeout=60)
