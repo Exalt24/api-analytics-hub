@@ -39,7 +39,7 @@ scripts/monthly_report.py      builds the monthly deck from stored snapshots: st
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail)
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security)
 docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
 seed_demo.py         invented figures and two API keys, for anyone without the owner's Shopify store
 deploy/              Caddyfile, systemd units for the nightly backup and its alert, and the script that verifies them (docs/deploy.md)
@@ -60,6 +60,21 @@ app/price_watch/     competitor price monitoring (docs/price-watch.md)
 scripts/price_watch.py   scan, report, proposals, listings, approve, reject, confirm-match, sync and demo-server
 seed_price_watch_demo.py invented products and competitor pages for the price watch loop
 docs/price-watch.md  the loop, how to run it, what is not done; docs/vendor-contract/ the Shopify and Zoho pages the adapters are written from
+app/billing/         prepaid wallet and billing ledger against a fake Stripe-style provider (docs/billing.md)
+  ledger.py          accounts, the balanced transaction, the wallet lock, request hashes
+  wallet.py          top-up, usage debit at the tenant's own price, refund, service credit, admin adjustment: idempotent, never below zero
+  payments.py        ask the provider for money, record failures, settle, request and reverse refunds
+  provider.py        Stripe-style client over an injected httpx client: the same idempotency key on every retry, card errors not retried
+  fake_provider.py   fake Stripe as an httpx transport written from the saved pages, with scriptable failures, and the signed events it would send
+  signature.py       Stripe-Signature verification: t and v1, HMAC SHA256, constant time, rotation, recency window
+  webhooks.py        verify, route through a read only role, write each event once in the ledger's transaction, hold what arrives early
+  subscriptions.py   plan state from invoice and subscription events, plan changes
+  proration.py       mid period proration in integers, half up
+  reports.py         statement, daily revenue and usage, reconciliation; markdown and CSV
+  demo.py            invented plans, two tenants and a week of traffic
+scripts/billing.py   price, topup, debit, refund, adjust, statement, report, reconcile, simulate-webhook and demo
+seed_billing_demo.py plans and two invented tenants for the billing demo
+docs/billing.md      the ledger, the flows, how a duplicate charge is prevented, the demo, what is not done; docs/vendor-contract/stripe/ the Stripe pages the provider is written from
 web/                 Next.js dashboard
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
 ```

@@ -1,0 +1,6 @@
+Whole suite after the billing module was added, 2026-10-30 (PC with Windows 11, Python 3.13, compose Postgres pgvector/pgvector:0.8.7-pg17 on 5433; Chromium from Playwright 1.61.0).
+Command: .venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider
+Before the module: 5005 passed, 3 skipped, 5 xfailed (same command, same machine, same day, run first).
+The 219 new tests are tests/test_billing_*.py (signature 38, proration 11, provider 28, ledger 41, payments 18, webhooks 31, reports 28, simulation 10, demo and command line 14).
+
+5224 passed, 3 skipped, 5 xfailed in 321.38s (0:05:21)

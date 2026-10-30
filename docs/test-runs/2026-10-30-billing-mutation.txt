@@ -1,0 +1,43 @@
+python tests/mutation_check.py --only m012,bill_ledger,bill_wallet,bill_pay,bill_sig,bill_hooks,bill_provider,bill_proration,bill_subs,bill_reports
+2026-10-30, in the working tree after the commit that added the guards, through a thin wrapper that calls the same main() and only keeps the output of a green check that failed (the harness prints nothing about it). 35 guards, scoped suites as in SCOPED_SUITE.
+An earlier run of this command stopped at its baseline check twice (once before mutating, once after restoring) with no source left changed; five reruns of the same suite and six of the harness's own invocation were all green and the cause was not found. The run below is the one that completed.
+
+baseline: green
+[ok]   billing: a transaction that does not add up to zero can commit: suite went red as it should
+[ok]   billing: a transaction with fewer than two lines can commit: suite went red as it should
+[ok]   billing: ledger entries can be updated or deleted by the table's owner: suite went red as it should
+[ok]   billing: the request role can edit and delete ledger entries: suite went red as it should
+[ok]   billing: a wallet can be overdrawn in the database: suite went red as it should
+[ok]   billing: a failed payment can carry credit: suite went red as it should
+[ok]   billing: a usage row can hold a different amount than price times quantity: suite went red as it should
+[ok]   billing tenant isolation: a tenant can read another tenant's ledger entries: suite went red as it should
+[ok]   billing tenant isolation: a tenant can read another tenant's payments: suite went red as it should
+[ok]   billing tenant isolation: row level security is not forced on the accounts: suite went red as it should
+[ok]   billing tenant isolation: the router role can read the ledger: suite went red as it should
+[ok]   billing: the wallet is not locked, so two debits race: suite went red as it should
+[ok]   billing: the same key with a different request is answered with the first result: suite went red as it should
+[ok]   billing: the same key is not looked up, so a retry writes again: suite went red as it should
+[ok]   billing: a debit larger than the balance is attempted anyway: suite went red as it should
+[ok]   billing: an adjustment needs no reason: suite went red as it should
+[ok]   billing: a payment failure after a success is recorded and noticed: suite went red as it should
+[ok]   billing: a refund reverses the whole total again instead of the new part: suite went red as it should
+[ok]   billing: a refund the wallet cannot cover is marked reversed: suite went red as it should
+[ok]   billing: a refund over what is refundable is sent to the provider: suite went red as it should
+[ok]   billing: settling an unknown payment uses a new idempotency key: suite went red as it should
+[ok]   billing: a webhook signature is not checked: suite went red as it should
+[ok]   billing: a stale timestamp is accepted: suite went red as it should
+[ok]   billing: a v0 signature counts as v1: suite went red as it should
+[ok]   billing: signatures are compared with plain equality: suite went red as it should
+[ok]   billing: a repeated event id is applied again: suite went red as it should
+[ok]   billing: the signature is not verified before the event is used: suite went red as it should
+[ok]   billing: an event naming another tenant is routed to its payment's tenant: suite went red as it should
+[ok]   billing: a fault while applying an event is swallowed and acknowledged: suite went red as it should
+[ok]   billing: an older subscription event is applied over a newer state: suite went red as it should
+[ok]   billing: proration rounds down instead of half up: suite went red as it should
+[ok]   billing: a retry after a timeout is sent without the idempotency key: suite went red as it should
+[ok]   billing: a card error is retried: suite went red as it should
+[ok]   billing: a spreadsheet formula in a report cell is left live: suite went red as it should
+[ok]   billing: a trial balance that is not zero is not reported: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS
