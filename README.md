@@ -50,7 +50,7 @@ cd web && npm install && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run buil
 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store (domain and Admin API token in a two-line file named by `SHOPIFY_DEV_TOKEN_FILE`, or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` for invented figures and the same two keys. Both drop the `public` schema and apply only migrations 001 to 003, so run 004 to 010 after. `seed_local.py` loads real figures (the last 120 days, `SEED_DAYS` changes it); each prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started rather than run with `npm run dev`, because the development server did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` needs the owner's Shopify development store (domain and token in a two-line file, `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` for invented figures and the same two keys. Both drop the `public` schema; `seed_demo.py` applies every migration, `seed_local.py` only 001 to 003 (run 004 to 010 after). `seed_local.py` loads real figures (the last 120 days, `SEED_DAYS` changes it); each prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started rather than run with `npm run dev`, because the development server did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
 
 Paste a key into the box: the viewer key can read, and Sync now comes back 403 with the reason.
 

@@ -3,8 +3,8 @@
 """Load INVENTED store figures into the local Postgres and mint an admin and a viewer API key.
 
 seed_local.py needs the owner's Shopify development store, so nobody else can run it. This one needs nothing: it writes 120 days of made-up
-orders, gross sales, refunds and net sales for a store called demo-store.invalid, through the same tables, the same upsert function and the same key
-hashing as the real path. The figures are a fixed formula (no randomness), so two runs give the same dashboard. It drops and recreates the `public`
+orders, gross sales, refunds and net sales for a store called demo-store.invalid, after applying every migration, through the same tables, the same upsert
+function and the same key hashing as the real path. The figures are a fixed formula (no randomness), so two runs give the same dashboard. It drops and recreates the `public`
 schema of the database it points at, like the other seeds and the database test suites, and writes only to the local Postgres (5433 by default).
 
     python seed_demo.py          then start the API and the dashboard as the README says and paste the printed key into the box
@@ -48,8 +48,14 @@ async def main() -> int:
     conn = await asyncpg.connect(DSN)
     try:
         await conn.execute("drop schema if exists public cascade; create schema public")
-        for name in ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql"):
-            await conn.execute((ROOT / "migrations" / name).read_text(encoding="utf-8"))
+        # every migration, in order: a stranger gets a database the whole API can use without a second step. 010 needs the pgvector extension, so it is
+        # skipped with a message on a server that does not have it (the rest of the hub does not use it).
+        has_vector = await conn.fetchval("select count(*) from pg_available_extensions where name = 'vector'")
+        for path in sorted((ROOT / "migrations").glob("*.sql")):
+            if path.name.startswith("010_") and not has_vector:
+                print("skipped", path.name, "(this Postgres has no pgvector extension)")
+                continue
+            await conn.execute(path.read_text(encoding="utf-8"))
 
         tenant_id = uuid.uuid4()
         await conn.execute("select set_config('app.tenant_id', $1, false)", str(tenant_id))

@@ -65,3 +65,6 @@ def test_the_script_seeds_a_tenant_and_prints_two_working_keys():
         hashes = {r[0] for r in conn.execute("select key_hash from api_key").fetchall()}
         assert hash_key(admin) in hashes and hash_key(viewer) in hashes
         assert conn.execute("select count(*) from metric_snapshot").fetchone()[0] == 4 * seed_demo.DAYS
+        # every migration was applied by the seed itself: the report and change-detection tables from 004 onwards exist
+        for table in ("report_run", "carrier_stage", "query_embedding"):
+            assert conn.execute("select to_regclass(%s)", ("public." + table,)).fetchone()[0] is not None, table
