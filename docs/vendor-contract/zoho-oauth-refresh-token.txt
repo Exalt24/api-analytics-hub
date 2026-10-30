@@ -1,0 +1,158 @@
+URL: https://www.zoho.com/accounts/protocol/oauth/web-apps/access-token-expiry.html
+STATUS: 200
+
+Skip to main content
+AI/ML
+Build
+Resources
+Blog
+Marketplace
+Introduction to OAuth 2.0
+Glossary
+OAuth scope
+Register your app
+Self client
+Server-based applications
+Get authorization code
+Get access token
+Refresh access token
+Client-based applications
+Mobile-based applications
+Non-browser applications
+Instance-level OAuth
+Multi DC support
+Incremental authorization
+Sign in using Zoho
+Revoke OAuth token
+OAuth token limits
+Exposed credentials policy
+Refresh access token
+
+Use the refresh token to generate another access token for the same set of scopes. 
+
+Using a refresh token, your app can create up to ten access tokens in a span of ten minutes. If the limit is reached, the access token creation will be blocked for the rest of the ten minutes. For more information, refer to Token limits.
+
+ 
+
+Endpoint
+POST 	{accounts-server-url}/oauth/v2/token
+
+Note: The accounts-server-url is specific to the location (i.e., datacenter) where the user is present. Mentioned as location in the response of the authorization request.
+
+Query parameters
+Parameter	Description
+client_id	
+
+required
+
+The unique ID of your application. You can find this in the API console.
+
+
+client_secret	
+
+required
+
+The unique secret for your app which is known only to your app and Zoho. You can find this is the API console.
+
+
+grant_type	
+
+required
+
+Should be sent with the value refresh_token.
+
+
+refresh_token	
+
+required  
+
+The refresh token you received after you made the access token request.
+
+Request example
+https://accounts.zoho.com/oauth/v2/token
+?client_id=1000.GMB0YULZHJK411248S8I5GZ4CHUEX0
+&client_secret=122c324d3496d5d777ceeebc129470715fbb856b7
+&grant_type=refresh_token
+&refresh_token=1000.86a03ca5dbfccb7445b1889b8215efb0.cad9e1ae4989a1196fe05aa729fcb4e1
+Response parameters
+Parameter	Description
+access_token	A token that your app needs to access the resources (as defined by the requested scopes). This token is valid for 1 hour. 
+api_domain	The domain to which your app needs to make API requests, for accessing the protected resources. 
+token_type	
+
+Indicates the type of access token that is generated. The access tokens issued by Zoho are Bearer tokens. When your app makes API requests to access the protected resources, access tokens need to be sent using the "Authorization" header.
+
+Syntax: 
+Authorization: Bearer {access token}
+
+
+expires_in	Indicates the time (in seconds) in which the access token expires. The lifetime of an access token is 1 hour (3600 seconds). 
+Response example
+{   
+"access_token":"1000.2deaf8d0c268e3c85daa2a013a843b10.703adef2bb337b8ca36cfc5d7b83cf24",
+"api_domain":"https://api.zoho.com",
+"token_type":"Bearer",
+"expires_in":3600
+}
+Error codes
+Error	Reasons
+invalid_client	
+The accounts-server URL is invalid. Check if the URL is corresponding to the user's datacenter location. See all URLs
+The parameter client_id is missing or its value is invalid. 
+The value of the parameter grant_type is invalid. It must be refresh_token.
+
+invalid_client_secret	
+The parameter client_secret is missing or its value is invalid. 
+
+invalid_code	
+The parameter refresh_token is missing or its value is invalid.
+The value of the parameter grant_type is incorrect. It must be refresh_token.
+The refresh token used is already revoked. Learn more
+
+400 Bad Request	
+The HTTP method used is incorrect. It must be POST.
+The parameter grant_type is missing.
+Sending the request parameters   
+
+The parameters can be sent in one of the following formats:
+
+(1) Query String
+
+All parameters can be sent in the form of query string in the request URL.
+
+Example:
+
+https://accounts.zoho.com/oauth/v2/token?
+client_id=1000.QVF8O5MXFUYATAQGJKEWUXJKZH7OOE
+&grant_type=refresh_token
+&client_secret=31a99ae27deff7fr34e419fe321b712a02cdedted7
+&refresh_token=1000.3421ad0e1a6fe44663ea112b8b1c4fdf.cd38e645e3d7423651d17368855bc1c5
+
+(2) Request Body
+
+All parameters can be sent in the request body using the data type form-data or x-www-form-urlencoded.
+
+Example:
+
+client_id: "1000.QVF8O5MXFUYATAQGJKEWUXJKZH7OOE"
+client_secret: "31a99ae27deff7fr34e419fe321b712a02cdedted7"
+grant_type: "refresh_token"
+refresh_token: "1000.3421ad0e1a6fe44663ea112b8b1c4fdf.cd38e645e3d7423651d17368855bc1c5"
+
+(3) Basic Auth Header
+
+Only the client_id and client_secret can be sent using this method. The credentials will have to be base64 encoded and sent.
+
+Encoding format:
+
+Base64encode(client_id:client_secret)
+
+Header format:
+
+Authorization: Basic {Base64 encoded credentials}
+
+Example:
+
+Authorization: Basic MTAwMC5RVkY4TzVNWEZVWUFUQVFHSktFV1VYSktaSDdPT0U6MzFhOTlhZTI3ZGVmZjdmcjM0ZTQxOWZlMzIxYjcxMmEwMmNkZWR0ZWQ3
+
+© 2026, Zoho Corporation Pvt. Ltd. All Rights Reserved.

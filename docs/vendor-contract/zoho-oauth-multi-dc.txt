@@ -1,0 +1,179 @@
+URL: https://www.zoho.com/accounts/protocol/oauth/multi-dc.html
+STATUS: 200
+
+Skip to main content
+AI/ML
+Build
+Resources
+Blog
+Marketplace
+Introduction to OAuth 2.0
+Glossary
+OAuth scope
+Register your app
+Self client
+Server-based applications
+Client-based applications
+Mobile-based applications
+Non-browser applications
+Instance-level OAuth
+Multi DC support
+Incremental authorization
+Sign in using Zoho
+Revoke OAuth token
+OAuth token limits
+Exposed credentials policy
+Multi DC support
+
+Data protection and privacy laws in multiple countries state that user data can only be stored in data centers located on that country's soil. In compliance, Zoho has set up data centers in multiple countries. Each data center only holds the data of users who have registered at that domain. See the available data centers
+ 
+
+When is Multi DC support required?
+
+Clients require user data to execute their business logic. Clients such as extension programmers or plugin developers will have a user audience across all the data centers (DC), and will want to reach all of Zoho users. Such clients need to enable Multi DC support at Zoho API console to access Zoho's global user base.
+
+If your app is present in the US data center and your app is going to be used by users present in the EU data center, then you need to enable EU DC support for your app. While making the initial request, you will be provided with the location of the user in the response. Using that, you will need to make the further API calls to the server URL corresponding to the concerned user's location.
+
+The data centers and their respective server URL are given below:
+
+Data Center	Server URL
+United States (US)	https://accounts.zoho.com
+Europe (EU)	https://accounts.zoho.eu
+India (IN)	https://accounts.zoho.in
+Australia (AU)	https://accounts.zoho.com.au
+Japan (JP)	https://accounts.zoho.jp
+Canada (CA)	https://accounts.zohocloud.ca
+Saudi Arabia (SA)	https://accounts.zoho.sa
+United Kingdom (UK)	https://accounts.zoho.uk
+
+You can receive JSON format server URLs for all the data centers here.
+
+The Client ID will be common for all DCs, but the Client Secret can be either common to all the DCs or unique for each DC depending on your preference.
+
+See how the multi DC flow works in: 
+Server-based apps | Client-based apps | Non-browser apps
+ 
+
+Steps to enable Multi DC support
+
+While enabling Multi DC support, you can either choose to have individual client secrets for separate DCs or use the same client secret for all the enabled DCs.
+
+After you register your client with the Zoho API Console, select the client from the list of Applications.
+Go to the Settings tab.
+Enable the toggle next to the required DCs.
+By default, each enabled DC will have a unique client secret. Click SHOW CODE to view and copy the client secret for a particular DC. However, if you want to use the same client secret for all the DCs:
+Select the option Use the same OAuth credentials for all data centers.
+Click OK. You can use the default client secret to make requests in all DCs.
+
+ 
+
+ 
+
+Server-based applications
+
+In server-based applications, the Multi DC flow will be as follows:
+ 
+
+1. Identify the user location during the authorization request
+
+In the authorization request, you will send calls to the domain https://accounts.zoho.com. In the response, the location of the user's DC will be included as the parameter location. You can view the respective server URL for this location using https://accounts.zoho.com/oauth/serverinfo.
+
+Sample authorization response:
+
+https://oauth.pstmn.io/v1/browser-callback
+?code=1000.abbb4c9e0902704b90cc556f32ec0336.5ff4478926a43657280d5cbe1af1917a
+&location=in
+&accounts-server=https://accounts.zoho.in
+
+In this example, location=in.
+ 
+
+2. Make access token request to the server URL associated with user's location
+
+Once you have identified the user's data center, you need to make the access token request to the server URL corresponding to that location. For example, if location=eu, you will need to make access token request to https://accounts.zoho.eu.
+
+Example request:
+
+https://accounts.zoho.eu/oauth/v2/token
+?client_id=1000.GMB0YULZHJK411248S8I5GZ4CHUEX0
+&grant_type=authorization_code
+&client_secret=122c324d3496d5d777ceeebc129470715fbb856b7
+&redirect_uri=https://www.zylker.com/oauthredirect
+&code=1000.86a03ca5dbfccb7445b1889b8215efb0.cad9e1ae4989a1196fe05aa729fcb4e1
+
+Example response:
+
+{
+"access_token":"1000.2deaf8d0c268e3c85daa2a013a843b10.703adef2bb337b 8ca36cfc5d7b83cf24",
+"refresh_token":"1000.18e983526f0ca8575ea9c53b0cd5bb58.1bd83a6f2e22c3a7e1309d96ae439cc1",
+"api_domain":"https://api.zoho.eu",
+"token_type":"Bearer",
+"expires_in":3600
+}
+
+In the response, you will find api_domain, which is where you will need to make the service API requests.
+
+3. Make service API requests to the api domain associated with user's location
+
+Make request calls to the service you want to access through the api_domain you get from the response of the access token request.
+
+ 
+
+Client-based applications
+
+In client-based applications, the Multi DC flow will be as follows:
+ 
+
+1. Identify the user location during the access token request
+
+In the access token request, you will send calls to the domain https://accounts.zoho.com. In the response, the location of the user's DC will be included as the parameter location. You can view the respective server URL for this location using https://accounts.zoho.com/oauth/serverinfo. You will also find api_domain, which is where you will need to make the service API requests.
+
+Sample authorization response:
+
+https://www.zylker.com/oauthredirect#
+&access_token=1000.835d578e9a2103d2e87994ae8752074d.4496b74ddde6413f83fe615e8388e488
+&expires_in=3600
+&location=in
+&api_domain=https://www.zohoapis.in
+
+
+2. Make service API requests to the api domain associated with user's location
+
+Make request calls to the service you want to access through the api_domain you get from the response of the access token request.
+
+ 
+
+Non-browser applications
+
+In non-browser based applications, the Multi DC flow will be as follows:
+ 
+
+1. Identify the user's location from the polling request
+
+After getting the device_code from the initiation request, you will poll requests and wait for user's permission. After the user grants permission, if your app and the user are present in the same location (i.e., data center), the server will respond with an access token. However, if your app and the server are present in different DCs, you will get the feedback other_dc from the server along with the actual location of the user.
+
+Example feedback:
+
+{
+user_location": "eu",
+"error": "other_dc"
+}
+
+Now, you will need to send further polling requests to the server URL corresponding to the user's location. In the response, you will get the access_token and the api_domain, which is where you will need to make the service API requests.
+
+Example response:
+
+{
+access_token": "1004.a3fdad1f7115c8d00a491938a3650a2f.68485f81304",
+"api_domain": "https://api.zoho.com",
+"token_type": "Bearer",
+"expires_in":3600
+}
+
+ 
+
+2. Make service API requests to the api domain associated with user's location
+
+Make request calls to the service you want to access through the api_domain you get from the response of the access token request.
+
+© 2026, Zoho Corporation Pvt. Ltd. All Rights Reserved.

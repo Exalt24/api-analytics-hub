@@ -1,0 +1,525 @@
+URL: https://shopify.dev/docs/api/admin-graphql/latest/mutations/productVariantsBulkUpdate
+STATUS: 200
+
+Skip to main content
+Apps
+Storefronts
+Agents
+References
+Changelog
+Ask assistant
+/
+Help
+•
+Log in
+Collapse sidebar
+Back to all APIs
+GraphQL Admin API
+Choose a version:
+unstable
+2027-01 release candidate
+2026-10 latest
+2026-07
+2026-04
+2026-01
+2026-10latest
+Overview
+Client libraries
+Authentication
+Endpoints and queries
+Rate limits
+Status and error codes
+Access
+Analytics
+Apps
+B2B
+Billing
+Bulk operations
+Cart
+Checkout and accounts configurations
+Checkout branding
+Common objects
+Customers
+Discounts and marketing
+Inventory
+Localizations
+Metafields
+Metaobjects
+Online store
+Orders
+Privacy
+Products and collections
+Queries
+Mutations
+bulkProductResourceFeedbackCreate
+catalogContextUpdate
+catalogCreate
+catalogDelete
+catalogUpdate
+channelDelete
+collectionAddProducts
+collectionAddProductsV2
+collectionConditionsSourceCreate
+collectionConditionsSourceDelete
+collectionConditionsSourceUpdate
+collectionCreate
+collectionDelete
+collectionDuplicate
+collectionPublish
+collectionRemoveProducts
+collectionReorderProducts
+collectionUnpublish
+collectionUpdate
+combinedListingUpdate
+deliveryProfileCreate
+deliveryProfileUpdate
+fileAcknowledgeUpdateFailed
+fileCreate
+fileDelete
+fileUpdate
+giftCardProductSet
+priceListCreate
+priceListDelete
+priceListFixedPricesAdd
+priceListFixedPricesByProductUpdate
+priceListFixedPricesDelete
+priceListFixedPricesUpdate
+priceListUpdate
+productBundleCreate
+productBundleUpdate
+productChangeStatus
+productCreate
+productCreateMedia
+productDelete
+productDeleteMedia
+productDuplicate
+productFeedCreate
+productJoinSellingPlanGroups
+productLeaveSellingPlanGroups
+productOptionsCreate
+productOptionsDelete
+productOptionsReorder
+productOptionUpdate
+productPublish
+productReorderMedia
+productSet
+productUnpublish
+productUpdate
+productUpdateMedia
+productVariantAppendMedia
+productVariantDetachMedia
+productVariantJoinSellingPlanGroups
+productVariantLeaveSellingPlanGroups
+productVariantRelationshipBulkUpdate
+productVariantsBulkCreate
+productVariantsBulkDelete
+productVariantsBulkReorder
+productVariantsBulkUpdate
+publicationCreate
+publicationUpdate
+quantityPricingByVariantUpdate
+quantityRulesAdd
+quantityRulesDelete
+savedSearchDelete
+sellingPlanGroupAddProducts
+sellingPlanGroupAddProductVariants
+sellingPlanGroupCreate
+sellingPlanGroupDelete
+sellingPlanGroupRemoveProducts
+sellingPlanGroupRemoveProductVariants
+sellingPlanGroupUpdate
+stagedUploadsCreate
+Objects
+Retail
+Shipping and fulfillment
+Shopify Markets
+Shopify Payments
+Store properties
+Timeline events
+Webhooks
+GraphQL Types
+Anchor to productVariantsBulkUpdate
+productVariantsBulkUpdate
+mutation
+Install AI Toolkit
+Ask about this page
+Copy MD
+
+Requires write_products access scope. Also: The user must have a permission to update product variants.
+
+Updates multiple product variants for a single product in one operation. You can run this mutation directly or as part of a bulk operation for large-scale catalog updates.
+
+Use the productVariantsBulkUpdate mutation to efficiently modify product variants—such as different sizes, colors, or materials—associated with an existing product. The mutation is helpful if you need to update a product's variants in bulk, such as importing from an external system.
+
+The mutation supports:
+
+Updating variants with custom option values
+Associating media (for example, images, videos, and 3D models) with the product or its variants
+Handling complex product configurations
+Note
+
+By default, stores have a limit of 2048 product variants for each product.
+
+After creating variants, you can make additional changes using the productSet mutation, which is used to perform multiple operations on products, such as creating or modifying product options and variants.
+
+You can also specifically manage product options through related mutations:
+
+productOptionsCreate
+productOptionUpdate
+productOptionsReorder
+productOptionsDelete
+
+Learn more about the product model and adding product data.
+
+Anchor to Arguments
+Arguments
+Anchor to allowPartialUpdates
+allowPartialUpdates
+•
+Boolean
+default:false
+
+When partial updates are allowed, valid variant changes may be persisted even if some of the variants updated have invalid data and cannot be persisted. When partial updates are not allowed, any error will prevent all variants from updating.
+
+Anchor to media
+media
+•
+[CreateMediaInput!]
+
+List of new media to be added to the product.
+
+Show input fields
+Anchor to productId
+productId
+•
+ID!
+required
+
+The ID of the product associated with the variants to update.
+
+Anchor to variants
+variants
+•
+[ProductVariantsBulkInput!]!
+required
+
+An array of product variants to update.
+
+Show input fields
+Was this section helpful?
+Yes
+No
+Anchor to ProductVariantsBulkUpdatePayload returns
+ProductVariantsBulkUpdatePayload returns
+Anchor to product
+product
+•
+Product
+
+The updated product object.
+
+Show fields
+Anchor to productVariants
+productVariants
+•
+[ProductVariant!]
+
+The updated variants.
+
+Show fields
+Anchor to userErrors
+userErrors
+•
+[ProductVariantsBulkUpdateUserError!]!
+non-null
+
+The list of errors that occurred from executing the mutation.
+
+Show fields
+Was this section helpful?
+Yes
+No
+Examples
+Create and update metafields when updating product variants in bulk
+Hide content
+GQL
+cURL
+React Router
+Node.js
+Ruby
+Shopify CLI
+Direct API Access
+Show description
+Copy
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+import { authenticate } from "../shopify.server";
+
+
+export const loader = async ({request}) => {
+  const { admin } = await authenticate.admin(request);
+  const response = await admin.graphql(
+    `#graphql
+  mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+    productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+      product {
+        id
+      }
+      productVariants {
+        id
+        metafields(first: 2) {
+          edges {
+            node {
+              namespace
+              key
+              value
+            }
+          }
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }`,
+  {
+    variables: {
+        "productId": "gid://shopify/Product/20995642",
+        "variants": [
+            {
+                "id": "gid://shopify/ProductVariant/1070325197",
+                "metafields": [
+Hide content
+Input variables
+JSON
+Copy
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+{
+  "productId": "gid://shopify/Product/20995642",
+  "variants": [
+    {
+      "id": "gid://shopify/ProductVariant/1070325197",
+      "metafields": [
+        {
+          "id": "gid://shopify/Metafield/1069229095",
+          "value": "SYNTHETIC LEATHER"
+        },
+        {
+          "namespace": "my_fields",
+          "key": "sole_material",
+          "value": "RUBBER",
+          "type": "single_line_text_field"
+        }
+      ]
+    },
+    {
+      "id": "gid://shopify/ProductVariant/1070325198",
+      "metafields": [
+        {
+          "id": "gid://shopify/Metafield/1069229096",
+          "value": "SYNTHETIC LEATHER"
+        },
+        {
+          "namespace": "my_fields",
+          "key": "sole_material",
+          "value": "CREPE",
+          "type": "single_line_text_field"
+        }
+      ]
+    }
+  ]
+}
+Hide content
+Response
+JSON
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+⌄
+{
+  "productVariantsBulkUpdate": {
+    "product": {
+      "id": "gid://shopify/Product/20995642"
+    },
+    "productVariants": [
+      {
+        "id": "gid://shopify/ProductVariant/1070325197",
+        "metafields": {
+          "edges": [
+            {
+              "node": {
+                "namespace": "my_fields",
+                "key": "liner_material",
+                "value": "SYNTHETIC LEATHER"
+              }
+            },
+            {
+              "node": {
+                "namespace": "my_fields",
+                "key": "sole_material",
+                "value": "RUBBER"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "gid://shopify/ProductVariant/1070325198",
+        "metafields": {
+          "edges": [
+            {
+              "node": {
+                "namespace": "my_fields",
+                "key": "liner_material",
+                "value": "SYNTHETIC LEATHER"
+Updates
+Developer changelog
+Shopify Editions
+Business growth
+Shopify Partners Program
+Shopify App Store
+Legal
+Terms of service
+API terms of use
+Privacy policy
+Partners Program Agreement
+Shopify
+About Shopify
+Shopify Plus
+Careers
+Investors
+Press and media
+Assistant

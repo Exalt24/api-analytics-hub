@@ -1,0 +1,5572 @@
+URL: https://www.zoho.com/inventory/api/v1/items/
+STATUS: 200
+
+API Docs
+/
+Resources
+Sign In
+Introduction
+Overview
+Organization ID
+Multiple Data Centers
+API Call Limit
+OAuth
+Overview
+HTTP Methods
+Overview
+Response
+Overview
+Errors
+Overview
+Pagination
+Overview
+Organizations
+Overview
+Create an organization
+List organizations
+Update an organization
+Get an organization
+Contacts
+Overview
+Create a Contact
+List contacts
+Update a contact
+Get contact
+Delete a contact
+Get contact address
+Mark as active
+Mark as Inactive
+Email statement
+Get Statement mail content
+Email contact
+List Comments
+Contact Persons
+Overview
+Create a contact person
+Update a contact person
+Delete a contact person
+List contact persons
+Get a contact person
+Mark as primary contact person
+Item Groups
+Overview
+Create an Item Group
+List all Item Groups
+Update an Item Group
+Retrieve an Item Group
+Delete an Item Group
+Mark as Active
+Mark as Inactive.
+Items
+Overview
+Create an item
+List all the items
+Delete multiple items
+Bulk fetch item details
+Update an item
+Retrieve an item
+Delete an item
+Update custom field in existing items
+Upload an item image
+Retrieve an item image
+Delete an item image
+Mark as active
+Mark as inactive
+Update variant opening stock
+Retrieve variant opening stock
+Upload multiple item images
+Delete multiple item images
+Reorder item images
+Upload an item back image
+Delete an item back image
+Mark an image as back image
+Bulk mark items as active
+Bulk mark items as inactive
+Ungroup items
+Enable storage location for items
+Disable storage location for items
+Move an item
+Group items
+Update item location permissions
+Bulk update item location permissions
+Validate serial numbers
+Validate and map serial numbers
+List sales orders for an item
+List purchase orders for an item
+List invoices for an item
+List delivery challans for an item
+List sales receipts for an item
+List move orders for an item
+List putaways for an item
+Create an item
+List items
+Update an item
+Retrieve an item
+Delete an item
+Bulk mark items as active
+Bulk mark items as inactive
+Mark an item as active
+Mark an item as inactive
+Create an item variant
+List item variants
+Bulk delete item variants
+Update an item variant
+Retrieve an item variant
+Delete an item variant
+Bulk mark item variants as active
+Bulk mark item variants as inactive
+Mark an item variant as active
+Mark an item variant as inactive
+Move an item variant
+Mark item variants as single items
+Categories
+Overview
+Create a category
+List all categories
+Update a category
+Retrieve a category
+Delete a category
+Units of Measurement
+Overview
+Create a unit group
+List all unit groups
+Update a unit group
+Retrieve a unit group
+Delete a unit group
+Create a unit
+List all units
+Update a unit
+Delete a unit
+Create a unit conversion
+List unit conversions
+Update a unit conversion
+Delete a unit conversion
+Composite Items
+Overview
+Creating a Composite Item
+List All Composite Items
+Updating a composite item
+Retrieving a Composite Item
+Deleting a Composite Item
+Mark as Active
+Mark as Inactive
+Upload Composite Item Images
+Delete Composite Item Image
+Create Assemblies
+Assemblies History
+Update an Assembly
+Retrieve Assemblies
+Delete Assemblies
+Mark Assembly as Assembled
+Mark Assembly as Confirmed
+Inventory Adjustments
+Overview
+Create an inventory adjustment
+List all the inventory adjustments
+Update an inventory adjustment
+Retrieve an inventory adjustment
+Delete an inventory adjustment
+Submit an inventory adjustment for approval
+Approve an inventory adjustment
+Final approval of an inventory adjustment
+Reject an inventory adjustment
+Transfer Orders
+Overview
+Create a transfer order
+List all the transfer orders
+Bulk delete transfer orders
+Update a transfer order
+Retrieve a transfer order
+Delete a transfer order
+Mark as Received
+Mark transfer order as in transit
+Submit a transfer order for approval
+Approve a transfer order
+Final approval of a transfer order
+Reject a transfer order
+Move Orders
+Overview
+Create a move order
+List all move orders
+Delete move orders
+Update a move order
+Retrieve a move order
+Delete a move order
+List comments for a move order
+Mark move order as confirmed
+Mark move order as in progress
+Mark move order as completed
+Attach files to a move order
+Download a move order document
+Remove an attachment from a move order
+Get move order auto number generation settings
+Putaways
+Overview
+Create a putaway
+List all putaways
+Update a putaway
+Retrieve a putaway
+Delete a putaway
+List comments for a putaway
+Attach files to a putaway
+Download a putaway document
+Remove an attachment from a putaway
+Get putaway auto number generation settings
+Sales Orders
+Overview
+Create a Sales Order
+List all Sales Orders
+Bulk delete Sales Orders
+Update a Sales Order
+Retrieve a Sales Order
+Delete a Sales Order
+Mark as Confirmed
+Mark as Void
+Bulk confirm Sales Orders
+Submit a sales order for approval
+Approve a sales order
+Final approval of a sales order
+Reject a sales order
+Bulk submit sales orders for approval
+Bulk approve sales orders
+Packages
+Overview
+Creating a package
+List all packages
+Updating a package
+Retrieving a package
+Deleting a package
+Bulk print packages
+Shipment Orders
+Overview
+Create a Shipment Order
+Update a Shipment Order
+Retrieve a Shipment Order
+Delete a Shipment Order
+Mark as Delivered
+Invoices
+Overview
+Create an invoice
+List invoices
+Update an invoice
+Get an invoice
+Delete an invoice
+Update custom field in existing invoices
+Mark an invoice as sent
+Void an invoice
+Mark as draft
+Email an invoice
+Get invoice email content
+Email invoices
+Get payment reminder mail content
+Bulk export Invoices
+Bulk print invoices
+Disable payment reminder
+Enable payment reminder
+Write off invoice
+Cancel write off
+Update billing address
+Update shipping address
+List invoice templates
+Update invoice template
+List invoice payments
+List credits applied
+Apply credits
+Delete a payment
+Delete applied credit
+Add attachment to an invoice
+Update attachment preference
+Get an invoice attachment
+Delete an attachment
+Add comment
+List invoice comments & history
+Update comment
+Delete a comment
+Submit an invoice for approval
+Approve an invoice
+Final approval of an invoice
+Reject an invoice
+Bulk submit invoices for approval
+Bulk approve invoices
+Retainer Invoices
+Overview
+Create a retainerinvoice
+List a retainer invoices
+update a retainerinvoice
+Get a retainer invoice
+Delete a retainer invoice
+Mark a retainer invoice as sent
+Update retainer invoice template
+Void a retainer invoice
+Mark as draft
+Submit a retainer invoice for approval
+Approve a retainer invoice.
+Email a retainer invoice
+Get retainer invoice email content
+Update billing address
+List retainer invoice templates
+Add attachment to a retainer invoice
+Get a retainer invoice attachment
+Delete an attachment
+Add comment
+List retainer invoice comments & history
+Update comment
+Delete a comment
+Customer Payments
+Overview
+Create a payment
+List Customer Payments
+Update custom field in existing customerpayments
+Update a payment
+Retrieve a payment
+Delete a payment
+Sales Returns
+Overview
+Create a Sales Return
+List all Sales Returns
+Update a Sales Return
+Retrieve a Sales Return
+Delete a Sales Return
+Create a Sales Return Receive
+Delete a Sales Return Receive
+Credit Notes
+Overview
+Create a credit note
+List all Credit Notes
+Update a credit note
+Get a credit note
+Delete a credit note
+Email a credit note
+Get email content
+Void a Credit Note
+Convert Credit Note to Draft
+Convert credit note to Open
+Submit a credit note for approval
+Approve a credit note.
+Reject a credit note
+Email history
+Add attachment to a credit note
+Delete an attachment
+Update billing address
+Update Shipping address
+List the credit note templates
+Update a credit note template
+Apply credits to invoices
+List invoices credited
+Delete credits applied to an invoice
+Add a comment
+List credit note comments & history
+Delete a Comment
+List credit note refunds
+Refund credit note
+List refunds of a credit note
+Update credit note refund
+Get credit note refund
+Delete credit note refund
+Purchase Orders
+Overview
+Create a Purchase Order
+List all Purchase Orders
+Update a Purchase Order
+Retrieve a Purchase Order
+Delete a Purchase Order
+Mark as Issued
+Mark as Cancelled
+Submit a purchase order for approval
+Approve a purchase order
+Reject a purchase order
+Final-approve a purchase order
+Bulk submit purchase orders for approval
+Bulk approve purchase orders
+Purchase Receives
+Overview
+Create a purchase receive
+List all purchase receives
+Delete purchase receives in bulk
+Update a purchase receive
+Retrieve a purchase receive
+Delete a purchase receive
+Submit a purchase receive for approval
+Approve a purchase receive
+Reject a purchase receive
+Mark a purchase receive as received
+Mark a purchase receive as in transit
+Mark purchase receives as received in bulk
+Mark purchase receives as in transit in bulk
+Add an attachment to a purchase receive
+Get a purchase receive attachment
+Delete a purchase receive attachment
+Add a comment to a purchase receive
+Delete a purchase receive comment
+Landed Costs
+Overview
+Creates a landed cost for a bill.
+Updates an existing landed cost on a bill.
+Retrieves the details of a specific landed cost
+Deletes a landed cost from a bill.
+Create bulk landed costs
+Get bill details for bulk landed cost
+Bills
+Overview
+Create a Bill
+List all Bills.
+Update a Bill
+Retrieve a Bill
+Delete a Bill.
+Update custom field in existing bills
+Mark as Open
+Mark as Void
+Submit a bill for approval
+Approve a bill
+Final approval of a bill
+Reject a bill
+Bulk submit bills for approval
+Bulk approve bills
+Purchase Returns
+Overview
+Create a Purchase Return
+List all Purchase Returns
+Update a Purchase Return
+Retrieve a Purchase Return
+Delete a Purchase Return
+Confirm a Purchase Return
+Void a Purchase Return
+Fulfill a Purchase Return
+Unfulfill a Purchase Return
+Email a Purchase Return
+Add Attachment to a Purchase Return
+Close a Purchase Return
+Reopen a Purchase Return
+Update Shipping Address
+Update Billing Address
+Delete an Attachment
+Vendor Credits
+Overview
+Create a vendor credit
+List vendor credits
+Update vendor credit
+Get vendor credit
+Delete vendor credit
+Convert to open
+Void vendor credit
+Submit a Vendor credit for approval
+Approve a Vendor credit
+Apply credits to a bill
+List bills credited
+Delete bills credited
+Refund a vendor credit
+List refunds of a vendor credit
+Update vendor credit refund
+Get vendor credit refund
+Delete vendor credit refund
+List vendor credit refunds
+Add a comment
+List vendor credit comments & history
+Delete a comment
+Locations
+Overview
+Enable Locations
+Create a location
+List all locations
+Update location
+Get a location
+Delete a location
+Mark as Active
+Mark as Inactive
+Mark as Primary
+List users of a location
+Batches
+Overview
+Create a batch
+List all batches
+Bulk delete batches
+Update a batch
+Retrieve a batch
+Delete a batch
+Mark a batch as active
+Mark a batch as inactive
+Mark batches as active
+Mark batches as inactive
+Serial Numbers
+Overview
+List all serial numbers
+Retrieve a serial number
+Bin Locations
+Overview
+Enables bin locations for a specific warehouse
+Disable Bin Locations for a Warehouse
+Enable Bin Locations for a Location
+Disable Bin Locations for a Location
+Create a Zone
+List all Zones
+Mark Zones as Active
+Mark Zones as Inactive
+Update a Zone
+Get a Zone
+Delete a Zone
+Create a Bin
+List all Bins
+Bulk Delete Bins
+Mark Bins as Active
+Mark Bins as Inactive
+Update a Bin
+Get a Bin
+Delete a Bin
+Update Item Bin Mappings
+Get Item Bin Mappings
+Get Item Default Bin
+Configure Item Default Bin
+Get Composite Item Default Bin
+Configure Composite Item Default Bin
+Price Lists
+Overview
+Create a pricebook
+List all pricebooks
+Update pricebook
+Delete the pricebook
+Mark as Active
+Mark as Inactive
+Users
+Overview
+Create a user
+List Users
+Update a user
+Get a user
+Delete a user
+Get current user
+Invite a user
+Mark user as active
+Mark user as inactive
+Tasks
+Overview
+Add a task
+Update tasks
+List tasks
+Delete tasks
+Update a tasks
+Get a task
+Delete a tasks
+Update completed percentage
+Mark task as open
+Mark task as ongoing
+Mark task as completed
+Add comment to task
+List comments of task
+Delete comment of task
+Add attachment to task
+Get document of task
+Delete document of task
+Taxes
+Overview
+Create a tax
+List taxes
+Update a tax
+Get a tax
+Delete a tax
+Update a tax group
+Get a tax group
+Delete a tax group
+Create a tax group
+Create a tax authority [US and CA Edition only]
+List tax authorities [US Edition only]
+Update a tax authority [US and CA Edition only]
+Get a tax authority [US and CA Edition only]
+Delete a tax authority [US and CA Edition only]
+Create a tax exemption [US Edition only]
+List tax exemptions [US Edition only]
+Update a tax exemption [US Edition only]
+Get a tax exemption [US Edition only]
+Delete a tax exemption [US Edition only]
+Currency
+Overview
+Create a Currency
+List Currency
+Update a Currency
+Get a Currency
+Delete a currency
+Delivery Challans
+Overview
+Create a delivery challan
+List delivery challans
+Update a delivery challan
+Retrieve a delivery challan
+Delete a delivery challan
+Mark a delivery challan as open
+Mark a delivery challan as delivered
+Mark a delivery challan as returned
+Mark a delivery challan as undelivered
+Return delivery challans
+Undo return of delivery challans
+Add attachment to a delivery challan
+Get a delivery challan attachment
+Delete a delivery challan attachment
+List delivery challan templates
+Update a delivery challan template
+Update shipping address
+Reporting Tags
+Overview
+Create Reporting Tag
+List of all Reporting Tags
+Mark an option as default for a reporting tag
+Update Reporting Tag
+Delete a reporting tag
+Update Reporting Tag Options
+Update Reporting Tag - Visibility Conditions
+Mark Reporting Tag as active
+Mark Reporting Tag as inactive
+Mark an option as active
+Mark an option as inactive
+Get Reporting Tags Options Detail Page
+Get all Options
+Reorder Reporting Tags
+Replenishment
+Overview
+Retrieve replenishment configurations for associated locations
+Retrieve replenishment configurations for associated warehouses
+Update a replenishment configuration
+Retrieve a replenishment configuration
+Create a replenishment configuration
+Bulk update replenishment configurations
+List all replenishment tasks
+Retrieve a replenishment task
+Dismiss a replenishment task
+Retrieve replenishment task details for an item
+Retrieve replenishment order details
+Pause a replenishment configuration
+Bulk pause replenishment configurations
+Resume a replenishment configuration
+Bulk resume replenishment configurations
+Bulk dismiss replenishment tasks
+Generate a replenishment task
+Bulk generate replenishment tasks
+Retrieve replenishment task details report
+Picklists
+Overview
+Create a Picklist
+List Picklists
+Bulk Delete Picklists
+Update a Picklist
+Get a Picklist
+Delete a Picklist
+Set Status of a Picklist
+Bulk Set Status of Picklists
+Add a Comment to a Picklist
+Delete a Comment on a Picklist
+Update Advanced Tracking Details for a Picklist
+Get Advanced Tracking Details for a Picklist
+Search Sales Order Line Items
+Search Sales Orders
+Search Purchase Return Line Items
+Stock Counts
+Overview
+Create a stock count
+List all stock counts
+Bulk delete stock counts
+Update a stock count
+Retrieve a stock count
+Delete a stock count
+Start a stock count
+Update counted quantities
+Submit a stock count for approval
+Approve or reject line items in a stock count
+Cancel a stock count
+Create a recurring stock count profile
+List all recurring stock count profiles
+Mark a recurring stock count profile as active
+Mark a recurring stock count profile as inactive
+Update a recurring stock count profile
+Retrieve a recurring stock count profile
+Delete a recurring stock count profile
+List serial/batch tracking details for a count line item
+List storage details for a count item
+Search items in in-progress stock counts
+Search storage locations in in-progress stock counts
+Update stock count auto-numbering settings
+Update stock counts preferences
+Items
+ AI Tools 
+
+An item is the product that is offered for sale. Nature of the product could be physical or digital. Based on the type of your business, you can offer one or more goods/services. Your product can be either fixed priced or a subscription service. Each of this may fall under a separate pricing category or have add ons associated to them.
+
+Download Items OpenAPI Document
+Download
+End Points
+POST  
+/items
+GET   
+/items
+DELETE
+/items
+GET   
+/itemdetails
+PUT   
+/items/{item_id}
+GET   
+/items/{item_id}
+DELETE
+/items/{item_id}
+PUT   
+/item/{item_id}/customfields
+POST  
+/items/{item_id}/image
+GET   
+/items/{item_id}/image
+DELETE
+/items/{item_id}/image
+POST  
+/items/{item_id}/active
+POST  
+/items/{item_id}/inactive
+PUT   
+/variants/{variant_id}/openingstock
+GET   
+/variants/{variant_id}/openingstock
+POST  
+/items/{item_id}/images
+DELETE
+/items/{item_id}/images
+POST  
+/items/{item_id}/images/reorder
+POST  
+/items/{item_id}/backimage
+DELETE
+/items/{item_id}/backimage
+PUT   
+/items/{item_id}/images/{image_id}/backimage
+POST  
+/items/active
+POST  
+/items/inactive
+POST  
+/items/ungroup
+POST  
+/items/enablestoragelocation
+POST  
+/items/disablestoragelocation
+PUT   
+/items/move/{item_id}
+PUT   
+/items/grouping/{group_id}
+PUT   
+/items/{item_id}/locations/permissions
+PUT   
+/items/locations/permissions
+POST  
+/items/{item_id}/serialnumber/validate
+POST  
+/items/{item_id}/serialnumber/validateandmap
+GET   
+/items/transactions/salesorders
+GET   
+/items/transactions/purchaseorders
+GET   
+/items/transactions/invoices
+GET   
+/items/transactions/deliverychallans
+GET   
+/items/transactions/salesreceipts
+GET   
+/items/transactions/moveorders
+GET   
+/items/transactions/putaways
+POST  
+/itemmasters
+GET   
+/itemmasters
+PUT   
+/itemmasters/{item_master_id}
+GET   
+/itemmasters/{item_master_id}
+DELETE
+/itemmasters/{item_master_id}
+POST  
+/itemmasters/active
+POST  
+/itemmasters/inactive
+POST  
+/itemmasters/{item_master_id}/active
+POST  
+/itemmasters/{item_master_id}/inactive
+POST  
+/itemvariants
+GET   
+/itemvariants
+DELETE
+/itemvariants
+PUT   
+/itemvariants/{variant_id}
+GET   
+/itemvariants/{variant_id}
+DELETE
+/itemvariants/{variant_id}
+POST  
+/itemvariants/active
+POST  
+/itemvariants/inactive
+POST  
+/itemvariants/{variant_id}/active
+POST  
+/itemvariants/{variant_id}/inactive
+PUT   
+/itemvariants/move/{variant_id}
+POST  
+/itemvariants/ungroup
+Attribute
+group_id
+string
+Unique ID generated by the server for the group to which the item belongs, if any. This is used as an identifier.
+group_name
+string
+Name of product group
+item_id
+string
+Unique ID generated by the server for the Item. This is used as an identifier.
+name
+string
+Name of the Item.
+unit
+string
+Unit of measurement for the item.
+unit_id
+string
+Unique ID of the unit associated with the item.
+unit_group_id
+string
+Unique ID of the unit group associated with the item. Applicable when unit conversion is enabled.
+unit_group_name
+string
+Name of the unit group associated with the item. Applicable when unit conversion is enabled.
+default_sales_unit_conversion_id
+string
+Unique ID of the default sales unit conversion. Applicable when unit conversion is enabled.
+default_purchase_unit_conversion_id
+string
+Unique ID of the default purchase unit conversion. Applicable when unit conversion is enabled.
+item_type
+string
+Item type can be inventory, sales, purchases or sales_and_purchases. If item is associated with a group, then type should be inventory.
+product_type
+string
+Type of the product. It can be goods or service
+can_be_sold
+boolean
+Boolean to indicate whether the item can be sold.
+can_be_purchased
+boolean
+Boolean to indicate whether the item can be purchased.
+track_inventory
+boolean
+Boolean to indicate whether inventory tracking is enabled for the item.
+is_taxable
+boolean
+Boolean to track the taxability of the item.
+tax_id
+string
+Unique ID generated by the server for the tax associated with the item. This is used a unique identifier.
+documents
+array
+List of all the documents associated with the item
+description
+string
+Description of the Item.
+tax_name
+string
+Name of the tax applied on the Item Group.
+tax_percentage
+double
+Percentage of the Tax
+tax_type
+string
+Type of the Tax.
+purchase_account_id
+string
+Unique ID generated by the server for the Purchase account.
+purchase_account_name
+string
+Name of the Purchase Account
+account_name
+string
+Name of the Sales Account.
+inventory_account_id
+string
+Uniquq ID generated by the server for the Inventory account.
+attribute_id1
+string
+Unique ID used by the server. This is used as an identifier.
+attribute_name1
+string
+Name of the attribute present in the Item Group.
+status
+string
+Status of the Item Group.
+source
+string
+The source of the Item Group.
+rate
+double
+Sales price of the Item.
+pricebook_rate
+double
+Pricelist rate applied on the item.
+purchase_rate
+double
+Purchase price of the Item.
+reorder_level
+double
+Reorder level of the item.
+vendor_id
+string
+Unique ID generated by the server for the Vendor. This is used as an identifier.
+vendor_name
+string
+Name of the preferred Vendor for purchasing this item.
+locations
+array
+List of locations.
+Show Sub-Attributes 
+sku
+string
+The Stock Keeeping Unit (SKU) of an item. This is unique for every item in the Inventory.
+upc
+long
+The 12 digit Unique Product Code (UPC) of the item.
+ean
+long
+Unique EAN value for the Item.
+isbn
+string
+Unique ISBN value for the Item.
+part_number
+string
+Part Number of the Item.
+attribute_option_id1
+string
+Unique ID generated by the server for the attribute's options. This is used as an identifier.
+attribute_option_name1
+string
+Name of the attribute's option.
+image_id
+string
+Unique ID generated by the server for the item image. This is used as an identifier.
+image_name
+string
+Image name of the Item.
+purchase_description
+string
+The description for the purchase information. This will be displayed to the vendor in your purchase order.
+image_type
+string
+Type of the image i.e., its file format.
+item_tax_preferences
+array
+🇮🇳 only
+List of tax preferences of the item.
+Show Sub-Attributes 
+hsn_or_sac
+string
+🇮🇳 only
+HSN Code of the item
+sat_item_key_code
+string
+🇲🇽 only
+Add SAT Item Key Code for your goods/services. Download the CFDI Catalogs.
+unitkey_code
+string
+🇲🇽 only
+Add Unit Key Code for your goods/services. Download the CFDI Catalogs.
+custom_fields
+array
+List of custom fields associated with the item
+Show Sub-Attributes 
+
+Example
+
+{
+    "group_id": 4815000000044220,
+    "group_name": "Bags",
+    "item_id": 4815000000044208,
+    "name": "Bags-small",
+    "unit": "qty",
+    "unit_id": "4815000000044300",
+    "unit_group_id": "4815000000044350",
+    "unit_group_name": "Weight",
+    "default_sales_unit_conversion_id": "4815000000044400",
+    "default_purchase_unit_conversion_id": "4815000000044410",
+    "item_type": "inventory",
+    "product_type": "goods",
+    "can_be_sold": true,
+    "can_be_purchased": true,
+    "track_inventory": true,
+    "is_taxable": true,
+    "tax_id": 4815000000044043,
+    "documents": [
+        "string"
+    ],
+    "description": "description",
+    "tax_name": "Sales",
+    "tax_percentage": 12,
+    "tax_type": "Service Tax",
+    "purchase_account_id": 4815000000035003,
+    "purchase_account_name": "Cost of Goods Sold",
+    "account_name": "Sales",
+    "inventory_account_id": 4815000000035001,
+    "attribute_id1": 4815000000044112,
+    "attribute_name1": "Small",
+    "status": "active",
+    "source": "string",
+    "rate": 6,
+    "pricebook_rate": 6,
+    "purchase_rate": 6,
+    "reorder_level": 5,
+    "vendor_id": 4815000000044080,
+    "vendor_name": "Molly",
+    "locations": [
+        {
+            "location_id": "460000000038080",
+            "location_name": "",
+            "status": "active",
+            "is_primary": false,
+            "location_stock_on_hand": "",
+            "location_available_stock": "",
+            "location_actual_available_stock": ""
+        }
+    ],
+    "sku": "SK123",
+    "upc": 111111111111,
+    "ean": 111111111112,
+    "isbn": 111111111113,
+    "part_number": 111111111114,
+    "attribute_option_id1": 4815000000044214,
+    "attribute_option_name1": "Small",
+    "image_id": 2077500000000002000,
+    "image_name": "bag_s.jpg",
+    "purchase_description": "Purchase description",
+    "image_type": "jpg",
+    "item_tax_preferences": [
+        {
+            "tax_id": 4815000000044043,
+            "tax_specification": "intra"
+        }
+    ],
+    "hsn_or_sac": 85423100,
+    "sat_item_key_code": "string",
+    "unitkey_code": "string",
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+Create an item
+ AI Tools 
+
+Creates a new item in Zoho Inventory.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+group_id
+string
+Unique ID generated by the server for the group to which the item belongs, if any. This is used as an identifier.
+group_name
+string
+Name of product group
+unit
+string
+Unit of measurement for the item.
+unit_id
+string
+Unique ID of the unit associated with the item.
+unit_group_id
+string
+Unique ID of the unit group associated with the item. Applicable when unit conversion is enabled.
+default_sales_unit_conversion_id
+string
+Unique ID of the default sales unit conversion. Applicable when unit conversion is enabled.
+default_purchase_unit_conversion_id
+string
+Unique ID of the default purchase unit conversion. Applicable when unit conversion is enabled.
+documents
+array
+List of all the documents associated with the item
+item_type
+string
+Item type can be inventory, sales, purchases or sales_and_purchases. If item is associated with a group, then type should be inventory.
+product_type
+string
+Type of the product. It can be goods or service
+can_be_sold
+boolean
+Boolean to indicate whether the item can be sold.
+can_be_purchased
+boolean
+Boolean to indicate whether the item can be purchased.
+track_inventory
+boolean
+Boolean to indicate whether inventory tracking is enabled for the item.
+is_taxable
+boolean
+Boolean to track the taxability of the item.
+tax_id
+string
+Unique ID generated by the server for the tax associated with the item. This is used a unique identifier.
+description
+string
+Description of the Item.
+purchase_account_id
+string
+Unique ID generated by the server for the Purchase account.
+inventory_account_id
+string
+Uniquq ID generated by the server for the Inventory account.
+attribute_name1
+string
+Name of the attribute present in the Item Group.
+name
+string
+(Required)
+Name of the Item.
+rate
+double
+Sales price of the Item.
+purchase_rate
+double
+Purchase price of the Item.
+reorder_level
+double
+Reorder level of the item.
+locations
+array
+List of locations.
+Show Sub-Attributes 
+vendor_id
+string
+Unique ID generated by the server for the Vendor. This is used as an identifier.
+vendor_name
+string
+Name of the preferred Vendor for purchasing this item.
+sku
+string
+The Stock Keeeping Unit (SKU) of an item. This is unique for every item in the Inventory.
+upc
+long
+The 12 digit Unique Product Code (UPC) of the item.
+ean
+long
+Unique EAN value for the Item.
+isbn
+string
+Unique ISBN value for the Item.
+part_number
+string
+Part Number of the Item.
+attribute_option_name1
+string
+Name of the attribute's option.
+purchase_description
+string
+The description for the purchase information. This will be displayed to the vendor in your purchase order.
+item_tax_preferences
+array
+🇮🇳 only
+List of tax preferences of the item.
+Show Sub-Attributes 
+hsn_or_sac
+string
+🇮🇳 only
+HSN Code of the item
+sat_item_key_code
+string
+🇲🇽 only
+Add SAT Item Key Code for your goods/services. Download the CFDI Catalogs.
+unitkey_code
+string
+🇲🇽 only
+Add Unit Key Code for your goods/services. Download the CFDI Catalogs.
+brand
+string
+Brand of the item or variant.
+manufacturer
+string
+Manufacturer of the item or variant.
+custom_fields
+array
+List of custom fields associated with the item
+Show Sub-Attributes 
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "group_id": 4815000000044220,
+    "group_name": "Bags",
+    "unit": "qty",
+    "unit_id": "4815000000044300",
+    "unit_group_id": "4815000000044350",
+    "default_sales_unit_conversion_id": "4815000000044400",
+    "default_purchase_unit_conversion_id": "4815000000044410",
+    "documents": [
+        "string"
+    ],
+    "item_type": "inventory",
+    "product_type": "goods",
+    "can_be_sold": true,
+    "can_be_purchased": true,
+    "track_inventory": true,
+    "is_taxable": true,
+    "tax_id": 4815000000044043,
+    "description": "description",
+    "purchase_account_id": 4815000000035003,
+    "inventory_account_id": 4815000000035001,
+    "attribute_name1": "Small",
+    "name": "Bags-small",
+    "rate": 6,
+    "purchase_rate": 6,
+    "reorder_level": 5,
+    "locations": [
+        {
+            "location_id": "460000000038080",
+            "initial_stock": 50,
+            "initial_stock_rate": 500
+        }
+    ],
+    "vendor_id": 4815000000044080,
+    "vendor_name": "Molly",
+    "sku": "SK123",
+    "upc": 111111111111,
+    "ean": 111111111112,
+    "isbn": 111111111113,
+    "part_number": 111111111114,
+    "attribute_option_name1": "Small",
+    "purchase_description": "Purchase description",
+    "item_tax_preferences": [
+        {
+            "tax_id": 4815000000044043,
+            "tax_specification": "intra"
+        }
+    ],
+    "hsn_or_sac": 85423100,
+    "sat_item_key_code": "string",
+    "unitkey_code": "string",
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been added.",
+    "item": {
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "item_id": 4815000000044208,
+        "name": "Bags-small",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "unit_group_id": "4815000000044350",
+        "unit_group_name": "Weight",
+        "default_sales_unit_conversion_id": "4815000000044400",
+        "default_purchase_unit_conversion_id": "4815000000044410",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "documents": [
+            "string"
+        ],
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+List all the items
+ AI Tools 
+
+Lists all the items present in Zoho Inventory.
+OAuth Scope : ZohoInventory.items.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+page
+integer
+Page number to be fetched. Default value is 1.
+per_page
+integer
+Number of records to be fetched per page. Default value is 200.
+search_text
+string
+Search items by name, SKU, or other searchable fields.
+filter_by
+string
+Filter items by status or item type. Allowed values: Status.All, Status.Active, Status.Inactive, Status.Lowstock, Status.Unmapped, Status.Uncategorized, Status.Grouped, ItemType.All, ItemType.Sales, ItemType.Purchases, ItemType.SalesAndPurchases, ItemType.Inventory, ItemType.NonInventory, ItemType.Service.
+sort_column
+string
+Sort by column. Allowed values: name, sku, rate, purchase_rate, created_time, last_modified_time, reorder_level, stock_on_hand.
+sort_order
+string
+Sort order. Allowed values: A for ascending and D for descending.
+status
+string
+Filter by item status. Allowed values: active, inactive.
+name
+string
+Filter by exact item name.
+name_startswith
+string
+Filter by item name that starts with the given value.
+name_contains
+string
+Filter by item name that contains the given value.
+sku
+string
+Filter by exact SKU.
+sku_startswith
+string
+Filter by SKU that starts with the given value.
+sku_contains
+string
+Filter by SKU that contains the given value.
+rate
+double
+Filter by exact selling rate.
+rate_less_than
+double
+Filter by selling rate less than the given value.
+rate_less_equals
+double
+Filter by selling rate less than or equal to the given value.
+rate_greater_than
+double
+Filter by selling rate greater than the given value.
+rate_greater_equals
+double
+Filter by selling rate greater than or equal to the given value.
+purchase_rate
+double
+Filter by exact purchase rate.
+purchase_rate_less_than
+double
+Filter by purchase rate less than the given value.
+purchase_rate_less_equals
+double
+Filter by purchase rate less than or equal to the given value.
+purchase_rate_greater_than
+double
+Filter by purchase rate greater than the given value.
+purchase_rate_greater_equals
+double
+Filter by purchase rate greater than or equal to the given value.
+tax_id
+string
+Filter by tax ID.
+account_id
+string
+Filter by sales account ID.
+purchase_account_id
+string
+Filter by purchase account ID.
+customview_id
+string
+Custom view ID to apply.
+vendor_id
+string
+Filter by vendor ID.
+item_id
+string
+Filter by item ID.
+zcrm_product_id
+string
+Filter by Zoho CRM product ID.
+last_modified_time
+string
+Filter items modified after the given date and time. Format yyyy-MM-ddTHH:mm:ssZ.
+category_id
+string
+Filter by category ID.
+brand_ids
+string
+Comma-separated list of brand IDs to filter by.
+manufacturer_ids
+string
+Comma-separated list of manufacturer IDs to filter by.
+warehouse_id
+string
+Filter by warehouse ID.
+location_id
+string
+Filter by location ID.
+group_id
+string
+Filter by item group ID.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "items": [
+        {
+            "group_id": 4815000000044220,
+            "group_name": "Bags",
+            "item_id": 4815000000044208,
+            "name": "Bags-small",
+            "status": "active",
+            "source": "string",
+            "is_linked_with_zohocrm": false,
+            "item_type": "inventory",
+            "description": "description",
+            "rate": 6,
+            "is_taxable": true,
+            "tax_id": 4815000000044043,
+            "tax_name": "Sales",
+            "tax_percentage": 12,
+            "purchase_description": "Purchase description",
+            "purchase_rate": 6,
+            "is_combo_product": false,
+            "product_type": "goods",
+            "attribute_id1": 4815000000044112,
+            "attribute_name1": "Small",
+            "reorder_level": 5,
+            "sku": "SK123",
+            "upc": 111111111111,
+            "ean": 111111111112,
+            "isbn": 111111111113,
+            "part_number": 111111111114,
+            "attribute_option_id1": 4815000000044214,
+            "attribute_option_name1": "Small",
+            "image_name": "bag_s.jpg",
+            "image_type": "jpg",
+            "created_time": "2013-01-24",
+            "last_modified_time": "2013-01-24",
+            "hsn_or_sac": 85423100,
+            "sat_item_key_code": "string",
+            "unitkey_code": "string",
+            "custom_fields": [
+                {
+                    "customfield_id": "string",
+                    "label": "string",
+                    "value": "Normal"
+                }
+            ]
+        },
+        {...},
+        {...}
+    ]
+}
+Delete multiple items
+ AI Tools 
+
+Deletes multiple items from Zoho Inventory.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+Comma-separated list of item IDs to delete.
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/items?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The items have been deleted."
+}
+Bulk fetch item details
+ AI Tools 
+
+Fetch item details for the mentioned item IDs
+OAuth Scope : ZohoInventory.items.READ
+
+Query Parameters
+item_ids
+string
+(Required)
+List of item ids separated by comma
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/itemdetails?item_ids=4815000000044208%2C4815000000044274%2C4815000000044340&organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "items": [
+        {
+            "item_id": 4815000000044208,
+            "name": "Bags-small",
+            "unit": "qty",
+            "item_type": "inventory",
+            "product_type": "goods",
+            "is_taxable": true,
+            "tax_id": 4815000000044043,
+            "description": "description",
+            "tax_name": "Sales",
+            "tax_percentage": 12,
+            "tax_type": "Service Tax",
+            "purchase_account_id": 4815000000035003,
+            "purchase_account_name": "Cost of Goods Sold",
+            "account_name": "Sales",
+            "inventory_account_id": 4815000000035001,
+            "attribute_id1": 4815000000044112,
+            "attribute_name1": "Small",
+            "status": "active",
+            "rate": 6,
+            "pricebook_rate": 6,
+            "purchase_rate": 6,
+            "reorder_level": 5,
+            "vendor_id": 4815000000044080,
+            "vendor_name": "Molly",
+            "locations": [
+                {
+                    "location_id": "460000000038080",
+                    "location_name": "",
+                    "status": "active",
+                    "is_primary": false,
+                    "location_stock_on_hand": "",
+                    "location_available_stock": "",
+                    "location_actual_available_stock": ""
+                }
+            ],
+            "sku": "SK123",
+            "upc": 111111111111,
+            "ean": 111111111112,
+            "isbn": 111111111113,
+            "part_number": 111111111114,
+            "attribute_option_id1": 4815000000044214,
+            "attribute_option_name1": "Small",
+            "image_id": 2077500000000002000,
+            "image_name": "bag_s.jpg",
+            "purchase_description": "Purchase description",
+            "image_type": "jpg",
+            "item_tax_preferences": [
+                {
+                    "tax_id": 4815000000044043,
+                    "tax_specification": "intra"
+                }
+            ],
+            "hsn_or_sac": 85423100,
+            "custom_fields": [
+                {
+                    "customfield_id": "string",
+                    "label": "string",
+                    "value": "Normal"
+                }
+            ]
+        },
+        {...},
+        {...}
+    ]
+}
+Update an item
+ AI Tools 
+
+Update the details of an item.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Arguments
+group_id
+string
+Unique ID generated by the server for the group to which the item belongs, if any. This is used as an identifier.
+group_name
+string
+Name of product group
+unit
+string
+Unit of measurement for the item.
+unit_id
+string
+Unique ID of the unit associated with the item.
+unit_group_id
+string
+Unique ID of the unit group associated with the item. Applicable when unit conversion is enabled.
+default_sales_unit_conversion_id
+string
+Unique ID of the default sales unit conversion. Applicable when unit conversion is enabled.
+default_purchase_unit_conversion_id
+string
+Unique ID of the default purchase unit conversion. Applicable when unit conversion is enabled.
+item_type
+string
+Item type can be inventory, sales, purchases or sales_and_purchases. If item is associated with a group, then type should be inventory.
+product_type
+string
+Type of the product. It can be goods or service
+can_be_sold
+boolean
+Boolean to indicate whether the item can be sold.
+can_be_purchased
+boolean
+Boolean to indicate whether the item can be purchased.
+track_inventory
+boolean
+Boolean to indicate whether inventory tracking is enabled for the item.
+is_taxable
+boolean
+Boolean to track the taxability of the item.
+tax_id
+string
+Unique ID generated by the server for the tax associated with the item. This is used a unique identifier.
+description
+string
+Description of the Item.
+tax_name
+string
+Name of the tax applied on the Item Group.
+tax_percentage
+double
+Percentage of the Tax
+tax_type
+string
+Type of the Tax.
+purchase_account_id
+string
+Unique ID generated by the server for the Purchase account.
+purchase_account_name
+string
+Name of the Purchase Account
+account_name
+string
+Name of the Sales Account.
+inventory_account_id
+string
+Uniquq ID generated by the server for the Inventory account.
+attribute_id1
+string
+Unique ID used by the server. This is used as an identifier.
+attribute_name1
+string
+Name of the attribute present in the Item Group.
+status
+string
+Status of the Item Group.
+source
+string
+The source of the Item Group.
+name
+string
+(Required)
+Name of the Item.
+rate
+double
+Sales price of the Item.
+pricebook_rate
+double
+Pricelist rate applied on the item.
+purchase_rate
+double
+Purchase price of the Item.
+reorder_level
+double
+Reorder level of the item.
+locations
+array
+List of locations.
+Show Sub-Attributes 
+vendor_id
+string
+Unique ID generated by the server for the Vendor. This is used as an identifier.
+vendor_name
+string
+Name of the preferred Vendor for purchasing this item.
+sku
+string
+The Stock Keeeping Unit (SKU) of an item. This is unique for every item in the Inventory.
+upc
+long
+The 12 digit Unique Product Code (UPC) of the item.
+ean
+long
+Unique EAN value for the Item.
+isbn
+string
+Unique ISBN value for the Item.
+part_number
+string
+Part Number of the Item.
+attribute_option_id1
+string
+Unique ID generated by the server for the attribute's options. This is used as an identifier.
+attribute_option_name1
+string
+Name of the attribute's option.
+image_id
+string
+Unique ID generated by the server for the item image. This is used as an identifier.
+image_name
+string
+Image name of the Item.
+purchase_description
+string
+The description for the purchase information. This will be displayed to the vendor in your purchase order.
+image_type
+string
+Type of the image i.e., its file format.
+item_tax_preferences
+array
+🇮🇳 only
+List of tax preferences of the item.
+Show Sub-Attributes 
+hsn_or_sac
+string
+🇮🇳 only
+HSN Code of the item
+sat_item_key_code
+string
+🇲🇽 only
+Add SAT Item Key Code for your goods/services. Download the CFDI Catalogs.
+unitkey_code
+string
+🇲🇽 only
+Add Unit Key Code for your goods/services. Download the CFDI Catalogs.
+brand
+string
+Brand of the item or variant.
+manufacturer
+string
+Manufacturer of the item or variant.
+custom_fields
+array
+List of custom fields associated with the item
+Show Sub-Attributes 
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "group_id": 4815000000044220,
+    "group_name": "Bags",
+    "unit": "qty",
+    "unit_id": "4815000000044300",
+    "unit_group_id": "4815000000044350",
+    "default_sales_unit_conversion_id": "4815000000044400",
+    "default_purchase_unit_conversion_id": "4815000000044410",
+    "item_type": "inventory",
+    "product_type": "goods",
+    "can_be_sold": true,
+    "can_be_purchased": true,
+    "track_inventory": true,
+    "is_taxable": true,
+    "tax_id": 4815000000044043,
+    "description": "description",
+    "tax_name": "Sales",
+    "tax_percentage": 12,
+    "tax_type": "Service Tax",
+    "purchase_account_id": 4815000000035003,
+    "purchase_account_name": "Cost of Goods Sold",
+    "account_name": "Sales",
+    "inventory_account_id": 4815000000035001,
+    "attribute_id1": 4815000000044112,
+    "attribute_name1": "Small",
+    "status": "active",
+    "source": "string",
+    "name": "Bags-small",
+    "rate": 6,
+    "pricebook_rate": 6,
+    "purchase_rate": 6,
+    "reorder_level": 5,
+    "locations": [
+        {
+            "location_id": "460000000038080",
+            "initial_stock": 50,
+            "initial_stock_rate": 500
+        }
+    ],
+    "vendor_id": 4815000000044080,
+    "vendor_name": "Molly",
+    "sku": "SK123",
+    "upc": 111111111111,
+    "ean": 111111111112,
+    "isbn": 111111111113,
+    "part_number": 111111111114,
+    "attribute_option_id1": 4815000000044214,
+    "attribute_option_name1": "Small",
+    "image_id": 2077500000000002000,
+    "image_name": "bag_s.jpg",
+    "purchase_description": "Purchase description",
+    "image_type": "jpg",
+    "item_tax_preferences": [
+        {
+            "tax_id": 4815000000044043,
+            "tax_specification": "intra"
+        }
+    ],
+    "hsn_or_sac": 85423100,
+    "sat_item_key_code": "string",
+    "unitkey_code": "string",
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Item details have been updated",
+    "item": {
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "item_id": 4815000000044208,
+        "name": "Bags-small",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "unit_group_id": "4815000000044350",
+        "unit_group_name": "Weight",
+        "default_sales_unit_conversion_id": "4815000000044400",
+        "default_purchase_unit_conversion_id": "4815000000044410",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "documents": [
+            "string"
+        ],
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+Retrieve an item
+ AI Tools 
+
+Fetches the details for an existing item.
+OAuth Scope : ZohoInventory.items.READ
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "item": {
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "item_id": 4815000000044208,
+        "name": "Bags-small",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "unit_group_id": "4815000000044350",
+        "unit_group_name": "Weight",
+        "default_sales_unit_conversion_id": "4815000000044400",
+        "default_purchase_unit_conversion_id": "4815000000044410",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+Delete an item
+ AI Tools 
+
+Deletes an existing item from Zoho Inventory.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been deleted."
+}
+Update custom field in existing items
+ AI Tools 
+
+Update the value of the custom field in existing items.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Arguments
+customfield_id
+string
+Unique ID of the custom field.
+label
+string
+Label of the Custom Field
+value
+string
+Value of the Custom Field
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/item/45667789900/customfields?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+[
+    {
+        "customfield_id": "string",
+        "label": "string",
+        "value": "Normal"
+    }
+]
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Custom Fields Updated Successfully"
+}
+Upload an item image
+ AI Tools 
+
+Uploads an image for an item in Zoho Inventory. Allowed formats: gif, png, jpeg, jpg, bmp, webp. Maximum size: 7 MB.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+image
+binary
+Image file to upload.
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/image?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: multipart/form-data' \
+  --form field1=value1 \
+  --form field2=value2
+
+Body Parameters
+
+{
+    "image": "string"
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item image has been uploaded."
+}
+Retrieve an item image
+ AI Tools 
+
+Retrieves the image associated with an item.
+OAuth Scope : ZohoInventory.items.READ
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+preview
+boolean
+Set to true to get a preview of the image.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/image?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - Returns the item image as a binary stream.
+Delete an item image
+ AI Tools 
+
+Deletes the image associated for an item in Zoho Inventory.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/image?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item image has been deleted."
+}
+Mark as active
+ AI Tools 
+
+Changes the status of an item to active.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/active?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Active."
+}
+Mark as inactive
+ AI Tools 
+
+Mark an item as inactive.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/inactive?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Inactive."
+}
+Update variant opening stock
+ AI Tools 
+
+Updates the opening stock details of a variant.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Arguments
+initial_stock
+double
+Opening stock quantity. Applicable only when warehouse/location is not enabled. Must not be sent when locations is provided.
+initial_stock_rate
+double
+Opening stock rate per unit. Applicable only when warehouse/location is not enabled. Must not be sent when locations is provided.
+serial_numbers
+array
+List of serial numbers. Applicable only when the item is serial tracked and warehouse/location is not enabled. Must not be sent when locations is provided.
+batches
+array
+List of batches. Applicable only when the item is batch tracked and warehouse/location is not enabled. Must not be sent when locations is provided. Maximum 5000 batches per request.
+Show Sub-Attributes 
+locations
+array
+Location-level stock details. Applicable when warehouse/location is enabled.
+Show Sub-Attributes 
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/variants/4815000000044208/openingstock?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "initial_stock": 0,
+    "initial_stock_rate": 0,
+    "serial_numbers": [
+        "SN001",
+        "SN002"
+    ],
+    "batches": [
+        {
+            "batch_number": "string",
+            "quantity": 0,
+            "rate": 0,
+            "manufactured_date": "string",
+            "expiry_date": "string"
+        }
+    ],
+    "locations": [
+        {
+            "location_id": 0,
+            "initial_stock": 0,
+            "initial_stock_rate": 0,
+            "serial_numbers": [
+                "string"
+            ],
+            "storages": [
+                {
+                    "storage_location_id": "string",
+                    "quantity": 0,
+                    "serial_numbers": [
+                        "string"
+                    ]
+                }
+            ],
+            "batches": [
+                {
+                    "batch_number": "string",
+                    "quantity": 0,
+                    "rate": 0,
+                    "manufactured_date": "string",
+                    "expiry_date": "string",
+                    "storages": [
+                        {
+                            "storage_location_id": "string",
+                            "quantity": 0
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The opening stock has been updated."
+}
+Retrieve variant opening stock
+ AI Tools 
+
+Fetches the opening stock details of a variant, including batches, serial numbers, and warehouse details.
+OAuth Scope : ZohoInventory.items.READ
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/variants/4815000000044208/openingstock?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "opening_stock": {
+        "initial_stock": 0,
+        "initial_stock_rate": 0,
+        "serial_numbers": [
+            "string"
+        ],
+        "batches": [
+            {
+                "batch_number": "string",
+                "quantity": 0,
+                "rate": 0
+            }
+        ],
+        "locations": [
+            {
+                "location_id": "string",
+                "initial_stock": 0,
+                "initial_stock_rate": 0
+            }
+        ]
+    }
+}
+Upload multiple item images
+ AI Tools 
+
+Uploads multiple images for an item. Allowed formats: gif, png, jpeg, jpg, bmp, webp. Maximum size: 7 MB per image.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+image
+binary
+Image file(s) to upload.
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+document_ids
+string
+Comma-separated list of document IDs.
+remove_all
+boolean
+Set to true to remove all existing images before uploading.
+update_primary_image
+boolean
+Set to true to update the primary image.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/images?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: multipart/form-data' \
+  --form field1=value1 \
+  --form field2=value2
+
+Body Parameters
+
+{
+    "image": "string"
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item images have been uploaded."
+}
+Delete multiple item images
+ AI Tools 
+
+Deletes multiple images associated with an item.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+document_ids
+string
+(Required)
+Comma-separated list of document IDs to delete.
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/images?organization_id=10234695&document_ids=SOME_STRING_VALUE' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item images have been deleted."
+}
+Reorder item images
+ AI Tools 
+
+Reorders the images associated with an item.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+documents
+array
+(Required)
+List of documents with their display order.
+Show Sub-Attributes 
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/images/reorder?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "documents": [
+        {
+            "document_id": "2975552000000927087",
+            "order": 1
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item images have been reordered."
+}
+Upload an item back image
+ AI Tools 
+
+Uploads a back image for an item. Allowed formats: gif, png, jpeg, jpg, bmp, webp. Maximum size: 7 MB.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+back_image
+binary
+Back image file to upload.
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+document_id
+string
+Document ID of an existing image to set as back image.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/backimage?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: multipart/form-data' \
+  --form field1=value1 \
+  --form field2=value2
+
+Body Parameters
+
+{
+    "back_image": "string"
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The back image has been uploaded."
+}
+Delete an item back image
+ AI Tools 
+
+Deletes the back image associated with an item.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+document_id
+string
+Document ID of the back image to delete.
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/backimage?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The back image has been deleted."
+}
+Mark an image as back image
+ AI Tools 
+
+Marks an existing item image as the rear/back image.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+image_id
+string
+(Required)
+Unique identifier of the image.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/images/2077500000000002000/backimage?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The image has been marked as back image."
+}
+Bulk mark items as active
+ AI Tools 
+
+Changes the status of multiple items to active.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+(Required)
+Comma-separated list of item IDs to mark as active.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/active?organization_id=10234695&item_ids=4815000000044208%2C4815000000044274' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The items have been marked as Active."
+}
+Bulk mark items as inactive
+ AI Tools 
+
+Changes the status of multiple items to inactive.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+(Required)
+Comma-separated list of item IDs to mark as inactive.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/inactive?organization_id=10234695&item_ids=4815000000044208%2C4815000000044274' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The items have been marked as Inactive."
+}
+Ungroup items
+ AI Tools 
+
+Ungroups the specified items from their variant grouping.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+Comma-separated list of item IDs to ungroup.
+composite_item_ids
+string
+Comma-separated list of composite item IDs to ungroup.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/ungroup?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The items have been ungrouped."
+}
+Enable storage location for items
+ AI Tools 
+
+Enables storage location tracking for the specified items.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+(Required)
+Comma-separated list of item IDs.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/enablestoragelocation?organization_id=10234695&item_ids=4815000000044208%2C4815000000044274' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Storage location has been enabled."
+}
+Disable storage location for items
+ AI Tools 
+
+Disables storage location tracking for the specified items.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+(Required)
+Comma-separated list of item IDs.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/disablestoragelocation?organization_id=10234695&item_ids=4815000000044208%2C4815000000044274' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Storage location has been disabled."
+}
+Move an item
+ AI Tools 
+
+Moves an item to a different group or location.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Arguments
+group_id
+string
+(Required)
+Unique identifier of the destination group.
+attribute_name1
+string
+Name of the first attribute. Required if the destination group has attributes defined.
+attribute_option_name1
+string
+Option value for the first attribute.
+attribute_name2
+string
+Name of the second attribute. Required if the destination group has a second attribute defined.
+attribute_option_name2
+string
+Option value for the second attribute.
+attribute_name3
+string
+Name of the third attribute. Required if the destination group has a third attribute defined.
+attribute_option_name3
+string
+Option value for the third attribute.
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/items/move/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "group_id": "2975552000000525321",
+    "attribute_name1": "Title",
+    "attribute_option_name1": "asdfgh",
+    "attribute_name2": "string",
+    "attribute_option_name2": "string",
+    "attribute_name3": "string",
+    "attribute_option_name3": "string"
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been moved."
+}
+Group items
+ AI Tools 
+
+Groups items together as variants under a single item.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Arguments
+group_name
+string
+Name of the new group to create. Required when creating a new group.
+group_id
+string
+Unique identifier of an existing group. Required when associating the item with an existing group.
+unit
+string
+Unit of measurement for the group.
+attribute_name1
+string
+Name of the first attribute (e.g., Size).
+attribute_name2
+string
+Name of the second attribute (e.g., Color).
+attribute_name3
+string
+Name of the third attribute.
+items
+array
+List of items to include in the group, each with their attribute option mappings.
+Show Sub-Attributes 
+Path Parameters
+group_id
+string
+(Required)
+Unique identifier of the item group.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/items/grouping/4815000000044220?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "group_name": "string",
+    "group_id": "string",
+    "unit": "box",
+    "attribute_name1": "at1",
+    "attribute_name2": "string",
+    "attribute_name3": "string",
+    "items": [
+        {
+            "item_id": "2975552000000327090",
+            "name": "string",
+            "sku": "string",
+            "attribute_option_name1": "string",
+            "attribute_option_name2": "string",
+            "attribute_option_name3": "string",
+            "attribute_option_data1": "string",
+            "attribute_option_data2": "string",
+            "attribute_option_data3": "string"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The items have been grouped."
+}
+Update item location permissions
+ AI Tools 
+
+Updates the location access permissions for an item.
+OAuth Scope : ZohoInventory.warehouses.UPDATE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+associated_with_all_locations
+boolean
+(Required)
+Set to true to associate the item with all locations.
+allowed_location_ids
+string
+Comma-separated list of allowed location IDs.
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/locations/permissions?organization_id=10234695&associated_with_all_locations=SOME_BOOLEAN_VALUE' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Location permissions have been updated."
+}
+Bulk update item location permissions
+ AI Tools 
+
+Updates location access permissions for multiple items at once.
+OAuth Scope : ZohoInventory.warehouses.UPDATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_ids
+string
+Comma-separated list of item IDs.
+allowed_location_ids
+string
+Comma-separated list of allowed location IDs.
+overwrite
+boolean
+Set to true to overwrite existing permissions.
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/items/locations/permissions?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Location permissions have been updated."
+}
+Validate serial numbers
+ AI Tools 
+
+Checks serial number availability for outgoing transactions.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+entity_id
+string
+Unique identifier of the entity.
+warehouse_id
+string
+Unique identifier of the warehouse.
+entity_type
+string
+(Required)
+Type of the entity.
+serial_numbers
+string
+(Required)
+Comma-separated list of serial numbers to validate.
+location_id
+string
+Unique identifier of the location.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/serialnumber/validate?organization_id=10234695&entity_type=SOME_STRING_VALUE&serial_numbers=SOME_STRING_VALUE' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success"
+}
+Validate and map serial numbers
+ AI Tools 
+
+Validates serial number availability and maps them with bin locations for outgoing transactions.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+entity_id
+string
+Unique identifier of the entity.
+warehouse_id
+string
+Unique identifier of the warehouse.
+location_id
+string
+Unique identifier of the location.
+entity_type
+string
+Type of the entity.
+serial_numbers
+array
+List of serial numbers to validate and map.
+Path Parameters
+item_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/items/4815000000044208/serialnumber/validateandmap?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "entity_id": "string",
+    "warehouse_id": "string",
+    "location_id": "string",
+    "entity_type": "string",
+    "serial_numbers": [
+        "string"
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success"
+}
+List sales orders for an item
+ AI Tools 
+
+Lists all sales orders associated with a particular item.
+OAuth Scope : ZohoInventory.salesorders.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+status
+string
+Filter by status. Allowed values: draft, pending_approval, approved, confirmed, overdue, shipped, partially_shipped, fulfilled, void, drop_shipped, partially_invoiced, invoiced, onhold, closed, backordered.
+customer_id
+string
+Filter by customer ID.
+sales_channel
+string
+Filter by sales channel.
+sort_column
+string
+Sort by column. Allowed values: date, salesorder_number.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/salesorders?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "salesorders": [
+        {
+            "salesorder_id": "string",
+            "customer_name": "string",
+            "customer_id": "string",
+            "order_status": "string",
+            "salesorder_number": "string",
+            "date": "string",
+            "item_quantity": 0,
+            "unit": "string",
+            "currency_id": "string",
+            "currency_code": "string",
+            "currency_symbol": "string",
+            "item_price": 0,
+            "item_total_price": 0,
+            "sales_channel": "string"
+        },
+        {...},
+        {...}
+    ]
+}
+List purchase orders for an item
+ AI Tools 
+
+Lists all purchase orders associated with a particular item.
+OAuth Scope : ZohoInventory.purchaseorders.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+status
+string
+Filter by status. Allowed values: draft, issued, closed, received, partially_received, billed, partially_billed, cancelled, drop_shipped, pending_approval, approved.
+vendor_id
+string
+Filter by vendor ID.
+sort_column
+string
+Sort by column. Allowed values: vendor_name, date, purchaseorder_number.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/purchaseorders?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "purchaseorders": [
+        {
+            "purchaseorder_id": "string",
+            "vendor_name": "string",
+            "vendor_id": "string",
+            "status": "string",
+            "purchaseorder_number": "string",
+            "date": "string",
+            "item_quantity": 0,
+            "unit": "string",
+            "currency_id": "string",
+            "currency_code": "string",
+            "currency_symbol": "string",
+            "item_price": 0,
+            "item_total_price": 0
+        },
+        {...},
+        {...}
+    ]
+}
+List invoices for an item
+ AI Tools 
+
+Lists all invoices associated with a particular item.
+OAuth Scope : ZohoInventory.invoices.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+status
+string
+Filter by status. Allowed values: sent, draft, pending_approval, approved, viewed, overdue, paid, void, unpaid, partially_paid.
+customer_id
+string
+Filter by customer ID.
+sort_column
+string
+Sort by column. Allowed values: customer_name, date, invoice_number.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/invoices?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "invoices": [
+        {
+            "invoice_id": "string",
+            "customer_name": "string",
+            "customer_id": "string",
+            "status": "string",
+            "invoice_number": "string",
+            "date": "string",
+            "item_quantity": 0,
+            "unit": "string",
+            "currency_id": "string",
+            "currency_code": "string",
+            "currency_symbol": "string",
+            "item_price": 0,
+            "item_total_price": 0
+        },
+        {...},
+        {...}
+    ]
+}
+List delivery challans for an item
+ AI Tools 
+
+Lists all delivery challans associated with a particular item.
+OAuth Scope : ZohoInventory.invoices.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+status
+string
+Filter by status. Allowed values: draft, open, void, fulfilled, invoiced, partially_invoiced, elapsed.
+customer_id
+string
+Filter by customer ID.
+sort_column
+string
+Sort by column. Allowed values: customer_name, deliverychallan_number, total, date, created_time, last_modified_time.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/deliverychallans?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "deliverychallans": [
+        {
+            "deliverychallan_id": "string",
+            "customer_name": "string",
+            "customer_id": "string",
+            "status": "string",
+            "deliverychallan_number": "string",
+            "date": "string",
+            "item_quantity": 0,
+            "unit": "string",
+            "currency_id": "string",
+            "currency_code": "string",
+            "currency_symbol": "string",
+            "item_price": 0,
+            "item_total_price": 0
+        },
+        {...},
+        {...}
+    ]
+}
+List sales receipts for an item
+ AI Tools 
+
+Lists all sales receipts associated with a particular item.
+OAuth Scope : ZohoInventory.invoices.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+customer_id
+string
+Filter by customer ID.
+sort_column
+string
+Sort by column. Allowed values: customer_name, date, receipt_number.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/salesreceipts?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "sales_receipts": [
+        {
+            "receipt_id": "string",
+            "customer_name": "string",
+            "customer_id": "string",
+            "receipt_number": "string",
+            "date": "string",
+            "item_quantity": 0,
+            "currency_id": "string",
+            "currency_code": "string",
+            "currency_symbol": "string",
+            "item_price": 0,
+            "item_total_price": 0
+        },
+        {...},
+        {...}
+    ]
+}
+List move orders for an item
+ AI Tools 
+
+Lists all move orders associated with a particular item.
+OAuth Scope : ZohoInventory.items.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+sort_column
+string
+Sort by column. Allowed values: moveorder_number, date.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/moveorders?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "moveorders": [
+        {
+            "moveorder_id": "string",
+            "moveorder_number": "string",
+            "date": "string",
+            "warehouse_id": "string",
+            "warehouse_name": "string",
+            "location_id": "string",
+            "location_name": "string",
+            "item_quantity": 0
+        },
+        {...},
+        {...}
+    ]
+}
+List putaways for an item
+ AI Tools 
+
+Lists all putaways associated with a particular item.
+OAuth Scope : ZohoInventory.items.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_id
+string
+(Required)
+Unique identifier of the item.
+sort_column
+string
+Sort by column. Allowed values: putaway_number, date.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/items/transactions/putaways?organization_id=10234695&item_id=4815000000044208' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "putaways": [
+        {
+            "putaway_id": "string",
+            "putaway_number": "string",
+            "date": "string",
+            "warehouse_id": "string",
+            "warehouse_name": "string",
+            "location_id": "string",
+            "location_name": "string",
+            "item_quantity": 0
+        },
+        {...},
+        {...}
+    ]
+}
+Create an item
+ AI Tools 
+
+Creates a new item in Zoho Inventory. You can attach an image by passing the form-data parameter image.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+item_master_name
+string
+(Required)
+Name of the item.
+name
+string
+Alternate name field accepted by some create payloads. Prefer item_master_name for item APIs.
+brand
+string
+Brand of the item or variant.
+manufacturer
+string
+Manufacturer of the item or variant.
+unit
+string
+(Required)
+Unit of measurement for the item.
+description
+string
+Description of the Item.
+product_type
+string
+Type of the product. It can be goods or service
+tax_id
+string
+Unique ID generated by the server for the tax associated with the item. This is used a unique identifier.
+is_taxable
+boolean
+Boolean to track the taxability of the item.
+account_id
+string
+Sales account ID.
+purchase_account_id
+string
+Unique ID generated by the server for the Purchase account.
+inventory_account_id
+string
+Uniquq ID generated by the server for the Inventory account.
+category_id
+string
+Category ID associated with the item.
+attribute_name1
+string
+Name of the attribute present in the Item Group.
+attribute_name2
+string
+Name of the second attribute.
+attribute_name3
+string
+Name of the third attribute.
+item_variants
+array
+Variants to create under this item.
+Show Sub-Attributes 
+custom_fields
+array
+List of custom fields associated with the item
+Show Sub-Attributes 
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+pricebook_id
+string
+Price book ID associated with the create request.
+date
+string
+Date in yyyy-mm-dd format used for price computation.
+document_ids
+string
+Comma-separated document IDs to associate with the item.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "item_master_name": "Bags",
+    "name": "string",
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "unit": "qty",
+    "description": "description",
+    "product_type": "goods",
+    "tax_id": 4815000000044043,
+    "is_taxable": true,
+    "account_id": "4815000000035001",
+    "purchase_account_id": 4815000000035003,
+    "inventory_account_id": 4815000000035001,
+    "category_id": "4815000000044001",
+    "attribute_name1": "Small",
+    "attribute_name2": "string",
+    "attribute_name3": "string",
+    "item_variants": [
+        {
+            "variant_id": 4815000000044208,
+            "variant_name": "Bags-small",
+            "rate": 6,
+            "purchase_rate": 6,
+            "sku": "SK123",
+            "upc": 111111111111,
+            "ean": 111111111112,
+            "isbn": 111111111113,
+            "part_number": 111111111114,
+            "reorder_level": 5,
+            "attribute_option_name1": "Small",
+            "attribute_option_name2": "string",
+            "attribute_option_name3": "string",
+            "vendor_id": 4815000000044080,
+            "custom_fields": [
+                {
+                    "customfield_id": "string",
+                    "label": "string",
+                    "value": "Normal"
+                }
+            ]
+        }
+    ],
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been added.",
+    "item_master": {
+        "item_master_id": 4815000000044220,
+        "group_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_name": "Bags",
+        "category_id": "4815000000044001",
+        "category_name": "string",
+        "product_type": "goods",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "unit": "qty",
+        "description": "description",
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "image_name": "bag_s.jpg",
+        "image_type": "jpg",
+        "documents": [
+            "string"
+        ],
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ],
+        "item_variants": [
+            {
+                "variant_id": 4815000000044208,
+                "variant_name": "Bags-small",
+                "status": "active",
+                "rate": 6,
+                "purchase_rate": 6,
+                "reorder_level": 5,
+                "sku": "SK123",
+                "upc": 111111111111,
+                "ean": 111111111112,
+                "isbn": 111111111113,
+                "part_number": 111111111114,
+                "attribute_option_id1": 4815000000044214,
+                "attribute_option_name1": "Small",
+                "image_name": "bag_s.jpg",
+                "image_type": "jpg",
+                "stock_on_hand": 50
+            }
+        ]
+    }
+}
+List items
+ AI Tools 
+
+Lists all items in the organization. Supports filters, search, and pagination.
+OAuth Scope : ZohoInventory.items.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+page
+integer
+Page number to be fetched. Default value is 1.
+per_page
+integer
+Number of records to be fetched per page. Default value is 25.
+search_text
+string
+Search items by name or other searchable fields.
+filter_by
+string
+Filter items by status. Allowed values: Status.All, Status.Active, Status.Inactive, Status.Ungrouped, Status.Grouped.
+sort_column
+string
+Sort by column. Allowed values: group_name, created_time, last_modified_time, item_master_name.
+sort_order
+string
+Sort order. Allowed values: A for ascending and D for descending.
+item_master_name
+string
+Filter by exact item name.
+item_master_name_startswith
+string
+Filter by item name that starts with the given value.
+item_master_name_contains
+string
+Filter by item name that contains the given value.
+description
+string
+Filter by exact description.
+rate
+double
+Filter by exact selling rate.
+purchase_rate
+double
+Filter by exact purchase rate.
+brand
+string
+Filter by brand.
+manufacturer
+string
+Filter by manufacturer.
+category_id
+string
+Filter by category ID.
+account_id
+string
+Filter by sales account ID.
+purchase_account_id
+string
+Filter by purchase account ID.
+inventory_account_id
+string
+Filter by inventory account ID.
+tax_id
+string
+Filter by tax ID.
+skip_variant
+boolean
+When true, omit nested variant details from the list response.
+last_modified_time
+string
+Return items modified on or after this UTC datetime.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "item_masters": [
+        {
+            "item_master_id": 4815000000044220,
+            "group_id": 4815000000044220,
+            "item_master_name": "Bags",
+            "group_name": "Bags",
+            "category_id": "4815000000044001",
+            "category_name": "string",
+            "product_type": "goods",
+            "brand": "Brand",
+            "manufacturer": "Bagstore",
+            "unit": "qty",
+            "description": "description",
+            "is_taxable": true,
+            "tax_id": 4815000000044043,
+            "tax_name": "Sales",
+            "tax_percentage": 12,
+            "tax_type": "Service Tax",
+            "purchase_account_id": 4815000000035003,
+            "purchase_account_name": "Cost of Goods Sold",
+            "account_name": "Sales",
+            "inventory_account_id": 4815000000035001,
+            "attribute_id1": 4815000000044112,
+            "attribute_name1": "Small",
+            "status": "active",
+            "source": "string",
+            "image_name": "bag_s.jpg",
+            "image_type": "jpg",
+            "documents": [
+                "string"
+            ],
+            "custom_fields": [
+                {
+                    "customfield_id": "string",
+                    "label": "string",
+                    "value": "Normal"
+                }
+            ],
+            "item_variants": [
+                {
+                    "variant_id": 4815000000044208,
+                    "variant_name": "Bags-small",
+                    "status": "active",
+                    "rate": 6,
+                    "purchase_rate": 6,
+                    "reorder_level": 5,
+                    "sku": "SK123",
+                    "upc": 111111111111,
+                    "ean": 111111111112,
+                    "isbn": 111111111113,
+                    "part_number": 111111111114,
+                    "attribute_option_id1": 4815000000044214,
+                    "attribute_option_name1": "Small",
+                    "image_name": "bag_s.jpg",
+                    "image_type": "jpg",
+                    "stock_on_hand": 50
+                }
+            ]
+        },
+        {...},
+        {...}
+    ],
+    "page_context": {
+        "page": 1,
+        "per_page": 25,
+        "has_more_page": true,
+        "report_name": "string",
+        "applied_filter": "string",
+        "sort_column": "string",
+        "sort_order": "string"
+    }
+}
+Update an item
+ AI Tools 
+
+Updates the details of an existing item. You can attach or replace an image by passing the form-data parameter image.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Path Parameters
+item_master_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+update_recurring_invoice
+boolean
+When true, apply rate changes to associated recurring invoices.
+pricebook_id
+string
+Price book ID associated with the update request.
+date
+string
+Date in yyyy-mm-dd format used for price computation.
+delete_image
+boolean
+When true, deletes the existing item image.
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/4815000000044220?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "item_master_name": "Bags",
+    "name": "string",
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "unit": "qty",
+    "description": "description",
+    "product_type": "goods",
+    "tax_id": 4815000000044043,
+    "is_taxable": true,
+    "account_id": "4815000000035001",
+    "purchase_account_id": 4815000000035003,
+    "inventory_account_id": 4815000000035001,
+    "category_id": "4815000000044001",
+    "attribute_name1": "Small",
+    "attribute_name2": "string",
+    "attribute_name3": "string",
+    "item_variants": [
+        {
+            "variant_id": 4815000000044208,
+            "variant_name": "Bags-small",
+            "rate": 6,
+            "purchase_rate": 6,
+            "sku": "SK123",
+            "upc": 111111111111,
+            "ean": 111111111112,
+            "isbn": 111111111113,
+            "part_number": 111111111114,
+            "reorder_level": 5,
+            "attribute_option_name1": "Small",
+            "attribute_option_name2": "string",
+            "attribute_option_name3": "string",
+            "vendor_id": 4815000000044080,
+            "custom_fields": [
+                {
+                    "customfield_id": "string",
+                    "label": "string",
+                    "value": "Normal"
+                }
+            ]
+        }
+    ],
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Item details have been updated.",
+    "item_master": {
+        "item_master_id": 4815000000044220,
+        "group_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_name": "Bags",
+        "category_id": "4815000000044001",
+        "category_name": "string",
+        "product_type": "goods",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "unit": "qty",
+        "description": "description",
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "image_name": "bag_s.jpg",
+        "image_type": "jpg",
+        "documents": [
+            "string"
+        ],
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ],
+        "item_variants": [
+            {
+                "variant_id": 4815000000044208,
+                "variant_name": "Bags-small",
+                "status": "active",
+                "rate": 6,
+                "purchase_rate": 6,
+                "reorder_level": 5,
+                "sku": "SK123",
+                "upc": 111111111111,
+                "ean": 111111111112,
+                "isbn": 111111111113,
+                "part_number": 111111111114,
+                "attribute_option_id1": 4815000000044214,
+                "attribute_option_name1": "Small",
+                "image_name": "bag_s.jpg",
+                "image_type": "jpg",
+                "stock_on_hand": 50
+            }
+        ]
+    }
+}
+Retrieve an item
+ AI Tools 
+
+Fetches the details of an existing item.
+OAuth Scope : ZohoInventory.items.READ
+
+Path Parameters
+item_master_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+include
+string
+Additional response content. Allowed value: html.
+print
+string
+Print-related flag. Allowed values follow the boolean-all convention.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/4815000000044220?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "item_master": {
+        "item_master_id": 4815000000044220,
+        "group_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_name": "Bags",
+        "category_id": "4815000000044001",
+        "category_name": "string",
+        "product_type": "goods",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "unit": "qty",
+        "description": "description",
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "image_name": "bag_s.jpg",
+        "image_type": "jpg",
+        "documents": [
+            "string"
+        ],
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ],
+        "item_variants": [
+            {
+                "variant_id": 4815000000044208,
+                "variant_name": "Bags-small",
+                "status": "active",
+                "rate": 6,
+                "purchase_rate": 6,
+                "reorder_level": 5,
+                "sku": "SK123",
+                "upc": 111111111111,
+                "ean": 111111111112,
+                "isbn": 111111111113,
+                "part_number": 111111111114,
+                "attribute_option_id1": 4815000000044214,
+                "attribute_option_name1": "Small",
+                "image_name": "bag_s.jpg",
+                "image_type": "jpg",
+                "stock_on_hand": 50
+            }
+        ]
+    }
+}
+Delete an item
+ AI Tools 
+
+Deletes an existing item.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Path Parameters
+item_master_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/4815000000044220?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been deleted."
+}
+Bulk mark items as active
+ AI Tools 
+
+Changes the status of multiple items to active.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_master_ids
+string
+(Required)
+Comma-separated list of item IDs.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/active?organization_id=10234695&item_master_ids=4815000000044220%2C4815000000044221' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Active."
+}
+Bulk mark items as inactive
+ AI Tools 
+
+Changes the status of multiple items to inactive.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+item_master_ids
+string
+(Required)
+Comma-separated list of item IDs.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/inactive?organization_id=10234695&item_master_ids=4815000000044220%2C4815000000044221' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Inactive."
+}
+Mark an item as active
+ AI Tools 
+
+Changes the status of an item to active.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+item_master_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/4815000000044220/active?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Active."
+}
+Mark an item as inactive
+ AI Tools 
+
+Changes the status of an item to inactive.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+item_master_id
+string
+(Required)
+Unique identifier of the item.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemmasters/4815000000044220/inactive?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Inactive."
+}
+Create an item variant
+ AI Tools 
+
+Creates a new item variant in Zoho Inventory. You can attach an image by passing the form-data parameter image.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Arguments
+variant_id
+string
+Unique ID generated by the server for the item variant. This is used as an identifier.
+variant_name
+string
+(Required)
+Name of the item variant.
+rate
+double
+(Required)
+Sales price of the Item.
+group_id
+string
+Unique ID generated by the server for the group to which the item belongs, if any. This is used as an identifier.
+item_master_id
+string
+Unique ID generated by the server for the item. This is used as an identifier.
+unit
+string
+Unit of measurement for the item.
+unit_id
+string
+Unique ID of the unit associated with the item.
+item_type
+string
+Item type can be inventory, sales, purchases or sales_and_purchases. If item is associated with a group, then type should be inventory.
+product_type
+string
+Type of the product. It can be goods or service
+can_be_sold
+boolean
+Boolean to indicate whether the item can be sold.
+can_be_purchased
+boolean
+Boolean to indicate whether the item can be purchased.
+track_inventory
+boolean
+Boolean to indicate whether inventory tracking is enabled for the item.
+is_taxable
+boolean
+Boolean to track the taxability of the item.
+tax_id
+string
+Unique ID generated by the server for the tax associated with the item. This is used a unique identifier.
+description
+string
+Description of the Item.
+purchase_description
+string
+The description for the purchase information. This will be displayed to the vendor in your purchase order.
+purchase_rate
+double
+Purchase price of the Item.
+purchase_account_id
+string
+Unique ID generated by the server for the Purchase account.
+inventory_account_id
+string
+Uniquq ID generated by the server for the Inventory account.
+reorder_level
+double
+Reorder level of the item.
+sku
+string
+The Stock Keeeping Unit (SKU) of an item. This is unique for every item in the Inventory.
+upc
+long
+The 12 digit Unique Product Code (UPC) of the item.
+ean
+long
+Unique EAN value for the Item.
+isbn
+string
+Unique ISBN value for the Item.
+part_number
+string
+Part Number of the Item.
+attribute_option_name1
+string
+Name of the attribute's option.
+vendor_id
+string
+Unique ID generated by the server for the Vendor. This is used as an identifier.
+brand
+string
+Brand of the item or variant.
+manufacturer
+string
+Manufacturer of the item or variant.
+hsn_or_sac
+string
+🇮🇳 only
+HSN Code of the item
+locations
+array
+List of locations.
+Show Sub-Attributes 
+custom_fields
+array
+List of custom fields associated with the item
+Show Sub-Attributes 
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+pricebook_id
+string
+Price book ID associated with the create request.
+date
+string
+Date in yyyy-mm-dd format used for price computation.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "variant_id": 4815000000044208,
+    "variant_name": "Bags-small",
+    "rate": 6,
+    "group_id": 4815000000044220,
+    "item_master_id": 4815000000044220,
+    "unit": "qty",
+    "unit_id": "4815000000044300",
+    "item_type": "inventory",
+    "product_type": "goods",
+    "can_be_sold": true,
+    "can_be_purchased": true,
+    "track_inventory": true,
+    "is_taxable": true,
+    "tax_id": 4815000000044043,
+    "description": "description",
+    "purchase_description": "Purchase description",
+    "purchase_rate": 6,
+    "purchase_account_id": 4815000000035003,
+    "inventory_account_id": 4815000000035001,
+    "reorder_level": 5,
+    "sku": "SK123",
+    "upc": 111111111111,
+    "ean": 111111111112,
+    "isbn": 111111111113,
+    "part_number": 111111111114,
+    "attribute_option_name1": "Small",
+    "vendor_id": 4815000000044080,
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "hsn_or_sac": 85423100,
+    "locations": [
+        {
+            "location_id": "460000000038080",
+            "initial_stock": 50,
+            "initial_stock_rate": 500
+        }
+    ],
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been added.",
+    "item_variant": {
+        "variant_id": 4815000000044208,
+        "variant_name": "Bags-small",
+        "item_master_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "documents": [
+            "string"
+        ],
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "is_combo_product": false,
+        "stock_on_hand": 50,
+        "created_time": "2013-01-24",
+        "last_modified_time": "2013-01-24",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+List item variants
+ AI Tools 
+
+Lists all item variants in the organization. Supports filters, search, and pagination.
+OAuth Scope : ZohoInventory.items.READ
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+page
+integer
+Page number to be fetched. Default value is 1.
+per_page
+integer
+Number of records to be fetched per page. Default value is 200.
+search_text
+string
+Search variants by name, SKU, or other searchable fields.
+filter_by
+string
+Filter variants by status or item type. Allowed values include Status.All, Status.Active, Status.Inactive, Status.Lowstock, Status.Unmapped, Status.Uncategorized, Status.Grouped, and item-type filters from the Items list API.
+sort_column
+string
+Sort by column. Allowed values include name, sku, rate, purchase_rate, created_time, last_modified_time, reorder_level, and stock_on_hand.
+sort_order
+string
+Sort order. Allowed values: A for ascending and D for descending.
+status
+string
+Filter by variant status. Allowed values: active, inactive, confirmation_pending.
+name
+string
+Filter by exact variant name.
+name_startswith
+string
+Filter by variant name that starts with the given value.
+name_contains
+string
+Filter by variant name that contains the given value.
+sku
+string
+Filter by exact SKU.
+sku_startswith
+string
+Filter by SKU that starts with the given value.
+sku_contains
+string
+Filter by SKU that contains the given value.
+rate
+double
+Filter by exact selling rate.
+purchase_rate
+double
+Filter by exact purchase rate.
+item_master_id
+string
+Filter variants belonging to the given item.
+variant_ids
+string
+Comma-separated list of variant IDs to fetch.
+brand
+string
+Filter by brand.
+manufacturer
+string
+Filter by manufacturer.
+category_id
+string
+Filter by category ID.
+warehouse_id
+string
+Filter by warehouse ID.
+location_id
+string
+Filter by location ID.
+product_type
+string
+Filter by product type.
+is_combo_product
+boolean
+Filter by whether the variant is a combo product.
+last_modified_time
+string
+Return variants modified on or after this UTC datetime.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "item_variants": [
+        {
+            "variant_id": 4815000000044208,
+            "variant_name": "Bags-small",
+            "item_master_id": 4815000000044220,
+            "item_master_name": "Bags",
+            "group_id": 4815000000044220,
+            "group_name": "Bags",
+            "unit": "qty",
+            "unit_id": "4815000000044300",
+            "item_type": "inventory",
+            "product_type": "goods",
+            "can_be_sold": true,
+            "can_be_purchased": true,
+            "track_inventory": true,
+            "is_taxable": true,
+            "tax_id": 4815000000044043,
+            "documents": [
+                "string"
+            ],
+            "description": "description",
+            "tax_name": "Sales",
+            "tax_percentage": 12,
+            "tax_type": "Service Tax",
+            "purchase_account_id": 4815000000035003,
+            "purchase_account_name": "Cost of Goods Sold",
+            "account_name": "Sales",
+            "inventory_account_id": 4815000000035001,
+            "attribute_id1": 4815000000044112,
+            "attribute_name1": "Small",
+            "status": "active",
+            "source": "string",
+            "rate": 6,
+            "pricebook_rate": 6,
+            "purchase_rate": 6,
+            "reorder_level": 5,
+            "vendor_id": 4815000000044080,
+            "vendor_name": "Molly",
+            "locations": [
+                {
+                    "location_id": "460000000038080",
+                    "location_name": "",
+                    "status": "active",
+                    "is_primary": false,
+                    "location_stock_on_hand": "",
+                    "location_available_stock": "",
+                    "location_actual_available_stock": ""
+                }
+            ],
+            "sku": "SK123",
+            "upc": 111111111111,
+            "ean": 111111111112,
+            "isbn": 111111111113,
+            "part_number": 111111111114,
+            "attribute_option_id1": 4815000000044214,
+            "attribute_option_name1": "Small",
+            "image_id": 2077500000000002000,
+            "image_name": "bag_s.jpg",
+            "purchase_description": "Purchase description",
+            "image_type": "jpg",
+            "item_tax_preferences": [
+                {
+                    "tax_id": 4815000000044043,
+                    "tax_specification": "intra"
+                }
+            ],
+            "hsn_or_sac": 85423100,
+            "sat_item_key_code": "string",
+            "unitkey_code": "string",
+            "brand": "Brand",
+            "manufacturer": "Bagstore",
+            "is_combo_product": false,
+            "stock_on_hand": 50,
+            "created_time": "2013-01-24",
+            "last_modified_time": "2013-01-24",
+            "custom_fields": [
+                {
+                    "customfield_id": "string",
+                    "label": "string",
+                    "value": "Normal"
+                }
+            ]
+        },
+        {...},
+        {...}
+    ],
+    "page_context": {
+        "page": 1,
+        "per_page": 25,
+        "has_more_page": true,
+        "report_name": "string",
+        "applied_filter": "string",
+        "sort_column": "string",
+        "sort_order": "string"
+    }
+}
+Bulk delete item variants
+ AI Tools 
+
+Deletes multiple item variants.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+variant_ids
+string
+Comma-separated list of variant IDs to delete.
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been deleted."
+}
+Update an item variant
+ AI Tools 
+
+Updates the details of an existing item variant. You can attach or replace an image by passing the form-data parameter image.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the item variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+update_recurring_invoice
+boolean
+When true, apply rate changes to associated recurring invoices.
+pricebook_id
+string
+Price book ID associated with the update request.
+date
+string
+Date in yyyy-mm-dd format used for price computation.
+delete_image
+boolean
+When true, deletes the existing variant image.
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "variant_id": 4815000000044208,
+    "variant_name": "Bags-small",
+    "rate": 6,
+    "group_id": 4815000000044220,
+    "item_master_id": 4815000000044220,
+    "unit": "qty",
+    "unit_id": "4815000000044300",
+    "item_type": "inventory",
+    "product_type": "goods",
+    "can_be_sold": true,
+    "can_be_purchased": true,
+    "track_inventory": true,
+    "is_taxable": true,
+    "tax_id": 4815000000044043,
+    "description": "description",
+    "purchase_description": "Purchase description",
+    "purchase_rate": 6,
+    "purchase_account_id": 4815000000035003,
+    "inventory_account_id": 4815000000035001,
+    "reorder_level": 5,
+    "sku": "SK123",
+    "upc": 111111111111,
+    "ean": 111111111112,
+    "isbn": 111111111113,
+    "part_number": 111111111114,
+    "attribute_option_name1": "Small",
+    "vendor_id": 4815000000044080,
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "hsn_or_sac": 85423100,
+    "locations": [
+        {
+            "location_id": "460000000038080",
+            "initial_stock": 50,
+            "initial_stock_rate": 500
+        }
+    ],
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "Item details have been updated",
+    "item_variant": {
+        "variant_id": 4815000000044208,
+        "variant_name": "Bags-small",
+        "item_master_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "documents": [
+            "string"
+        ],
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "is_combo_product": false,
+        "stock_on_hand": 50,
+        "created_time": "2013-01-24",
+        "last_modified_time": "2013-01-24",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+Retrieve an item variant
+ AI Tools 
+
+Fetches the details of an existing item variant.
+OAuth Scope : ZohoInventory.items.READ
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the item variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+pricebook_id
+string
+Price book ID used to compute the price book rate.
+contact_id
+string
+Contact ID used for tax or price computation.
+location_id
+string
+Location ID for stock and pricing context.
+branch_id
+string
+Branch ID for stock and pricing context.
+date
+string
+Transaction date in yyyy-mm-dd format used for price and tax computation.
+include
+string
+Additional response content. Allowed value: html.
+
+Request Example
+
+cURL
+curl --request GET \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "item_variant": {
+        "variant_id": 4815000000044208,
+        "variant_name": "Bags-small",
+        "item_master_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "documents": [
+            "string"
+        ],
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "is_combo_product": false,
+        "stock_on_hand": 50,
+        "created_time": "2013-01-24",
+        "last_modified_time": "2013-01-24",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+Delete an item variant
+ AI Tools 
+
+Deletes an existing item variant.
+OAuth Scope : ZohoInventory.items.DELETE
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the item variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request DELETE \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been deleted."
+}
+Bulk mark item variants as active
+ AI Tools 
+
+Changes the status of multiple item variants to active.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+variant_ids
+string
+(Required)
+Comma-separated list of variant IDs.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/active?organization_id=10234695&variant_ids=4815000000044208%2C4815000000044274' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Active."
+}
+Bulk mark item variants as inactive
+ AI Tools 
+
+Changes the status of multiple item variants to inactive.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+variant_ids
+string
+(Required)
+Comma-separated list of variant IDs.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/inactive?organization_id=10234695&variant_ids=4815000000044208%2C4815000000044274' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Inactive."
+}
+Mark an item variant as active
+ AI Tools 
+
+Changes the status of an item variant to active.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the item variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/4815000000044208/active?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Active."
+}
+Mark an item variant as inactive
+ AI Tools 
+
+Changes the status of an item variant to inactive.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the item variant.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/4815000000044208/inactive?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The item has been marked as Inactive."
+}
+Move an item variant
+ AI Tools 
+
+Moves an item variant to another item. The request body follows the item variant create or update structure and must include the target grouping fields.
+OAuth Scope : ZohoInventory.items.UPDATE
+
+Path Parameters
+variant_id
+string
+(Required)
+Unique identifier of the item variant to move.
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+
+Request Example
+
+cURL
+curl --request PUT \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/move/4815000000044208?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f' \
+  --header 'content-type: application/json' \
+  --data '{"field1":"value1","field2":"value2"}'
+
+Body Parameters
+
+{
+    "variant_id": 4815000000044208,
+    "variant_name": "Bags-small",
+    "rate": 6,
+    "group_id": 4815000000044220,
+    "item_master_id": 4815000000044220,
+    "unit": "qty",
+    "unit_id": "4815000000044300",
+    "item_type": "inventory",
+    "product_type": "goods",
+    "can_be_sold": true,
+    "can_be_purchased": true,
+    "track_inventory": true,
+    "is_taxable": true,
+    "tax_id": 4815000000044043,
+    "description": "description",
+    "purchase_description": "Purchase description",
+    "purchase_rate": 6,
+    "purchase_account_id": 4815000000035003,
+    "inventory_account_id": 4815000000035001,
+    "reorder_level": 5,
+    "sku": "SK123",
+    "upc": 111111111111,
+    "ean": 111111111112,
+    "isbn": 111111111113,
+    "part_number": 111111111114,
+    "attribute_option_name1": "Small",
+    "vendor_id": 4815000000044080,
+    "brand": "Brand",
+    "manufacturer": "Bagstore",
+    "hsn_or_sac": 85423100,
+    "locations": [
+        {
+            "location_id": "460000000038080",
+            "initial_stock": 50,
+            "initial_stock_rate": 500
+        }
+    ],
+    "custom_fields": [
+        {
+            "customfield_id": "string",
+            "label": "string",
+            "value": "Normal"
+        }
+    ]
+}
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "success",
+    "item_variant": {
+        "variant_id": 4815000000044208,
+        "variant_name": "Bags-small",
+        "item_master_id": 4815000000044220,
+        "item_master_name": "Bags",
+        "group_id": 4815000000044220,
+        "group_name": "Bags",
+        "unit": "qty",
+        "unit_id": "4815000000044300",
+        "item_type": "inventory",
+        "product_type": "goods",
+        "can_be_sold": true,
+        "can_be_purchased": true,
+        "track_inventory": true,
+        "is_taxable": true,
+        "tax_id": 4815000000044043,
+        "documents": [
+            "string"
+        ],
+        "description": "description",
+        "tax_name": "Sales",
+        "tax_percentage": 12,
+        "tax_type": "Service Tax",
+        "purchase_account_id": 4815000000035003,
+        "purchase_account_name": "Cost of Goods Sold",
+        "account_name": "Sales",
+        "inventory_account_id": 4815000000035001,
+        "attribute_id1": 4815000000044112,
+        "attribute_name1": "Small",
+        "status": "active",
+        "source": "string",
+        "rate": 6,
+        "pricebook_rate": 6,
+        "purchase_rate": 6,
+        "reorder_level": 5,
+        "vendor_id": 4815000000044080,
+        "vendor_name": "Molly",
+        "locations": [
+            {
+                "location_id": "460000000038080",
+                "location_name": "",
+                "status": "active",
+                "is_primary": false,
+                "location_stock_on_hand": "",
+                "location_available_stock": "",
+                "location_actual_available_stock": ""
+            }
+        ],
+        "sku": "SK123",
+        "upc": 111111111111,
+        "ean": 111111111112,
+        "isbn": 111111111113,
+        "part_number": 111111111114,
+        "attribute_option_id1": 4815000000044214,
+        "attribute_option_name1": "Small",
+        "image_id": 2077500000000002000,
+        "image_name": "bag_s.jpg",
+        "purchase_description": "Purchase description",
+        "image_type": "jpg",
+        "item_tax_preferences": [
+            {
+                "tax_id": 4815000000044043,
+                "tax_specification": "intra"
+            }
+        ],
+        "hsn_or_sac": 85423100,
+        "sat_item_key_code": "string",
+        "unitkey_code": "string",
+        "brand": "Brand",
+        "manufacturer": "Bagstore",
+        "is_combo_product": false,
+        "stock_on_hand": 50,
+        "created_time": "2013-01-24",
+        "last_modified_time": "2013-01-24",
+        "custom_fields": [
+            {
+                "customfield_id": "string",
+                "label": "string",
+                "value": "Normal"
+            }
+        ]
+    }
+}
+Mark item variants as single items
+ AI Tools 
+
+Marks the specified item variants as single items.
+OAuth Scope : ZohoInventory.items.CREATE
+
+Query Parameters
+organization_id
+string
+(Required)
+ID of the organization
+variant_ids
+string
+Comma-separated list of variant IDs to ungroup.
+composite_item_ids
+string
+Comma-separated list of composite item IDs to ungroup.
+
+Request Example
+
+cURL
+curl --request POST \
+  --url 'https://www.zohoapis.com/inventory/v1/itemvariants/ungroup?organization_id=10234695' \
+  --header 'Authorization: Zoho-oauthtoken 1000.41d9xxxxxxxxxxxxxxxxxxxxxxxxc2d1.8fccxxxxxxxxxxxxxxxxxxxxxxxx125f'
+
+Response Example
+
+200 - OK
+{
+    "code": 0,
+    "message": "The selected variants have been ungrouped."
+}
