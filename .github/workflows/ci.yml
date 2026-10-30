@@ -32,7 +32,14 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      # Chromium for the price watch scraper tests (tests/test_price_watch_scraper.py, test_price_watch_loop.py). Without it those tests skip.
+      - run: python -m playwright install --with-deps chromium
       - run: python -m pytest tests -q
+      # The same tests again, named, with PRICE_WATCH_REQUIRE_BROWSER set so a missing Chromium FAILS here instead of skipping, and the skip reasons printed.
+      - name: Price watch (scraper, matching, report, queue, sync against fake vendors)
+        env:
+          PRICE_WATCH_REQUIRE_BROWSER: "1"
+        run: python -m pytest tests/test_price_watch_scraper.py tests/test_price_watch_matching.py tests/test_price_watch_report.py tests/test_price_watch_adapters.py tests/test_price_watch_db.py tests/test_price_watch_sync_db.py tests/test_price_watch_loop.py -q -rs
       # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
       - name: Backup and restore proof against the service container
         run: |

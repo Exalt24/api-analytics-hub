@@ -1,0 +1,6 @@
+Whole suite after the price watch module was added, 2026-10-30 (desktop PC, Windows 11, Python 3.13, compose Postgres pgvector/pgvector:0.8.7-pg17 on 5433, Chromium from Playwright 1.61.0).
+Command: .venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider
+Before the module: 4849 passed, 3 skipped, 5 xfailed (same command, same machine, same day).
+The 156 new tests are tests/test_price_watch_*.py (scraper 30, matching 22, report 21, adapters 27, database 25, sync 27, loop 4).
+
+5005 passed, 3 skipped, 5 xfailed in 269.75s (0:04:29)

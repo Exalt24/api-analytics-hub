@@ -1,0 +1,34 @@
+Mutation control for the price watch module, 2026-10-30.
+Command: python tests/mutation_check.py --only pw_match,pw_ship,pw_report,pw_props,pw_sync,pw_adapters,m011
+Run in a scratch COPY of the repository (the harness edits source in place), with the repo venv's interpreter, against the compose Postgres on 5433.
+Each line is one guard: the source was weakened, the scoped test files ran, and the suite had to go red.
+
+baseline: green
+[ok]   a low confidence title match is made automatically: suite went red as it should
+[ok]   a tie between two catalogue rows is broken by picking one: suite went red as it should
+[ok]   a different size is no longer held back: suite went red as it should
+[ok]   two different valid GTINs no longer rule a candidate out: suite went red as it should
+[ok]   an estimated shipping figure is passed off as the competitor's own: suite went red as it should
+[ok]   the report prints an estimate without the ESTIMATED label: suite went red as it should
+[ok]   the proposed price can go below the floor: suite went red as it should
+[ok]   a competitor in another currency is compared as if it were ours: suite went red as it should
+[ok]   an out of stock competitor still drives a price cut: suite went red as it should
+[ok]   yesterday's scan is compared as today's: suite went red as it should
+[ok]   a spreadsheet formula in a cell is left live: suite went red as it should
+[ok]   any state change is allowed (a second approval goes through): suite went red as it should
+[ok]   a state change can be made with no actor: suite went red as it should
+[ok]   an unapproved proposal can be synced: suite went red as it should
+[ok]   an applied proposal is sent again on a retry: suite went red as it should
+[ok]   a retry sends to the shop that already accepted: suite went red as it should
+[ok]   a price that moved since the proposal is overwritten: suite went red as it should
+[ok]   a 4xx other than 408 and 429 is retried or treated as success: suite went red as it should
+[ok]   a 429 is not retried: suite went red as it should
+[ok]   tenant isolation: a tenant can read another tenant's proposals: suite went red as it should
+[ok]   tenant isolation: a tenant can read another tenant's catalogue: suite went red as it should
+[ok]   row level security is not forced on the price proposals: suite went red as it should
+[ok]   the audit trail can be edited by the request role: suite went red as it should
+[ok]   the database no longer enforces the floor: suite went red as it should
+[ok]   a proposal can be applied while a shop still owes: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS

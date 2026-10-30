@@ -74,6 +74,13 @@ TARGETS = {
     "m007": ROOT / "migrations" / "007_meta_metrics.sql",
     "m008": ROOT / "migrations" / "008_search_metrics.sql",
     "m009": ROOT / "migrations" / "009_report_runs.sql",
+    "pw_match": ROOT / "app" / "price_watch" / "matching.py",
+    "pw_ship": ROOT / "app" / "price_watch" / "shipping.py",
+    "pw_report": ROOT / "app" / "price_watch" / "report.py",
+    "pw_props": ROOT / "app" / "price_watch" / "proposals.py",
+    "pw_sync": ROOT / "app" / "price_watch" / "sync.py",
+    "pw_adapters": ROOT / "app" / "price_watch" / "adapters.py",
+    "m011": ROOT / "migrations" / "011_price_watch.sql",
 }
 
 MUTATIONS = [
@@ -1701,6 +1708,181 @@ MUTATIONS = [
         "grant select, insert on report_run to app_request;",
         "a run is claimed and then finished, which is an update",
     ),
+    (
+        'pw_match',
+        'a low confidence title match is made automatically',
+        '    if best >= AUTO_THRESHOLD:',
+        '    if best >= REVIEW_THRESHOLD:',
+        'a match that is not certain must go to the review list, never be made by the matcher',
+    ),
+    (
+        'pw_match',
+        'a tie between two catalogue rows is broken by picking one',
+        '    if len(scored) > 1 and scored[1][1] >= REVIEW_THRESHOLD and best - scored[1][1] <= TIE_MARGIN:',
+        '    if False:',
+        'two equally good candidates are a question for a person',
+    ),
+    (
+        'pw_match',
+        'a different size is no longer held back',
+        '        score = min(score, SIZE_CONFLICT_CAP)',
+        '        pass',
+        'same brand and name with another size is another product',
+    ),
+    (
+        'pw_match',
+        'two different valid GTINs no longer rule a candidate out',
+        '        if their_gtin and our_gtin and our_gtin != their_gtin:',
+        '        if False:',
+        'different GTINs are different products whatever the titles say',
+    ),
+    (
+        'pw_ship',
+        "an estimated shipping figure is passed off as the competitor's own",
+        '    return ShippingCost(ESTIMATED, fits[0].cost_minor,',
+        '    return ShippingCost(STATED, fits[0].cost_minor,',
+        'an estimate must carry the ESTIMATED source so the report can label it',
+    ),
+    (
+        'pw_report',
+        'the report prints an estimate without the ESTIMATED label',
+        '    return "%s ESTIMATED" % amount if line.shipping_source == ESTIMATED else "%s (stated)" % amount',
+        '    return "%s (stated)" % amount',
+        "a reader must never mistake our estimate for the competitor's figure",
+    ),
+    (
+        'pw_report',
+        'the proposed price can go below the floor',
+        '        proposed = max(target, p.floor_minor)',
+        '        proposed = target',
+        "a proposal never goes below the product's floor",
+    ),
+    (
+        'pw_report',
+        'a competitor in another currency is compared as if it were ours',
+        '        if o.currency != p.currency:',
+        '        if False:',
+        'there is no exchange rate, so a different currency is excluded',
+    ),
+    (
+        'pw_report',
+        'an out of stock competitor still drives a price cut',
+        '        if o.availability == "out_of_stock":',
+        '        if False:',
+        'a price nobody can buy is not a reason to cut ours',
+    ),
+    (
+        'pw_report',
+        "yesterday's scan is compared as today's",
+        '        if o.observed_on != day:',
+        '        if False:',
+        'only a scan from the report day counts',
+    ),
+    (
+        'pw_report',
+        'a spreadsheet formula in a cell is left live',
+        '    return "\'" + value if value[:1] in ("=", "+", "-", "@") else value',
+        '    return value',
+        'a cell that starts with = runs as a formula in a spreadsheet',
+    ),
+    (
+        'pw_props',
+        'any state change is allowed (a second approval goes through)',
+        '    if to_state not in TRANSITIONS[current]:',
+        '    if False:',
+        'a double approval and a move out of a final state must be refused',
+    ),
+    (
+        'pw_props',
+        'a state change can be made with no actor',
+        '    if not actor or not actor.strip():',
+        '    if False:',
+        'every state change is attributed to someone',
+    ),
+    (
+        'pw_sync',
+        'an unapproved proposal can be synced',
+        '        if state not in ("approved", "failed"):',
+        '        if False:',
+        'only an approved proposal can be sent to a shop',
+    ),
+    (
+        'pw_sync',
+        'an applied proposal is sent again on a retry',
+        '        if state == "applied":',
+        '        if False:',
+        'a retry of an applied proposal must send nothing',
+    ),
+    (
+        'pw_sync',
+        'a retry sends to the shop that already accepted',
+        '        todo = [n for n in SIDES if sides[n] in ("pending", "failed")]',
+        '        todo = list(SIDES)',
+        'after a partial failure only the failed shop is tried again',
+    ),
+    (
+        'pw_sync',
+        'a price that moved since the proposal is overwritten',
+        '        if row["catalogue_price"] != row["current_price_minor"]:',
+        '        if False:',
+        'a proposal made from an old price is not sent blindly',
+    ),
+    (
+        'pw_adapters',
+        'a 4xx other than 408 and 429 is retried or treated as success',
+        '    if 400 <= code < 500:',
+        '    if False:',
+        "a vendor's refusal is recorded with its message, not retried",
+    ),
+    (
+        'pw_adapters',
+        'a 429 is not retried',
+        '    if code in (408, 429) or code >= 500:',
+        '    if code >= 500:',
+        'a rate limit is waited out, not reported as a rejection',
+    ),
+    (
+        'm011',
+        "tenant isolation: a tenant can read another tenant's proposals",
+        "create policy price_change_proposal_by_tenant on price_change_proposal\n    using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)",
+        'create policy price_change_proposal_by_tenant on price_change_proposal\n    using (true)',
+        "tenant A must not see tenant B's proposals",
+    ),
+    (
+        'm011',
+        "tenant isolation: a tenant can read another tenant's catalogue",
+        "create policy catalogue_product_by_tenant on catalogue_product\n    using (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)",
+        'create policy catalogue_product_by_tenant on catalogue_product\n    using (true)',
+        "tenant A must not see tenant B's prices and floors",
+    ),
+    (
+        'm011',
+        'row level security is not forced on the price proposals',
+        'alter table price_change_proposal         force row level security;',
+        'select 1;',
+        "the table's owner must be filtered like everyone else",
+    ),
+    (
+        'm011',
+        'the audit trail can be edited by the request role',
+        'grant select, insert on price_change_audit to app_request;',
+        'grant select, insert, update, delete on price_change_audit to app_request;',
+        'the audit trail is append only',
+    ),
+    (
+        'm011',
+        'the database no longer enforces the floor',
+        '    constraint proposal_respects_the_floor check (proposed_price_minor >= floor_minor),',
+        '    constraint proposal_respects_the_floor check (true),',
+        'a proposal below the floor is refused by the database too',
+    ),
+    (
+        'm011',
+        'a proposal can be applied while a shop still owes',
+        "        state <> 'applied' or (shopify_status in ('applied', 'skipped') and zoho_status in ('applied', 'skipped')))",
+        '        true)',
+        'applied means every shop accepted the price',
+    ),
 ]
 
 
@@ -1730,6 +1912,13 @@ SCOPED_SUITE.update({key: "tests/test_ga4_sync_db.py tests/test_report_service_d
 SCOPED_SUITE["m007"] = "tests/test_meta_sync_db.py"
 SCOPED_SUITE["m008"] = "tests/test_gsc_sync_db.py"
 SCOPED_SUITE["m009"] = "tests/test_report_api_db.py"
+#: Price watch: each guard runs the files that can see it (the database ones need Postgres; the loop one also needs Chromium and skips without it).
+SCOPED_SUITE["pw_match"] = "tests/test_price_watch_matching.py tests/test_price_watch_db.py tests/test_price_watch_loop.py"
+SCOPED_SUITE.update({key: "tests/test_price_watch_report.py tests/test_price_watch_db.py" for key in ("pw_ship", "pw_report")})
+SCOPED_SUITE["pw_props"] = "tests/test_price_watch_db.py tests/test_price_watch_sync_db.py"
+SCOPED_SUITE["pw_sync"] = "tests/test_price_watch_sync_db.py tests/test_price_watch_loop.py"
+SCOPED_SUITE["pw_adapters"] = "tests/test_price_watch_adapters.py tests/test_price_watch_sync_db.py"
+SCOPED_SUITE["m011"] = "tests/test_price_watch_db.py tests/test_price_watch_sync_db.py"
 
 
 def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):
