@@ -25,6 +25,12 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Stripe's own mock server, for the tests that run the official stripe SDK against it (tests/test_billing_stripe_sdk.py, test_billing_stripe_sdk_db.py).
+      # It checks each request against Stripe's OpenAPI spec and keeps no state; it is not Stripe.
+      stripe-mock:
+        image: stripe/stripe-mock:v0.206.0
+        ports:
+          - 12111:12111
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
@@ -32,6 +38,10 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      # A service container has no health check here (the image holds only the server), so wait until it answers before any test collects.
+      - name: Wait for stripe-mock
+        run: |
+          curl --silent --output /dev/null --fail --retry 15 --retry-connrefused --retry-delay 1 -H "Authorization: Bearer sk_test_123" http://127.0.0.1:12111/v1/payment_intents/pi_1
       # Chromium for the price watch scraper tests (tests/test_price_watch_scraper.py, test_price_watch_loop.py). Without it those tests skip.
       - run: python -m playwright install --with-deps chromium
       - run: python -m pytest tests -q
@@ -42,10 +52,12 @@ jobs:
         run: python -m pytest tests/test_price_watch_scraper.py tests/test_price_watch_matching.py tests/test_price_watch_report.py tests/test_price_watch_adapters.py tests/test_price_watch_db.py tests/test_price_watch_sync_db.py tests/test_price_watch_loop.py -q -rs
       # The billing module (signature, proration, provider client, ledger, wallet, payments, webhook receiver, reports, the seeded simulation and the command line), named so a skipped
       # database suite shows in the log. BILLING_REQUIRE_DB makes an unreachable Postgres FAIL here instead of skipping, and -rs prints any skip reason.
-      - name: Billing (ledger, wallet, payments, webhooks, reports against the service container)
+      # STRIPE_MOCK_REQUIRE makes a stripe-mock that did not start FAIL the collection of the SDK suites instead of skipping their stripe-mock tests.
+      - name: Billing (ledger, wallet, payments, webhooks, reports against the service containers, the stripe SDK against stripe-mock)
         env:
           BILLING_REQUIRE_DB: "1"
-        run: python -m pytest tests/test_billing_signature.py tests/test_billing_proration.py tests/test_billing_provider.py tests/test_billing_ledger_db.py tests/test_billing_payments_db.py tests/test_billing_webhooks_db.py tests/test_billing_reports_db.py tests/test_billing_simulation.py tests/test_billing_demo_cli.py -q -rs
+          STRIPE_MOCK_REQUIRE: "1"
+        run: python -m pytest tests/test_billing_signature.py tests/test_billing_proration.py tests/test_billing_provider.py tests/test_billing_stripe_sdk.py tests/test_billing_ledger_db.py tests/test_billing_payments_db.py tests/test_billing_webhooks_db.py tests/test_billing_stripe_sdk_db.py tests/test_billing_reports_db.py tests/test_billing_simulation.py tests/test_billing_demo_cli.py -q -rs
       # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
       - name: Backup and restore proof against the service container
         run: |

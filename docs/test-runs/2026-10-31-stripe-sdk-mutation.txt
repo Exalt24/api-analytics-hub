@@ -1,0 +1,19 @@
+python tests/mutation_check.py --only bill_sdk,bill_hooks_sdk,bill_pay_sdk
+
+2026-10-31, in a copy of the repository (the harness edits source in place), against the compose Postgres and a stripe/stripe-mock:v0.206.0 container, with BILLING_REQUIRE_DB=1 and STRIPE_MOCK_REQUIRE=1. 11 guards, each scoped to tests/test_billing_stripe_sdk.py and tests/test_billing_stripe_sdk_db.py as in SCOPED_SUITE. The seven older guards that touch the webhook receiver and the signature (--only bill_hooks,bill_sig) were rerun in the same copy and also went red.
+
+baseline: green
+[ok]   billing, stripe sdk: the webhook signature is not checked: suite went red as it should
+[ok]   billing, stripe sdk: a stale webhook is accepted: suite went red as it should
+[ok]   billing, stripe sdk: a tolerance of zero is accepted: suite went red as it should
+[ok]   billing, stripe sdk: a non-ascii signature header is let through to the SDK: suite went red as it should
+[ok]   billing, stripe sdk: a top-up is created without our idempotency key: suite went red as it should
+[ok]   billing, stripe sdk: a refund is created without our idempotency key: suite went red as it should
+[ok]   billing, stripe sdk: a card decline is not recognised: suite went red as it should
+[ok]   billing, stripe sdk: an unknown outcome is not looked up by its metadata: suite went red as it should
+[ok]   billing, stripe sdk path: the receiver does not call the verifier: suite went red as it should
+[ok]   billing, stripe sdk path: a repeated event id is applied again: suite went red as it should
+[ok]   billing, stripe sdk path: an event for another amount than we asked is credited: suite went red as it should
+
+all sources restored, suite green again
+mutation control: PASS

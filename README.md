@@ -18,13 +18,13 @@ Multi-tenant analytics hub: external APIs are synced, normalised, stored in Post
 
 ## Demo
 
-The recording above shows the whole stack running, and it starts locally with the commands below. The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app).
+The recording above is the whole stack, started with the commands below. The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app).
 
 ---
 
 ## Run it
 
-Requirements: Docker (010 needs pgvector), Python 3.13, Node 20+, and `psql` (or the container's own, second form below). Run on Windows 11 with Git Bash.
+Requirements: Docker (010 needs pgvector), Python 3.13, Node 20+, and `psql` (or the container's own, second form below).
 
 ```bash
 # 1. Postgres
@@ -50,13 +50,9 @@ cd web && npm install && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run buil
 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store (a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema; `seed_demo.py` applies every migration, `seed_local.py` only 001 to 003 (run 004 to 012 after) and loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key, the fastest way to see the role split. The dashboard is built and started, not run with `npm run dev`, which did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` needs the owner's Shopify development store (a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema; `seed_demo.py` applies every migration, `seed_local.py` only 001 to 003 (run 004 to 012 after) and loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key to see the role split. The dashboard is built and started, not run with `npm run dev`, which did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
 
 Paste a key into the box: the viewer key can read, and Sync now comes back 403 with the reason.
-
-### Ports
-
-Postgres is on **5433** and the dashboard on **3100**, because a clash on 5432 or 3000 looks like an authentication error against the wrong database.
 
 ---
 
@@ -119,7 +115,9 @@ reaper turns a silently dead worker into a visible failure.
 
 ## Prepaid wallet and billing ledger
 
-`app/billing/` is a prepaid wallet for a multi-tenant SaaS: a double-entry ledger in integer minor units (an unbalanced transaction cannot commit, entries are append only, a wallet cannot go below zero, all enforced by the database under forced row level security), top-ups and refunds through a Stripe-style provider, per-tenant usage prices, subscriptions with proration, and a signed webhook receiver that applies each event once. Every money command takes an idempotency key and a lost response is settled with the same key, so a retry cannot charge twice. Tested against a stand-in provider written from Stripe's [saved pages](docs/vendor-contract/README.md). [docs/billing.md](docs/billing.md).
+`app/billing/` is a prepaid wallet for a multi-tenant SaaS: a double-entry ledger in integer minor units (an unbalanced transaction cannot commit, entries are append only, a wallet cannot go below zero, all enforced by the database under forced row level security), top-ups and refunds through a provider interface (the official Stripe SDK, or a hand written client), per-tenant usage prices, subscriptions with proration, and a signed webhook receiver that applies each event once. Every money command takes an idempotency key and a lost response is settled with the same key, so a retry cannot charge twice. The hand written client was tested against a stand-in written from Stripe's [saved pages](docs/vendor-contract/README.md). [docs/billing.md](docs/billing.md).
+
+**The official Stripe SDK.** `app/billing/stripe_sdk.py` runs payments and refunds through the `stripe` SDK and checks webhooks with its own `stripe.Webhook.construct_event`. It ran against stripe-mock, Stripe's own mock server, and a stand-in that scripts declines, 5xx errors and lost responses. It has not been run against Stripe itself, because no Stripe account was used. A good signature credits once; a bad or stale one, a replayed event id, another amount and an unknown event type credit nothing more, and eleven mutation guards on these tests went red ([output](docs/test-runs/2026-10-31-stripe-sdk-mutation.txt)).
 
 ---
 
@@ -129,7 +127,7 @@ reaper turns a silently dead worker into a visible failure.
 
 **The monthly run.** `POST /api/reports/monthly` builds the same deck, byte for byte, for the same month and says whether it was delivered, so a rerun builds and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month, and a failing tenant does not stop the others. A real n8n container found two faults a file check could not, both fixed and pinned ([output](docs/test-runs/2026-10-26-n8n.txt)); the schedule, the error branch and the rest are in [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md#the-monthly-run).
 
-**What it was tested against.** Meta and Search Console ran against stand-in servers on 127.0.0.1 written from the vendors' documentation. The sample deck's figures are sample data, and the model path is tested through a mocked transport. Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+**What it was tested against.** Meta and Search Console ran against stand-in servers on 127.0.0.1. The sample deck's figures are sample data, and the model path is tested through a mocked transport. Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
@@ -142,14 +140,14 @@ reaper turns a silently dead worker into a visible failure.
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 5,232 tests: 5,224 passed, 3 skipped, 5 known limits
-python tests/mutation_check.py            # all 289 hand matched guards; edits source in place (a killed run can leave a weakened line), so use a copy (--help)
+python -m pytest tests/ -q                # 5,278 tests: 5,270 passed, 3 skipped, 5 known limits
+python tests/mutation_check.py            # all 300 hand matched guards; edits source in place, so use a copy (--help)
 python live_check.py                      # against the real store
 ```
 
-Counts are from the run of 2026-10-30 ([output](docs/test-runs/2026-10-30-billing-pytest.txt)). The database tests (the compose Postgres, or `ANALYTICS_TEST_DSN`) skip without one (CI starts one) and drop and recreate the `public` schema of whatever database they point at, so aim them at a scratch one.
+Counts are from the run of 2026-10-31 ([output](docs/test-runs/2026-10-31-stripe-sdk-pytest.txt)). The database tests (the compose Postgres, or `ANALYTICS_TEST_DSN`) skip without one (CI starts one), and drop and recreate the `public` schema of whatever database they point at, so aim them at a scratch one.
 
-Of the 289 hand matched guards, 80 are new; the 97 aimed at the report, the services and the migrations went red on 2026-10-26, the 25 for price watch ([output](docs/test-runs/2026-10-30-price-watch-mutation.txt)) and the 35 for billing ([output](docs/test-runs/2026-10-30-billing-mutation.txt)) on 2026-10-30, and the other 132 were not rerun. The 2026-10-26 code was also mutated from its syntax tree (`tests/derived_guards.py`, driven by the author's `mutate_ast.py`, not in this repository): 2,779 mutants in 14 files, 2,662 killed, 117 survived, 90 of them a `|` in a type annotation and 27 read and equivalent ([table](docs/test-runs/2026-10-26-derived-guards.txt)). Blind review of the ads, search and monthly run code ran 159 cases in four passes: seven findings were fixed by class, six left as known limits pinned by tests, and the fixes were mutated, 191 of 201 killed and the rest read ([cases](tests/corpus), [round 2](docs/test-runs/2026-10-26-output-round-2-mutation.txt), [limits](docs/MONTHLY_REPORT.md#limits)). No pass after the second round was run.
+Of the 300 hand matched guards, 91 are new; the 97 aimed at the report, the services and the migrations went red on 2026-10-26, the 25 for price watch ([output](docs/test-runs/2026-10-30-price-watch-mutation.txt)) and the 35 for billing ([output](docs/test-runs/2026-10-30-billing-mutation.txt)) on 2026-10-30, the 11 for the Stripe SDK on 2026-10-31, and the other 132 were not rerun. The 2026-10-26 code was also mutated from its syntax tree (`tests/derived_guards.py`, driven by the author's `mutate_ast.py`, not in this repository): 2,779 mutants in 14 files, 2,662 killed, 117 survived, 90 of them a `|` in a type annotation and 27 read and equivalent ([table](docs/test-runs/2026-10-26-derived-guards.txt)). Blind review of the ads, search and monthly run code ran 159 cases in four passes: seven findings were fixed by class, six are known limits pinned by tests, and 191 of 201 mutants of the fixes were killed, the rest read ([cases](tests/corpus), [round 2](docs/test-runs/2026-10-26-output-round-2-mutation.txt), [limits](docs/MONTHLY_REPORT.md#limits)). No pass after the second round was run.
 
 ---
 

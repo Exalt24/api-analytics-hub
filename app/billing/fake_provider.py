@@ -98,7 +98,11 @@ class FakeStripe:
         auth = request.headers.get("Authorization", "")
         import base64
         try:
-            user = base64.b64decode(auth.split(" ", 1)[1]).decode().split(":", 1)[0] if auth.startswith("Basic ") else ""
+            # provider.py sends the key as the user of HTTP Basic auth; the official SDK sends it as a Bearer token
+            if auth.startswith("Basic "):
+                user = base64.b64decode(auth.split(" ", 1)[1]).decode().split(":", 1)[0]
+            else:
+                user = auth.split(" ", 1)[1] if auth.startswith("Bearer ") else ""
         except Exception:
             user = ""
         if user != self.api_key:

@@ -2,7 +2,7 @@
 
 THE ORDER OF THE STEPS, and why each is where it is:
 
-  1. VERIFY FIRST (signature.verify). Nothing is read from the body, looked up or written until the Stripe-Signature header checks out over the raw bytes
+  1. VERIFY FIRST (`verify`: signature.verify by default, or stripe_sdk.verify_webhook, which is the SDK's own construct_event). Nothing is read from the body, looked up or written until the Stripe-Signature header checks out over the raw bytes
      and the timestamp is recent. Recording an event id before this would let a forged event poison the dedupe table.
   2. ROUTE. The event arrives before anyone knows whose it is. `find_tenant` asks the narrow `billing_router` role, which can read the payments and the
      subscriptions for their provider ids and nothing else. It routes by OUR rows (the payment's provider id or our payment id, the subscription's provider
@@ -37,7 +37,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 import asyncpg
 
@@ -191,10 +191,14 @@ async def reprocess_held(db: Database, tenant_id: str) -> list[Received]:
         return await _reprocess_held(conn, tenant_id)
 
 
+#: A verifier takes (payload, header, secrets, now=, tolerance=) and raises WebhookRejected for an event that is not authentic or not recent.
+Verifier = Callable[..., Any]
+
+
 async def receive(db: Database, router: Database, payload: bytes, header: str | None, secrets: Sequence[str], *, now: float | None = None,
-                  tolerance: int = signature.DEFAULT_TOLERANCE_SECONDS) -> Received:
+                  tolerance: int = signature.DEFAULT_TOLERANCE_SECONDS, verify: Verifier = signature.verify) -> Received:
     """The whole receiver. Raises WebhookRejected (not authentic, stale or malformed) or WebhookUnroutable (nobody's event yet)."""
-    signature.verify(payload, header, secrets, now=time.time() if now is None else now, tolerance=tolerance)
+    verify(payload, header, secrets, now=time.time() if now is None else now, tolerance=tolerance)
     try:
         event = _shape(json.loads(payload))
     except ValueError as exc:       # not JSON; WebhookRejected is not a ValueError, so it passes through untouched
@@ -206,10 +210,10 @@ async def receive(db: Database, router: Database, payload: bytes, header: str | 
 
 
 async def handle_http(db: Database, router: Database, payload: bytes, header: str | None, secrets: Sequence[str], *, now: float | None = None,
-                      tolerance: int = signature.DEFAULT_TOLERANCE_SECONDS) -> tuple[int, dict[str, Any]]:
+                      tolerance: int = signature.DEFAULT_TOLERANCE_SECONDS, verify: Verifier = signature.verify) -> tuple[int, dict[str, Any]]:
     """`receive` as an HTTP answer (status, JSON body). The reason for a rejection goes to our log and never into the body."""
     try:
-        got = await receive(db, router, payload, header, secrets, now=now, tolerance=tolerance)
+        got = await receive(db, router, payload, header, secrets, now=now, tolerance=tolerance, verify=verify)
     except WebhookRejected as exc:
         log.warning("webhook rejected: %s", exc.reason)
         return 400, {"error": "invalid webhook"}

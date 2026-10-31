@@ -99,7 +99,7 @@ class Sim:
             if r.random() < 0.1 and not everything:
                 await self.tampered(body, header)
             try:
-                await webhooks.receive(self.rig.db, self.rig.router, body, header, SECRETS)
+                await webhooks.receive(self.rig.db, self.rig.router, body, header, SECRETS, verify=self.rig.verify)
             except webhooks.WebhookUnroutable:
                 if not everything:      # a refund that beat the payment row: the provider would send it again, so it goes back in the queue
                     self.pending.append((body, header))
@@ -107,10 +107,10 @@ class Sim:
     async def tampered(self, body, header):
         before = await self.snapshot()
         for bad_body, bad_header in ((body + b" ", header), (body, header.replace("v1=", "v1=0"))):
-            code, _ = await webhooks.handle_http(self.rig.db, self.rig.router, bad_body, bad_header, SECRETS)
+            code, _ = await webhooks.handle_http(self.rig.db, self.rig.router, bad_body, bad_header, SECRETS, verify=self.rig.verify)
             assert code == 400
         stale_body, stale_header = Events(SECRETS).signed(Events(SECRETS).event("payment_intent.succeeded", {"id": "x"}), timestamp=int(time.time()) - 5000)
-        assert (await webhooks.handle_http(self.rig.db, self.rig.router, stale_body, stale_header, SECRETS))[0] == 400
+        assert (await webhooks.handle_http(self.rig.db, self.rig.router, stale_body, stale_header, SECRETS, verify=self.rig.verify))[0] == 400
         assert await self.snapshot() == before
 
     async def snapshot(self):
@@ -266,8 +266,10 @@ class Sim:
                 assert held, "the provider refunded more than we reversed and no event is held to say why"
 
 
-@pytest.mark.parametrize("seed", SEEDS)
-def test_seeded_billing_traffic_keeps_every_invariant_after_every_step(seed):
+# the hand-written client and verifier on every seed, and the official stripe SDK and its construct_event on the first five: the SDK retries inside itself, so a world
+# that ends in an unknown outcome or a lost response is a different world, and rule 4 (one charge for each payment, each credited once) has to hold in it too
+@pytest.mark.parametrize("seed, sdk", [(seed, False) for seed in SEEDS] + [(seed, True) for seed in range(5)])
+def test_seeded_billing_traffic_keeps_every_invariant_after_every_step(seed, sdk):
     reset_billing_schema()
     tenants = new_tenants("sim-a-%d" % seed, "sim-b-%d" % seed)
 
@@ -285,4 +287,4 @@ def test_seeded_billing_traffic_keeps_every_invariant_after_every_step(seed):
         await sim.settle_and_check_end()
         return len(sim.payments)
 
-    assert with_rig(go, size=8) >= 0
+    assert with_rig(go, size=8, sdk=sdk) >= 0

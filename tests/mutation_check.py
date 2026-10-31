@@ -90,6 +90,9 @@ TARGETS = {
     "bill_proration": ROOT / "app" / "billing" / "proration.py",
     "bill_subs": ROOT / "app" / "billing" / "subscriptions.py",
     "bill_reports": ROOT / "app" / "billing" / "reports.py",
+    "bill_sdk": ROOT / "app" / "billing" / "stripe_sdk.py",
+    "bill_hooks_sdk": ROOT / "app" / "billing" / "webhooks.py",     # the same files again, aimed at the stripe SDK tests alone
+    "bill_pay_sdk": ROOT / "app" / "billing" / "payments.py",
     "m012": ROOT / "migrations" / "012_billing.sql",
 }
 
@@ -2078,7 +2081,7 @@ MUTATIONS = [
     (
         'bill_hooks',
         'billing: the signature is not verified before the event is used',
-        '    signature.verify(payload, header, secrets, now=time.time() if now is None else now, tolerance=tolerance)',
+        '    verify(payload, header, secrets, now=time.time() if now is None else now, tolerance=tolerance)',
         '    pass',
         'nothing is read or written for an unverified event',
     ),
@@ -2138,6 +2141,83 @@ MUTATIONS = [
         '        if False:',
         'a reconciliation fails loudly on an imbalance',
     ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: the webhook signature is not checked",
+        '            stripe.Webhook.construct_event(payload, header, secret, tolerance=tolerance)',
+        '            pass',
+        'a forged or tampered event must be rejected on the SDK path',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: a stale webhook is accepted",
+        'construct_event(payload, header, secret, tolerance=tolerance)',
+        'construct_event(payload, header, secret, tolerance=None)',
+        'a replayed old event must be rejected on the SDK path',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: a tolerance of zero is accepted",
+        '    if tolerance <= 0:',
+        '    if False:',
+        'the SDK reads a tolerance of zero as no recency check, so it is refused',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: a non-ascii signature header is let through to the SDK",
+        '    if not header.isascii():',
+        '    if False:',
+        'the SDK raises TypeError on one, which would answer 500 instead of 400',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: a top-up is created without our idempotency key",
+        'create_async(params=params, options={"idempotency_key": idempotency_key})\n        except stripe.StripeError as exc:\n            failure',
+        'create_async(params=params)\n        except stripe.StripeError as exc:\n            failure',
+        'the key stored before the call is the one every retry carries, or a retry charges twice',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: a refund is created without our idempotency key",
+        'refunds.create_async(params=params, options={"idempotency_key": idempotency_key})',
+        'refunds.create_async(params=params)',
+        'asking for the same refund twice must refund once',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: a card decline is not recognised",
+        '    if isinstance(exc, stripe.CardError):',
+        '    if False:',
+        'a declined card is a clear answer with the provider code, never a generic failure',
+    ),
+    (
+        'bill_sdk',
+        "billing, stripe sdk: an unknown outcome is not looked up by its metadata",
+        '            if isinstance(failure, OutcomeUnknown):',
+        '            if False:',
+        'an intent that exists but whose answer was lost is found, not left unknown',
+    ),
+    (
+        'bill_hooks_sdk',
+        "billing, stripe sdk path: the receiver does not call the verifier",
+        '    verify(payload, header, secrets, now=time.time() if now is None else now, tolerance=tolerance)',
+        '    pass',
+        'nothing is applied for an event the SDK did not verify',
+    ),
+    (
+        'bill_hooks_sdk',
+        "billing, stripe sdk path: a repeated event id is applied again",
+        '            if seen["status"] != "held":',
+        '            if False:',
+        'a replayed Stripe event id is applied once',
+    ),
+    (
+        'bill_pay_sdk',
+        "billing, stripe sdk path: an event for another amount than we asked is credited",
+        '    if row["amount_minor"] != amount or row["currency"].strip() != currency:',
+        '    if False:',
+        'a payment of another amount than we asked for is held, never credited',
+    ),
 ]
 
 
@@ -2185,7 +2265,9 @@ SCOPED_SUITE.update({"m012": "tests/test_billing_ledger_db.py tests/test_billing
                      "bill_provider": "tests/test_billing_provider.py tests/test_billing_payments_db.py",
                      "bill_proration": "tests/test_billing_proration.py tests/test_billing_reports_db.py",
                      "bill_subs": "tests/test_billing_webhooks_db.py tests/test_billing_reports_db.py",
-                     "bill_reports": "tests/test_billing_reports_db.py tests/test_billing_ledger_db.py"})
+                     "bill_reports": "tests/test_billing_reports_db.py tests/test_billing_ledger_db.py",
+                     "bill_sdk": "tests/test_billing_stripe_sdk.py tests/test_billing_stripe_sdk_db.py",
+                     "bill_hooks_sdk": "tests/test_billing_stripe_sdk_db.py", "bill_pay_sdk": "tests/test_billing_stripe_sdk_db.py"})
 
 
 def run_suite(timeout: int = MUTANT_TIMEOUT_SECONDS, path: str = "tests/"):

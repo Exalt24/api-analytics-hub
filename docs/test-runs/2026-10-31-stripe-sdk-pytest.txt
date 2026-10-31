@@ -1,0 +1,7 @@
+Whole suite after the stripe SDK provider was added, 2026-10-31 (PC with Windows 11, Python 3.13, stripe 16.1.0, compose Postgres pgvector/pgvector:0.8.7-pg17 on 5433, stripe/stripe-mock:v0.206.0 on 12111; Chromium from Playwright).
+Command: BILLING_REQUIRE_DB=1 STRIPE_MOCK_REQUIRE=1 .venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider
+Before the change: 5224 passed, 3 skipped, 5 xfailed (same command, same machine, same day, run first).
+The 46 new tests: tests/test_billing_stripe_sdk.py 30 (five against stripe-mock, ten on the stand-in under the SDK, fifteen on the webhook check), tests/test_billing_stripe_sdk_db.py 11 (two against stripe-mock), and five seeded simulation worlds that use the SDK as provider and verifier.
+The 141 warnings are the stripe SDK passing a string to httpx's `data=` (httpx's DeprecationWarning, raised inside the SDK).
+
+5270 passed, 3 skipped, 5 xfailed in 375.04s (0:06:15)

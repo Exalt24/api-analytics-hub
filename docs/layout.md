@@ -60,11 +60,12 @@ app/price_watch/     competitor price monitoring (docs/price-watch.md)
 scripts/price_watch.py   scan, report, proposals, listings, approve, reject, confirm-match, sync and demo-server
 seed_price_watch_demo.py invented products and competitor pages for the price watch loop
 docs/price-watch.md  the loop, how to run it, what is not done; docs/vendor-contract/ the Shopify and Zoho pages the adapters are written from
-app/billing/         prepaid wallet and billing ledger against a fake Stripe-style provider (docs/billing.md)
+app/billing/         prepaid wallet and billing ledger; the provider is the official stripe SDK or a hand written client, tested against stripe-mock and a stand-in (docs/billing.md)
   ledger.py          accounts, the balanced transaction, the wallet lock, request hashes
   wallet.py          top-up, usage debit at the tenant's own price, refund, service credit, admin adjustment: idempotent, never below zero
   payments.py        ask the provider for money, record failures, settle, request and reverse refunds
-  provider.py        Stripe-style client over an injected httpx client: the same idempotency key on every retry, card errors not retried
+  provider.py        hand written Stripe-style client over an injected httpx client: the same idempotency key on every retry, card errors not retried
+  stripe_sdk.py      the same provider interface on the official stripe SDK, and the webhook check through stripe.Webhook.construct_event
   fake_provider.py   fake Stripe as an httpx transport written from the saved pages, with scriptable failures, and the signed events it would send
   signature.py       Stripe-Signature verification: t and v1, HMAC SHA256, constant time, rotation, recency window
   webhooks.py        verify, route through a read only role, write each event once in the ledger's transaction, hold what arrives early
