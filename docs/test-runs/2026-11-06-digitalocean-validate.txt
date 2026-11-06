@@ -1,0 +1,28 @@
+# terraform v1.16.6 on 2026-11-06, run in deploy/digitalocean with no account and a fake token
+
+$ terraform fmt -check -diff
+(exit 0)
+
+$ terraform init -backend=false
+Terraform has been successfully initialized!
+
+$ terraform validate
+Success! The configuration is valid.
+
+
+$ DIGITALOCEAN_TOKEN=<fake> terraform plan (dummy ssh key, admin range 203.0.113.7/32, one alert address)
+  # digitalocean_droplet.hub will be created
+      + backups              = true
+      + monitoring           = true
+  # digitalocean_firewall.hub will be created
+  # digitalocean_monitor_alert.cpu will be created
+  # digitalocean_monitor_alert.disk will be created
+  # digitalocean_monitor_alert.memory will be created
+  # digitalocean_volume.backups will be created
+  # digitalocean_volume_attachment.backups will be created
+Plan: 7 to add, 0 to change, 0 to destroy.
+  + backup_volume_name = "hub-backups"
+
+$ the same plan with admin_cidrs=["0.0.0.0/0"] (must be refused)
+Error: Invalid value for variable
+admin_cidrs must name real ranges and must not open SSH to the whole

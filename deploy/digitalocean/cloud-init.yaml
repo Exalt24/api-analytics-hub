@@ -1,0 +1,46 @@
+#cloud-config
+# First-boot setup for the hub droplet. Terraform fills in only the hostname. There is no secret in this file: the
+# application's secrets are put on the server by hand after boot (docs/secrets.md), into /etc/hub/hub.env, which this file
+# creates empty and readable by root alone.
+hostname: ${hostname}
+manage_etc_hosts: true
+ssh_pwauth: false
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - docker.io
+  - docker-compose-v2
+  - fail2ban
+  - gnupg
+  - postgresql-client
+  - unattended-upgrades
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-hub.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin prohibit-password
+      KbdInteractiveAuthentication no
+  - path: /etc/hub/hub.env
+    permissions: "0600"
+    owner: root:root
+    content: |
+      # Filled in by hand after boot, see docs/secrets.md. One KEY=value per line, never committed anywhere.
+
+runcmd:
+  - chmod 0700 /etc/hub
+  - systemctl enable --now docker fail2ban unattended-upgrades
+  - systemctl restart ssh
+  # Caddy from its own official apt repository: the Ubuntu archive does not carry it.
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' -o /etc/apt/sources.list.d/caddy-stable.list
+  - apt-get update
+  - apt-get install -y caddy
+  # The backup volume is attached after the droplet boots, so wait for DigitalOcean to mount it, then point the path the
+  # backup unit writes to at it.
+  - for i in $(seq 1 60); do [ -d ${backup_mount} ] && break; sleep 2; done
+  - if [ -d ${backup_mount} ]; then ln -sfn ${backup_mount} /var/backups/hub; else mkdir -p /var/backups/hub; fi

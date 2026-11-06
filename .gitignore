@@ -14,3 +14,12 @@ web/out/
 .env
 .env.local
 *.token
+
+# Terraform: the state file holds every value it ever read, secrets included, so it and the variable files never get committed.
+# The provider lock file (.terraform.lock.hcl) is committed on purpose: it pins the provider version.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log

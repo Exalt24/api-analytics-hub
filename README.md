@@ -155,17 +155,13 @@ Of the 300 hand matched guards, 91 are new; the 97 aimed at the report, the serv
 
 The list, in the order I would do it.
 
-1. **Hosting.** A managed Postgres with backups and uptime monitoring is the next step for the deployment.
-2. **A clock for the syncs.** The monthly report has one (n8n); next is a cadence for
-   `sync/runner.py`, since the three `scripts/sync_*.py` run one window by hand.
-3. **Key management.** `CREDENTIAL_KEYS` is an environment variable today; a KMS or
-   secrets manager with audited rotation is next, and the versioned envelope makes rotation a config change.
-4. **Auth.** API keys with three roles fit a service integration; users, sessions, SSO and per-key scoping are next for a team.
-5. **Distinct counts.** `customers` and `users` are per-day distinct counts: the
-   dashboard shows buyers per day, and the report averages users over the days that have data.
-6. **Connectors.** GA4, Meta and Search Console are built against stand-ins and take an issued token;
-   their sources files list each assumption and the one real call that would settle it, and token refresh is next.
-7. **Alerting.** A stuck or stale sync posts to a webhook ([docs/observability.md](docs/observability.md)); paging and escalation are next.
-8. **Quarantine.** Rows that will not normalise are captured in a table; a review and replay workflow is next.
+1. **Hosting.** Written, not run: Caddy and systemd ([deploy](docs/deploy.md)), a backup with a proven restore ([backups](docs/backups.md)) and a DigitalOcean Terraform setup checked with dummy values ([digitalocean](docs/digitalocean.md)). Applying it to a real host is next.
+2. **A clock for the syncs.** The monthly report has one (n8n); next is a cadence for `sync/runner.py`.
+3. **Key management.** `CREDENTIAL_KEYS` is an environment variable ([docs/secrets.md](docs/secrets.md)); a KMS with audited rotation and a re-seal command is next.
+4. **Auth.** API keys with three roles fit a service integration; users, sessions and SSO are next for a team.
+5. **Distinct counts.** `customers` and `users` are per-day distinct counts, so the report averages users over the days that have data.
+6. **Connectors.** GA4, Meta and Search Console are built against stand-ins and take an issued token; refresh is next.
+7. **Alerting.** A stuck or stale sync posts to a webhook ([docs/observability.md](docs/observability.md)); paging is next.
+8. **Quarantine.** Rows that will not normalise are captured in a table; review and replay is next.
 9. **Traces.** JSON logs, a request id and per process Prometheus metrics are in; traces are next.
 10. **Backfill.** A real one needs chunking, restart-safe resumption and a rate-limit budget shared with the live syncs.
