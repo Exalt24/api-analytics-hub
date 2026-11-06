@@ -1,0 +1,19 @@
+﻿Google Business Profile connector, run 2026-11-07 (the author's own run).
+
+$ python -m pytest tests/test_gbp_connector.py tests/test_gbp_sync_db.py -q
+........................................................................ [ 58%]
+...................................................                      [100%]
+123 passed in 3.65s
+
+$ python -m pytest tests --co -q   (the whole suite collects)
+
+6798 tests collected in 4.33s
+
+The whole suite ran to exit 0 (no failure) on the same tree; the mutation check ran in a copy of the repository:
+
+baseline: green
+mutants run 27: killed 27, survived 0, killed by the wrong test 0
+mutation control: PASS
+
+$ python tests/mutation_check_gbp.py --check-targets
+all 27 guards find their target

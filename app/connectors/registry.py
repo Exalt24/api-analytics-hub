@@ -200,6 +200,7 @@ def _register_builtin() -> None:
     from .google_ads import GoogleAdsConnector
     from .gsc import GSCConnector
     from .meta import MetaConnector
+    from .gbp import GBPConnector
     from .quickbooks import QuickBooksConnector
     from .shopify import ShopifyConnector
     from .shopmonkey import ShopmonkeyConnector
@@ -346,6 +347,29 @@ def _register_builtin() -> None:
                 "Daily advertiser rows from the synchronous basic report, cut into runs of at most 30 days: spend, impressions, clicks and "
                 "conversions in the advertiser's currency. Rate limit return codes 40016, 40100 and 40133 are retried with a bound. "
                 "Never run against a live advertiser: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="gbp",
+            label="Google Business Profile",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=GBPConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("location_id", "Location id", secret=False, hint="the numeric Business Profile location id, one connection per location"),
+                CredentialField("access_token", "OAuth 2.0 access token",
+                                hint="a token for the https://www.googleapis.com/auth/business.manage scope; it lasts about an hour"),
+            ),
+            factory=GBPConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Daily counts for one local listing from the Performance API: impressions on Search and Maps, calls, website clicks, direction "
+                "requests, messages and bookings. A zero is an absent value on the API, so a missing value is read as zero. Google documents "
+                "300 queries a minute for the Performance API and a quota of 0 until basic API access is granted. Never run against a live "
+                "listing: none is held."
             ),
         )
     )

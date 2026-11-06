@@ -68,8 +68,8 @@ def _reported_month(fired: datetime) -> tuple[int, int]:
     return (fired.year, fired.month - 1) if fired.month > 1 else (fired.year - 1, 12)
 
 
-def test_the_sources_with_a_settled_window_end_are_exactly_the_eight_the_sync_scripts_use():
-    assert SETTLED_SOURCES == ["ga4", "google_ads", "gsc", "meta", "quickbooks", "shopmonkey", "square", "tiktok"]
+def test_the_sources_with_a_settled_window_end_are_exactly_the_nine_the_sync_scripts_use():
+    assert SETTLED_SOURCES == ["ga4", "gbp", "google_ads", "gsc", "meta", "quickbooks", "shopmonkey", "square", "tiktok"]
     for name in SETTLED_SOURCES:
         script = (ROOT / "scripts" / ("sync_%s.py" % name)).read_text(encoding="utf-8")
         assert "settled_window_end(datetime.now(timezone.utc))" in script, name

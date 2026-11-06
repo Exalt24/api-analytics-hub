@@ -6,7 +6,7 @@
 
 *Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard) with `scripts/record_dashboard.cjs`. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are nine connectors: **Shopify Admin GraphQL**, verified against a real development store, and eight (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Square**, **QuickBooks Online**, **Shopmonkey**) built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side; an n8n workflow builds it for each tenant on the first of the month.
+Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are ten connectors: **Shopify Admin GraphQL**, verified against a real development store, and nine (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Google Business Profile**, **Square**, **QuickBooks Online**, **Shopmonkey**) built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side; an n8n workflow builds it for each tenant on the first of the month.
 
 | Source | Built and tested against |
 |---|---|
@@ -14,7 +14,7 @@ Multi-tenant analytics hub: external APIs are synced, normalised, stored in Post
 | Google Analytics 4 | a stand-in server ([sources](docs/GA4_SOURCES.md)) |
 | Meta Ads | a stand-in server ([sources](docs/META_SOURCES.md)) |
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
-| Google Ads, TikTok Ads, Square, QuickBooks Online, Shopmonkey | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
+| Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |
 
 ## Demo
@@ -104,7 +104,7 @@ reaper turns a silently dead worker into a visible failure.
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and run only against stand-in servers: no real account, token or customer record was used. Google Ads also counts Local Services Ads leads. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side (spend, conversions, cost per conversion, by platform and week, with the shop's booked jobs). Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and run only against stand-in servers: no real account, token or customer record was used. Google Ads also counts Local Services Ads leads. Google Business Profile reads a local listing's daily calls, website clicks, direction requests and impressions. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side (spend, conversions, cost per conversion, by platform and week, with the shop's booked jobs). Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 

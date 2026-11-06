@@ -17,6 +17,7 @@ app/
     fake_http.py     the threaded stand-in server base, request log and scripted faults
     google_ads.py    Google Ads googleAds:search (GAQL): daily cost, clicks, conversions, optional Local Services leads
     tiktok.py        TikTok Business API synchronous basic report: daily advertiser figures in 30 day runs
+    gbp.py           Google Business Profile Performance API: daily listing impressions, calls, website clicks, direction requests, messages, bookings
     square.py        Square Payments API: completed payments per location day, refunds, tip included
     quickbooks.py    QuickBooks Online query endpoint: invoices by invoice date, total and open balance
     shopmonkey.py    Shopmonkey v3 orders: work orders booked and invoiced per day

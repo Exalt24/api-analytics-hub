@@ -40,6 +40,8 @@ class Seen:
     query: dict[str, str]
     headers: dict[str, str]
     body: bytes
+    #: Every value of every query parameter, in order: `query` keeps only the first, which loses a repeated parameter.
+    query_all: dict[str, list[str]] = field(default_factory=dict)
 
 
 Answer = tuple[int, dict[str, str], Any]
@@ -74,11 +76,12 @@ class FakeHTTP:
 
             def _serve(self) -> None:
                 parsed = urlparse(self.path)
-                query = {k: v[0] for k, v in parse_qs(parsed.query, keep_blank_values=True).items()}
+                query_all = parse_qs(parsed.query, keep_blank_values=True)
+                query = {k: v[0] for k, v in query_all.items()}
                 length = int(self.headers.get("Content-Length") or 0)
                 body = self.rfile.read(length) if length else b""
                 headers = {k.lower(): v for k, v in self.headers.items()}
-                status, out_headers, payload, drop = fake._handle(Seen(self.command, parsed.path, query, headers, body))
+                status, out_headers, payload, drop = fake._handle(Seen(self.command, parsed.path, query, headers, body, query_all))
                 if drop:
                     self.close_connection = True
                     self.connection.close()
