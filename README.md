@@ -162,7 +162,7 @@ The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 
 
 The list, in the order I would do it.
 
-1. **Hosting.** Caddy and systemd ([deploy](docs/deploy.md)) are written, not run. A backup with a proven restore ([backups](docs/backups.md)), and a DigitalOcean Terraform setup applied once on a real account and destroyed ([digitalocean](docs/digitalocean.md)).
+1. **Hosting.** Caddy and systemd ([deploy](docs/deploy.md)) are written, not run. A backup with a proven restore ([backups](docs/backups.md)), and a DigitalOcean Terraform setup applied once on a real account and destroyed ([digitalocean](docs/digitalocean.md)). A Railway config is schema-checked, not deployed ([railway](docs/railway.md)).
 2. **A clock for the syncs.** The monthly report has one (n8n); next is a cadence for `sync/runner.py`.
 3. **Key management.** `CREDENTIAL_KEYS` is an environment variable ([docs/secrets.md](docs/secrets.md)); a KMS with audited rotation and a re-seal command is next.
 4. **Auth.** API keys with three roles fit a service integration; users, sessions and SSO are next for a team.
