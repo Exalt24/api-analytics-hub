@@ -323,7 +323,7 @@ class SmsSender:
             if poll < self.poll_attempts:
                 self._sleep(_backoff(self.poll_base, self.poll_cap, poll - 1))
         log.warning("sms not final after %d looks sid=%s last status=%s", self.poll_attempts, sid, status)
-        return CheckResult(sid, status, error_code, True, self.poll_attempts)
+        return CheckResult(sid, status, error_code, False, self.poll_attempts)
 
     # -- internals
 
