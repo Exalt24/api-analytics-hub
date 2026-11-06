@@ -704,7 +704,7 @@ def test_meta_is_registered_with_its_credentials_and_its_metrics():
     spec = registry.get("meta")
     assert spec.supported_metrics == frozenset({"ad_spend", "ad_impressions", "ad_clicks", "ad_purchases", "ad_purchase_value"})
     assert registry.secret_keys("meta") == frozenset({"access_token"})
-    assert registry.platforms_supporting("ad_spend") == ["meta"] and registry.platforms_supporting("shipping") == []
+    assert registry.platforms_supporting("ad_spend") == ["google_ads", "meta", "tiktok"] and registry.platforms_supporting("shipping") == []
     assert registry.redact("meta", {"ad_account_id": "1", "access_token": "x"}) == {"ad_account_id": "1", "access_token": "***"}
     with pytest.raises(ValueError):
         registry.build("meta", ad_account_id="1")

@@ -13,6 +13,14 @@ app/
     meta_fake.py     stand-in Meta server, written from Meta's pages
     gsc.py           Search Console searchAnalytics.query: daily figures and each day's top queries and pages
     gsc_fake.py      stand-in Search Console server, written from Google's pages
+    common.py        what the five newest connectors share: integer minor units, half up rounding, the bounded retry loop
+    fake_http.py     the threaded stand-in server base, request log and scripted faults
+    google_ads.py    Google Ads googleAds:search (GAQL): daily cost, clicks, conversions, optional Local Services leads
+    tiktok.py        TikTok Business API synchronous basic report: daily advertiser figures in 30 day runs
+    square.py        Square Payments API: completed payments per location day, refunds, tip included
+    quickbooks.py    QuickBooks Online query endpoint: invoices by invoice date, total and open balance
+    shopmonkey.py    Shopmonkey v3 orders: work orders booked and invoiced per day
+    google_ads_fake.py, tiktok_fake.py, square_fake.py, quickbooks_fake.py, shopmonkey_fake.py   stand-in servers, written from each vendor's pages
     shopify_oauth.py install flow, offline tokens
     shopify_webhooks.py  HMAC verification over the raw body
     tokens.py        refresh behind one lock, absolute expiry
@@ -33,14 +41,19 @@ app/
   report/            monthly report: KPI math, website (web.py), ads (paid.py), search (search.py), grounded narrative, PowerPoint deck
     sources.py       what the ad and search halves share: provisional days, the KPI table builder, headline wording
     runs.py          the record of each report a tenant asked for: one deck for each key, delivered flag, takeover of a dead run
+    adspend.py       the combined ad spend view: cost per conversion by platform and week, booked jobs beside it, text and JSON
+    adspend_service.py  reads a tenant's ad and booking snapshots for the view
 scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
 scripts/db_backup.py           pg_dump with a manifest, a scratch restore that compares row counts, and the backup alert
 scripts/monthly_report.py      builds the monthly deck from stored snapshots: store, website, ads and search
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
+scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, sync_shopmonkey.py   the same for a Google Ads customer, TikTok advertiser, Square location, QuickBooks company or Shopmonkey shop
+scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security)
-docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security), 013 the metric keys of Google Ads, TikTok, Square, QuickBooks and Shopmonkey with the money check and the milli_count unit
+docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md, AD_AND_BUSINESS_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
+docs/ad-spend.md   the five connectors, their env variables, the ad spend view, its rules and limits
 seed_demo.py         invented figures and two API keys, for anyone without the owner's Shopify store
 deploy/              Caddyfile, systemd units for the nightly backup and its alert, and the script that verifies them (docs/deploy.md)
 app/similar_queries.py hashed-trigram embedding and the tenant-scoped nearest-query lookup (docs/test-runs/2026-10-30-pgvector-rls-recall.md)

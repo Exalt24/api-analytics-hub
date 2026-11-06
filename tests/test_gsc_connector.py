@@ -626,7 +626,7 @@ def test_gsc_is_registered_with_its_credentials_and_its_metrics():
     spec = registry.get("gsc")
     assert spec.supported_metrics == frozenset({"search_clicks", "search_impressions", "search_position"})
     assert registry.secret_keys("gsc") == frozenset({"access_token"})
-    assert registry.platforms_supporting("search_clicks") == ["gsc"] and registry.platforms_supporting("ad_spend") == ["meta"]
+    assert registry.platforms_supporting("search_clicks") == ["gsc"] and registry.platforms_supporting("ad_spend") == ["google_ads", "meta", "tiktok"]
     assert registry.redact("gsc", {"site_url": SITE, "access_token": "x"}) == {"site_url": SITE, "access_token": "***"}
     conn = registry.build("gsc", site_url=SITE, access_token="t")
     assert isinstance(conn, GSCConnector)

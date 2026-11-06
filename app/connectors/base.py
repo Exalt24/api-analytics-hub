@@ -112,7 +112,11 @@ class CanonicalPoint:
 #: Every metric whose value is an amount of money and so needs a currency beside it. `ad_spend` and
 #: `ad_purchase_value` are in the AD ACCOUNT's currency, which is not necessarily the store's: the report never
 #: adds or divides across the two.
-MONEY_METRICS = frozenset({"gross_sales", "refunds", "net_sales", "avg_order_value", "ad_spend", "ad_purchase_value"})
+MONEY_METRICS = frozenset({
+    "gross_sales", "refunds", "net_sales", "avg_order_value", "ad_spend", "ad_purchase_value",
+    # Added with migration 013: the Google Ads conversion value, and the money of the Square, QuickBooks and Shopmonkey connectors.
+    "ad_conversion_value", "payments_total", "payments_refunded", "invoiced_amount", "invoice_open_balance", "work_order_revenue",
+})
 
 
 @dataclass(frozen=True)

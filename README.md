@@ -6,7 +6,7 @@
 
 *Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard) with `scripts/record_dashboard.cjs`. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are four connectors: **Shopify Admin GraphQL**, verified against a real development store, and **Google Analytics 4**, **Meta Ads** and **Google Search Console**, the last three built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side; an n8n workflow builds it for each tenant on the first of the month.
+Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are nine connectors: **Shopify Admin GraphQL**, verified against a real development store, and eight (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Square**, **QuickBooks Online**, **Shopmonkey**) built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side; an n8n workflow builds it for each tenant on the first of the month.
 
 | Source | Built and tested against |
 |---|---|
@@ -14,6 +14,7 @@ Multi-tenant analytics hub: external APIs are synced, normalised, stored in Post
 | Google Analytics 4 | a stand-in server ([sources](docs/GA4_SOURCES.md)) |
 | Meta Ads | a stand-in server ([sources](docs/META_SOURCES.md)) |
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
+| Google Ads, TikTok Ads, Square, QuickBooks Online, Shopmonkey | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |
 
 ## Demo
@@ -68,7 +69,7 @@ Paste a key into the box: the viewer key can read, and Sync now comes back 403 w
 `CanonicalPoint` values. It never returns a vendor's field names, so `spend` from
 one platform and `cost` from another arrive as one metric key with one unit.
 Adding a platform means writing one connector and registering it; the scheduler,
-the API and the dashboard do not change. GA4, Meta and Search Console each landed as one
+the API and the dashboard do not change. GA4, Meta, Search Console and the five newest each landed as one
 class, one registry entry and a migration of metric keys; the exceptions were the currency check, which names its money metrics,
 Search Console's per query rows, which got a table of their own, and the monthly report, which assumed a single source (see Monthly report).
 
@@ -98,6 +99,12 @@ a ciphertext being *copied* between rows; the binding makes a moved blob undecry
 **Syncs are leased, not flagged.** `claim_sync` takes a non-blocking advisory lock, so a
 scheduled run and a Sync Now click cannot overlap; the claim expires unless renewed, and a
 reaper turns a silently dead worker into a visible failure.
+
+---
+
+## Ad platforms, business systems and the ad spend view
+
+Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and run only against stand-in servers: no real account, token or customer record was used. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side (spend, conversions, cost per conversion, by platform and week, with the shop's booked jobs). Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 
@@ -140,14 +147,14 @@ reaper turns a silently dead worker into a visible failure.
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 5,278 tests: 5,270 passed, 3 skipped, 5 known limits
+python -m pytest tests/ -q                # 6,627 tests: 6,612 passed, 10 skipped, 5 known limits
 python tests/mutation_check.py            # all 300 hand matched guards; edits source in place, so use a copy (--help)
 python live_check.py                      # against the real store
 ```
 
-Counts are from the run of 2026-10-31 ([output](docs/test-runs/2026-10-31-stripe-sdk-pytest.txt)). The database tests (the compose Postgres, or `ANALYTICS_TEST_DSN`) skip without one (CI starts one), and drop and recreate the `public` schema of whatever database they point at, so aim them at a scratch one.
+Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)) and 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
 
-Of the 300 hand matched guards, 91 are new; the 97 aimed at the report, the services and the migrations went red on 2026-10-26, the 25 for price watch ([output](docs/test-runs/2026-10-30-price-watch-mutation.txt)) and the 35 for billing ([output](docs/test-runs/2026-10-30-billing-mutation.txt)) on 2026-10-30, the 11 for the Stripe SDK on 2026-10-31, and the other 132 were not rerun. The 2026-10-26 code was also mutated from its syntax tree (`tests/derived_guards.py`, driven by the author's `mutate_ast.py`, not in this repository): 2,779 mutants in 14 files, 2,662 killed, 117 survived, 90 of them a `|` in a type annotation and 27 read and equivalent ([table](docs/test-runs/2026-10-26-derived-guards.txt)). Blind review of the ads, search and monthly run code ran 159 cases in four passes: seven findings were fixed by class, six are known limits pinned by tests, and 191 of 201 mutants of the fixes were killed, the rest read ([cases](tests/corpus), [round 2](docs/test-runs/2026-10-26-output-round-2-mutation.txt), [limits](docs/MONTHLY_REPORT.md#limits)). No pass after the second round was run.
+The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code and four blind review passes: figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
@@ -160,7 +167,7 @@ The list, in the order I would do it.
 3. **Key management.** `CREDENTIAL_KEYS` is an environment variable ([docs/secrets.md](docs/secrets.md)); a KMS with audited rotation and a re-seal command is next.
 4. **Auth.** API keys with three roles fit a service integration; users, sessions and SSO are next for a team.
 5. **Distinct counts.** `customers` and `users` are per-day distinct counts, so the report averages users over the days that have data.
-6. **Connectors.** GA4, Meta and Search Console are built against stand-ins and take an issued token; refresh is next.
+6. **Connectors.** All eight are built against stand-ins and take an issued token; refresh is next, then a first run against a real account of each.
 7. **Alerting.** A stuck or stale sync posts to a webhook ([docs/observability.md](docs/observability.md)); paging is next.
 8. **Quarantine.** Rows that will not normalise are captured in a table; review and replay is next.
 9. **Traces.** JSON logs, a request id and per process Prometheus metrics are in; traces are next.

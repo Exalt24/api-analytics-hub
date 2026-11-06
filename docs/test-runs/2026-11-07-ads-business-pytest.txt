@@ -1,0 +1,26 @@
+date: 2026-11-07 (Windows 11, Python 3.13.14, pytest 9.1.1, Postgres from compose.yaml on 127.0.0.1:5433)
+command: python -m pytest tests/test_vendor_common.py tests/test_google_ads_connector.py tests/test_tiktok_connector.py tests/test_square_connector.py tests/test_quickbooks_connector.py tests/test_shopmonkey_connector.py tests/test_adspend_view.py tests/test_ads_business_sync_db.py -q -rs --durations=5
+against: stand-in servers on 127.0.0.1 written from the vendors' documentation; no live account, token or customer record
+
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 21%]
+........................................................................ [ 28%]
+........................................................................ [ 35%]
+........................................................................ [ 42%]
+........................................................................ [ 49%]
+........................................................................ [ 56%]
+........................................................................ [ 63%]
+........................................................................ [ 70%]
+........................................................................ [ 77%]
+........................................................................ [ 84%]
+........................................................................ [ 92%]
+........................................................................ [ 99%]
+.........                                                                [100%]
+============================= slowest 5 durations =============================
+1.28s call     tests/test_ads_business_sync_db.py::test_the_database_refuses_money_without_a_currency_and_a_count_with_one_for_every_new_key
+0.72s call     tests/test_square_connector.py::test_what_the_pages_say_is_refused_is_refused_with_the_documented_error_array[params5-400]
+0.68s call     tests/test_google_ads_connector.py::test_the_stand_in_rejects_a_page_token_it_did_not_issue_a_bad_token_and_a_bad_path
+0.51s call     tests/test_tiktok_connector.py::test_from_env_reads_the_documented_variables_and_names_what_is_missing
+0.49s call     tests/test_quickbooks_connector.py::test_the_stand_in_answers_json_only_and_rejects_a_bad_token_a_wrong_realm_and_an_unknown_path
+1017 passed in 33.15s

@@ -47,7 +47,7 @@ def test_asking_a_platform_for_a_metric_it_cannot_produce_RAISES():
 
 def test_an_unknown_platform_names_what_is_registered():
     with pytest.raises(UnknownPlatform) as exc:
-        registry.get("tiktok")
+        registry.get("myspace")
     assert "shopify" in str(exc.value), "the error should say what IS available"
 
 

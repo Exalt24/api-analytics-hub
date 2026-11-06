@@ -196,9 +196,15 @@ def _register_builtin() -> None:
     """Registered here rather than at import of each module, so the set of
     available platforms is one readable list instead of scattered side effects."""
     from .ga4 import GA4Connector
+    from .google_ads import MAX_MONTHS_BACK as GOOGLE_ADS_MONTHS
+    from .google_ads import GoogleAdsConnector
     from .gsc import GSCConnector
     from .meta import MetaConnector
+    from .quickbooks import QuickBooksConnector
     from .shopify import ShopifyConnector
+    from .shopmonkey import ShopmonkeyConnector
+    from .square import SquareConnector
+    from .tiktok import TikTokConnector
     from .shopify_scopes import DEFAULT_ORDER_HISTORY_DAYS
 
     registry.register(
@@ -295,6 +301,113 @@ def _register_builtin() -> None:
                 "and pages of each day in their own table. Dates are Pacific time. The newest days are "
                 "provisional (dataState all, first_incomplete_date) and are rewritten by the next sync. "
                 "Never run against a live property: none is held."
+            ),
+        )
+    )
+
+    registry.register(
+        ConnectorSpec(
+            platform="google_ads",
+            label="Google Ads",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=GoogleAdsConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("customer_id", "Customer id", secret=False,
+                                hint="the ten digit Google Ads customer id, with or without hyphens"),
+                CredentialField("access_token", "OAuth 2.0 access token",
+                                hint="a token for the https://www.googleapis.com/auth/adwords scope; it lasts about an hour"),
+            ),
+            factory=GoogleAdsConnector,
+            max_history_days=GOOGLE_ADS_MONTHS * 30,
+            supports_backfill=True,
+            notes=(
+                "Account level daily rows from googleAds:search (GAQL, FROM customer, segments.date): cost, impressions, clicks, conversions "
+                "and conversion value, in the account's currency. Local Services Ads leads are an option. No developer token is sent. "
+                "Never run against a live account: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="tiktok",
+            label="TikTok Ads",
+            auth_kind=AuthKind.STATIC_TOKEN,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=TikTokConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("advertiser_id", "Advertiser id", secret=False, hint="the numeric TikTok advertiser (ad account) id"),
+                CredentialField("access_token", "Marketing API access token", hint="a long term access token for the advertiser"),
+            ),
+            factory=TikTokConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Daily advertiser rows from the synchronous basic report, cut into runs of at most 30 days: spend, impressions, clicks and "
+                "conversions in the advertiser's currency. Rate limit return codes 40016, 40100 and 40133 are retried with a bound. "
+                "Never run against a live advertiser: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="square",
+            label="Square",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.UNDOCUMENTED,
+            supported_metrics=SquareConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("location_id", "Location id", secret=False, hint="the Square location id, one connection per location"),
+                CredentialField("access_token", "Access token", hint="a token with PAYMENTS_READ and MERCHANT_PROFILE_READ"),
+            ),
+            factory=SquareConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Completed payments per location day from the Payments API: how many, their total and the refunded part. A day is cut at the "
+                "location's local midnight. Square names no numeric rate limit on the pages read, so 429 RATE_LIMITED is retried with a bound. "
+                "Never run against a live account: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="quickbooks",
+            label="QuickBooks Online",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=QuickBooksConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("realm_id", "Company (realm) id", secret=False, hint="the numeric realm id of the QuickBooks company"),
+                CredentialField("access_token", "OAuth 2.0 access token", hint="a token for the com.intuit.quickbooks.accounting scope; it lasts about an hour"),
+            ),
+            factory=QuickBooksConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Invoices by invoice date from the query endpoint: count, total and open balance (restated by each sync). 500 requests a minute "
+                "per realm, 10 a second; a 429 means wait 60 seconds, which is handed to the runner. Never run against a live company: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="shopmonkey",
+            label="Shopmonkey",
+            auth_kind=AuthKind.STATIC_TOKEN,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=ShopmonkeyConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("currency", "Currency", secret=False, hint="the shop's ISO 4217 code, such as USD: the pages do not give it"),
+                CredentialField("access_token", "API key", hint="Settings, Integration, API Keys in Shopmonkey; shown once"),
+            ),
+            factory=ShopmonkeyConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Work orders created per day and the cost of work orders invoiced per day, from the v3 orders list, cut into shop days. The list is "
+                "scanned and filtered here because the pages give no filter syntax. 429 carries Retry-After and the per minute figures. "
+                "Never run against a live shop: none is held."
             ),
         )
     )

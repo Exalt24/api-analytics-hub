@@ -1,0 +1,27 @@
+deliberate breakages of the new code, each run in a copy of the repository (the repository was never edited)
+date: 2026-11-07
+
+KILLED    square counts a payment on its UTC day, not the location's | tests/test_square_connector.py | 1 failed, 1 passed in 0.35s
+KILLED    square counts a payment that is not COMPLETED | tests/test_square_connector.py | 1 failed, 4 passed in 0.24s
+KILLED    square drops the range check and takes a payment from outside the window | tests/test_square_connector.py | 1 failed, 46 passed in 1.39s
+KILLED    square lets a repeated payment count twice | tests/test_square_connector.py | 1 failed, 9 passed in 0.42s
+KILLED    micros divided by the wrong power of ten | tests/test_google_ads_connector.py | 1 failed in 0.22s
+KILLED    google ads asks for one day too many | tests/test_google_ads_connector.py | 1 failed in 0.18s
+KILLED    google ads reads an absent conversions as a missing row | tests/test_google_ads_connector.py | 1 failed in 0.17s
+KILLED    tiktok asks for 31 days in a daily report | tests/test_tiktok_connector.py | 1 failed, 6 passed in 0.35s
+KILLED    tiktok stores another advertiser's rows | tests/test_tiktok_connector.py | 1 failed, 46 passed in 1.10s
+KILLED    tiktok ignores the truncation header | tests/test_tiktok_connector.py | 1 failed, 14 passed in 0.44s
+KILLED    quickbooks counts a voided invoice | tests/test_quickbooks_connector.py | 1 failed, 3 passed in 0.27s
+KILLED    quickbooks pages without a stable order | tests/test_quickbooks_connector.py | 1 failed in 0.20s
+KILLED    quickbooks waits less than a minute after a 429 | tests/test_quickbooks_connector.py | 1 failed, 22 passed in 0.66s
+KILLED    shopmonkey counts a deleted order | tests/test_shopmonkey_connector.py | 1 failed, 3 passed in 0.28s
+KILLED    shopmonkey ignores the location it was given | tests/test_shopmonkey_connector.py | 1 failed, 3 passed in 0.24s
+KILLED    shopmonkey books revenue on the created date | tests/test_shopmonkey_connector.py | 1 failed in 0.21s
+KILLED    the retry loop never hands a long wait back | tests/test_vendor_common.py | 1 failed, 6 passed in 0.17s
+KILLED    the retry loop sleeps after the last attempt | tests/test_vendor_common.py | 1 failed, 3 passed in 0.18s
+KILLED    the view divides all spend, not the spend of the days with conversions | tests/test_adspend_view.py | 1 failed, 2 passed in 0.23s
+KILLED    the view adds money across currencies | tests/test_adspend_view.py | 1 failed, 5 passed in 0.17s
+KILLED    the money check forgets a new money key | tests/test_square_connector.py | 1 failed in 0.37s
+KILLED    the database check forgets a new money key | tests/test_ads_business_sync_db.py | 1 error in 1.29s
+
+22 of 22 killed

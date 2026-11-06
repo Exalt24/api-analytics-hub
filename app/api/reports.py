@@ -26,6 +26,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from app.api.auth import Principal, requires
+from app.report.adspend import MAX_DAYS, to_dict
+from app.report.adspend_service import load_view
 from app.report.monthly import ReportError
 from app.report.runs import KEY_RE, KeyReused, RunInProgress, StoredRun, build, claim, latest_deck, mark_delivered, parse_month
 
@@ -119,3 +121,19 @@ async def monthly_delivered(month: str, request: Request, principal: Principal =
     if not found:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no report has been built for that month")
     return {"month": month, "delivered": True, "already_delivered": already}
+
+
+@router.get("/api/reports/ad-spend")
+async def ad_spend(start: date, end: date, request: Request, principal: Principal = Depends(requires("read:report"))):
+    """Cost per conversion by ad platform and by week for [start, end), with the shop's booked jobs. Reads stored snapshots only.
+
+    The window is half open and at most MAX_DAYS long (400 otherwise). 422 when the stored data cannot honestly produce it: no ad
+    connection, two currencies inside one account's window, two shop connections.
+    """
+    if end <= start or (end - start).days > MAX_DAYS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="end must be after start and at most %d days later" % MAX_DAYS)
+    try:
+        view = await load_view(request.app.state.db, principal.tenant_id, start, end)
+    except ReportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    return to_dict(view)

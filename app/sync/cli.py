@@ -32,13 +32,15 @@ from app.sync.runner import SyncRunner
 WORKER_ROLE = "sync_worker"
 
 #: The prefix a platform's account id may carry in one spelling and not in another: Meta's `act_`, a Search Console Domain property's
-#: `sc-domain:` and GA4's `properties/`.
-_ACCOUNT_PREFIX = {"meta": "act_", "gsc": "sc-domain:", "ga4": "properties/"}
+#: `sc-domain:`, GA4's `properties/` and a Google Ads customer's `customers/` (and its hyphens).
+_ACCOUNT_PREFIX = {"meta": "act_", "gsc": "sc-domain:", "ga4": "properties/", "google_ads": "customers/"}
 
 
 def account_key(platform: str, account: str) -> str:
     """One account in one spelling: no space, no case, no trailing slash and no platform prefix, so every spelling of it is equal."""
     text = str(account).strip().lower().rstrip("/")
+    if platform == "google_ads":
+        text = text.replace("-", "")          # 123-456-7890 and 1234567890 are one customer
     prefix = _ACCOUNT_PREFIX.get(platform, "")
     return text[len(prefix):] if prefix and text.startswith(prefix) else text
 
