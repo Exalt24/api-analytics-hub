@@ -1,0 +1,41 @@
+A real apply of deploy/digitalocean/ on a DigitalOcean account, then a destroy. 2026-11-06, Terraform 1.16.6,
+provider digitalocean 2.107.0. Size s-1vcpu-1gb, region nyc3, a 1 GB volume (the defaults are larger), a throwaway
+SSH key, SSH allowed from one /32 only. No secret, token or address of a person appears below.
+
+RUN 1 (first apply, config as it was before this commit)
+  plan:    7 to add
+  apply:   7 added in about 35 s (droplet 34 s, volume attachment 12 s)
+  first boot (cloud-init) finished after about 4 minutes of polling every 8 s: status done
+  droplet: Ubuntu 24.04.5 LTS, Docker 29.1.3
+  services active: docker, caddy, fail2ban, unattended-upgrades, droplet-agent
+  /etc/hub/hub.env mode 600, /etc/hub mode 700, password login off (sshd -T: passwordauthentication no)
+  backup volume mounted and /var/backups/hub points at /mnt/hub_backups
+  listening on the droplet: 80, 22, and local-only ports (Caddy admin on 127.0.0.1)
+  from outside: 22 open (my address only is allowed), 80 open, 443 closed (nothing listens yet, see below),
+                5432 and 6379 closed
+  API: three monitor alerts present (cpu above 80, memory above 90, disk above 85, 5 minutes);
+       firewall inbound rules: 22 restricted, 80 and 443 world
+  FINDING 1: backups = true gave DigitalOcean's own policy: daily, 7 days kept, not weekly. The comment and the doc
+             said weekly. The droplet's own record carried no backup flag.
+  FINDING 2: the provider reads backups back as false, so a second plan wanted "backups false -> true" and the apply
+             errored ("enabling twice": the action errors when backups are already on). Same result calling the API
+             action directly.
+
+FIX (in deploy/digitalocean/main.tf): backup_policy { plan = "weekly", weekday = "SUN", hour = 4 } at creation, and
+lifecycle { ignore_changes = [backups] }. Tests pin both with controls (tests/test_deploy_digitalocean.py).
+
+RUN 2 (destroyed run 1, applied again with the fixed file)
+  apply:   7 added
+  backup policy from the API: weekly, SUN, hour 4, window 4 h, 28 days kept, next window 2026-11-08 04:00 UTC
+  plan after apply: No changes. Your infrastructure matches the configuration.
+  first boot done again; same service, file mode, password-login and port results as run 1
+  hub.env: mode 600 and no non-comment lines (it holds only a comment, no key)
+
+DESTROY
+  terraform destroy: 7 destroyed
+  account afterwards: 0 droplets, 0 volumes, 0 firewalls, 0 snapshots, 0 monitor alerts, 0 SSH keys
+  both droplets together ran about 14 minutes
+
+NOT RUN (so not claimed)
+  the application itself on the droplet, DNS, TLS (Caddy has no site address until HUB_SITE is set, so 443 does not listen),
+  scripts/db_backup.py prove on the droplet, a triggered alert, and a taken weekly backup (the first window had not come).

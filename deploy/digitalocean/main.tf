@@ -13,8 +13,21 @@ resource "digitalocean_droplet" "hub" {
   image      = "ubuntu-24-04-x64"
   ssh_keys   = var.ssh_key_fingerprints
   monitoring = true # installs the DigitalOcean agent so the alerts below have data
-  backups    = true # weekly whole-droplet snapshots, on top of the database dumps on the volume
+  backups    = true # whole-droplet snapshots, on top of the database dumps on the volume
   ipv6       = true
+
+  # Without this block DigitalOcean picks its own policy (daily, 7 days kept; seen on a real run 2026-11-06).
+  backup_policy {
+    plan    = "weekly"
+    weekday = "SUN"
+    hour    = 4
+  }
+
+  # The provider reads this flag back as false even when the policy is live, so every later plan shows a change that cannot
+  # apply (enabling twice errors). The policy above is set once, at creation; to change it, recreate or use the API.
+  lifecycle {
+    ignore_changes = [backups]
+  }
 
   user_data = templatefile("${path.module}/cloud-init.yaml", {
     hostname = var.name

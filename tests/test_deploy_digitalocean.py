@@ -109,6 +109,35 @@ def test_d3_control_turning_either_off_is_caught():
         assert not (droplet_flag(broken, "monitoring") and droplet_flag(broken, "backups"))
 
 
+WEEKLY = re.compile(r'backup_policy\s*\{[^}]*plan\s*=\s*"weekly"')
+
+
+def test_d3_backup_policy_is_set_to_weekly_in_the_config():
+    # Seen on a real run: without this block DigitalOcean applies its own policy (daily, 7 days kept).
+    assert WEEKLY.search(MAIN)
+
+
+def test_d3_control_a_daily_or_missing_policy_is_caught():
+    daily = MAIN.replace('plan    = "weekly"', 'plan    = "daily"')
+    assert daily != MAIN and not WEEKLY.search(daily)
+    missing = re.sub(r"backup_policy\s*\{[^}]*\}", "", MAIN)
+    assert missing != MAIN and not WEEKLY.search(missing)
+
+
+IGNORED = re.compile(r"ignore_changes\s*=\s*\[backups\]")
+
+
+def test_d3_backups_flag_is_ignored_after_creation():
+    # Seen on a real run: the provider reads the flag back as false, so without this every later plan shows a change
+    # whose apply errors because backups are already on.
+    assert IGNORED.search(MAIN)
+
+
+def test_d3_control_removing_the_ignore_is_caught():
+    broken = re.sub(r"lifecycle\s*\{[^}]*\}", "", MAIN)
+    assert broken != MAIN and not IGNORED.search(broken)
+
+
 def test_d4_cpu_memory_and_disk_alerts_watch_the_droplet():
     assert alert_types(MAIN) == {
         "v1/insights/droplet/cpu",
