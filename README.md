@@ -58,7 +58,7 @@ Paste a key into the box: the viewer key can read, and Sync now comes back 403 w
 
 ## Layout
 
-`app/` holds the connectors, sync runner, API, change detection and monthly report, `migrations/` the SQL in order, `n8n/` the monthly workflow, `web/` the dashboard and `tests/` the suite and guards. File by file: [docs/layout.md](docs/layout.md). Backups with a proven restore: [docs/backups.md](docs/backups.md).
+`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)), `migrations/` the SQL in order, `n8n/` the monthly workflow, `web/` the dashboard and `tests/` the suite and guards. File by file: [docs/layout.md](docs/layout.md).
 
 ---
 
@@ -155,7 +155,7 @@ Of the 300 hand matched guards, 91 are new; the 97 aimed at the report, the serv
 
 The list, in the order I would do it.
 
-1. **Hosting.** Written, not run: Caddy and systemd ([deploy](docs/deploy.md)), a backup with a proven restore ([backups](docs/backups.md)) and a DigitalOcean Terraform setup checked with dummy values ([digitalocean](docs/digitalocean.md)). Applying it to a real host is next.
+1. **Hosting.** Written, not run: Caddy and systemd ([deploy](docs/deploy.md)), a backup with a proven restore ([backups](docs/backups.md)) and a DigitalOcean Terraform setup checked with dummy values ([digitalocean](docs/digitalocean.md)). Applying it is next.
 2. **A clock for the syncs.** The monthly report has one (n8n); next is a cadence for `sync/runner.py`.
 3. **Key management.** `CREDENTIAL_KEYS` is an environment variable ([docs/secrets.md](docs/secrets.md)); a KMS with audited rotation and a re-seal command is next.
 4. **Auth.** API keys with three roles fit a service integration; users, sessions and SSO are next for a team.
