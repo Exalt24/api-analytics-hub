@@ -104,7 +104,7 @@ reaper turns a silently dead worker into a visible failure.
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and run only against stand-in servers: no real account, token or customer record was used. Google Ads also counts Local Services Ads leads. Google Business Profile reads a local listing's daily calls, website clicks, direction requests and impressions. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side (spend, conversions, cost per conversion, by platform and week, with the shop's booked jobs). Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and tested against stand-in servers that follow it. Google Ads also counts Local Services Ads leads. Google Business Profile reads a local listing's daily calls, website clicks, direction requests and impressions. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side (spend, conversions, cost per conversion, by platform and week, with the shop's booked jobs). Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 
@@ -159,6 +159,6 @@ The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 
 
 ---
 
-## Roadmap
+## Open items
 
 The list, in the order I would do it, is in [docs/roadmap.md](docs/roadmap.md).
