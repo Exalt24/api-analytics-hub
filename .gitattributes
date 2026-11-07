@@ -2,3 +2,5 @@
 *.gif binary
 *.mp4 binary
 *.sh text eol=lf
+*.nix text eol=lf
+flake.lock text eol=lf

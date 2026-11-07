@@ -1,6 +1,7 @@
 # 432MB of reproducible artifacts. Measured, not guessed: .venv 84MB,
 # web/node_modules 348MB, web/.next 73MB, 13,444 files between them.
 .venv/
+.venv-nix/
 __pycache__/
 *.pyc
 web/node_modules/

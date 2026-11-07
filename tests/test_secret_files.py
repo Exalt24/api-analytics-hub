@@ -60,7 +60,7 @@ def test_the_dataclass_takes_any_variable_name(monkeypatch, tmp_path):
 
 #: A drive path or a home folder in a source, doc or config file is someone's machine.
 MACHINE_PATH = re.compile(r"\b[A-Za-z]:[\\/](?:Users|Projects|Program Files|Windows)|[\\/]Operations[\\/]\.secrets|/home/[a-z]+/")
-SKIP_DIRS = {".venv", "web", ".git", "node_modules", ".next", ".pytest_cache", "__pycache__", "test-runs", ".secrets"}
+SKIP_DIRS = {".venv", ".venv-nix", "web", ".git", "node_modules", ".next", ".pytest_cache", "__pycache__", "test-runs", ".secrets"}
 
 
 def tracked_text_files():
