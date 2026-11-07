@@ -1,0 +1,103 @@
+Nix proof run, 2026-11-07. Linux container (nixos/nix image, Nix 2.35.4) on Windows 11 with Docker Desktop; the repository files were copied into /work and committed there, because a flake only sees tracked files.
+This is the last of several runs; an earlier full run built the checks (nix flake check printed 'running 1 flake checks'), so in this one they were already in the store and it printed 'running 0 flake checks'.
+Cut: lines about copying store paths from cache.nixos.org, and the pytest-asyncio deprecation warning lines. Nothing else is edited.
+
+== Linux container (nixos/nix image) on Windows, not a NixOS machine ==
+$ nix --version
+nix (Nix) 2.35.4
+exit 0
+$ nix flake lock --no-update-lock-file
+exit 0
+$ nix flake check --no-update-lock-file
+evaluating flake...
+checking flake output 'packages'...
+checking derivation packages.x86_64-linux.default...
+derivation evaluated to /nix/store/aakzpq5dxk6w0dy044cgimnkbzxqnm8c-hub-fast-tests.drv
+checking derivation packages.x86_64-linux.fast-tests...
+derivation evaluated to /nix/store/aakzpq5dxk6w0dy044cgimnkbzxqnm8c-hub-fast-tests.drv
+checking flake output 'devShells'...
+checking derivation devShells.x86_64-linux.default...
+derivation evaluated to /nix/store/xn9wb9d0dlrqjmnmjd509ygcs4kdrwd2-nix-shell.drv
+checking flake output 'apps'...
+checking app 'apps.x86_64-linux.default'...
+checking app 'apps.x86_64-linux.fast-tests'...
+checking flake output 'checks'...
+checking derivation checks.x86_64-linux.fast-tests...
+derivation evaluated to /nix/store/aakzpq5dxk6w0dy044cgimnkbzxqnm8c-hub-fast-tests.drv
+checking derivation checks.x86_64-linux.toolchain...
+derivation evaluated to /nix/store/cqm67pxlw5z9bbqssmnak3icwf3qh08g-hub-toolchain-check.drv
+running 0 flake checks...
+all checks passed!
+warning: The check omitted these incompatible systems: aarch64-darwin, aarch64-linux, x86_64-darwin
+Use '--all-systems' to check all.
+exit 0
+$ nix build .#checks.x86_64-linux.toolchain --no-update-lock-file --print-out-paths
+/nix/store/az230mjwq3rw7v6mfx50335cz3sbkwzg-hub-toolchain-check
+exit 0
+$ cat result   (what the toolchain check recorded)
+Python 3.13.17
+postgres (PostgreSQL) 17.11
+default_version = '0.8.2'
+v22.23.4
+git version 2.54.0
+$ nix develop --no-update-lock-file -c hub-fast-tests
+building /work/.venv-nix from requirements.txt
+api-analytics-hub dev shell: Python 3.13.17, postgres 17.11, git 2.54.0, node v22.23.4
+........................................................................ [ 15%]
+........................................................................ [ 30%]
+........................................................................ [ 45%]
+........................................................................ [ 61%]
+........................................................................ [ 76%]
+........................................................................ [ 91%]
+......................................                                   [100%]
+470 passed in 1.25s
+exit 0
+$ nix run .#fast-tests --no-update-lock-file
+........................................................................ [ 15%]
+........................................................................ [ 30%]
+........................................................................ [ 45%]
+........................................................................ [ 61%]
+........................................................................ [ 76%]
+........................................................................ [ 91%]
+......................................                                   [100%]
+470 passed in 1.22s
+exit 0
+== deliberate breakage: flake.nix asks for nixos-25.11, flake.lock still says nixos-26.05 (nixos-25.11 is a real branch, so nix can lock it, which is the point) ==
+ flake.nix | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ nix flake lock --no-update-lock-file
+warning: Git tree '/work' is dirty
+unpacking 'github:NixOS/nixpkgs/b6018f87da91d19d0ab4cf979885689b469cdd41' into the Git cache...
+error:
+       … while updating the lock file of flake 'git+file:///work'
+       error: flake 'git+file:///work' requires lock file changes but they're not allowed due to '--no-update-lock-file'
+exit 1
+$ nix flake check --no-update-lock-file
+warning: Git tree '/work' is dirty
+error:
+       … while updating the lock file of flake 'git+file:///work'
+       error: flake 'git+file:///work' requires lock file changes but they're not allowed due to '--no-update-lock-file'
+exit 1
+$ /work/.venv-nix/bin/python -m pytest tests/test_flake_lock.py -q
+F.................                                                       [100%]
+=================================== FAILURES ===================================
+______________________ test_flake_lock_matches_flake_nix _______________________
+    def test_flake_lock_matches_flake_nix():
+>       assert drift((ROOT / "flake.nix").read_text(encoding="utf-8"), (ROOT / "flake.lock").read_text(encoding="utf-8")) == []
+E       assert ["input 'nixp... flake lock`"] == []
+E         
+E         Left contains one more item: "input 'nixpkgs': flake.nix says {'type': 'github', 'owner': 'NixOS', 'repo': 'nixpkgs', 'ref': 'nixos-25.11'}, flake.lock was made from {'owner': 'NixOS', 'ref': 'nixos-26.05', 'repo': 'nixpkgs', 'type': 'github'}: run `nix flake lock`"
+E         Use -v to get more diff
+tests/test_flake_lock.py:86: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_flake_lock.py::test_flake_lock_matches_flake_nix - assert [...
+1 failed, 17 passed in 0.09s
+exit 1
+== restored ==
+$ nix flake lock --no-update-lock-file
+exit 0
+$ /work/.venv-nix/bin/python -m pytest tests/test_flake_lock.py -q
+..................                                                       [100%]
+18 passed in 0.07s
+exit 0
+container exit: 0

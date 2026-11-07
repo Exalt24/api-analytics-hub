@@ -25,7 +25,7 @@ The recording above is the whole stack, started with the commands below. The das
 
 ## Run it
 
-Requirements: Docker (010 needs pgvector), Python 3.13, Node 20+, and `psql` (or the container's own, second form below).
+Requirements: Docker (010 needs pgvector), Python 3.13, Node 20+, and `psql` (or the container's own, second form below). `nix develop` gives Python 3.13, PostgreSQL 17 with pgvector, git and Node 22 from a lock file ([docs/nix.md](docs/nix.md)).
 
 ```bash
 # 1. Postgres
@@ -150,6 +150,7 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 python -m pytest tests/ -q                # 6,627 tests: 6,612 passed, 10 skipped, 5 known limits
 python tests/mutation_check.py            # all 300 hand matched guards; edits source in place, so use a copy (--help)
 python live_check.py                      # against the real store
+nix run .#fast-tests                      # 470 of them in a pinned Nix shell, about a second ([docs/nix.md](docs/nix.md))
 ```
 
 Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)) and 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
@@ -160,15 +161,4 @@ The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 
 
 ## Roadmap
 
-The list, in the order I would do it.
-
-1. **Hosting.** Caddy and systemd ([deploy](docs/deploy.md)) are written, not run. A backup with a proven restore ([backups](docs/backups.md)), and a DigitalOcean Terraform setup applied once on a real account and destroyed ([digitalocean](docs/digitalocean.md)). A Railway config is schema-checked, not deployed ([railway](docs/railway.md)).
-2. **A clock for the syncs.** The monthly report has one (n8n); next is a cadence for `sync/runner.py`.
-3. **Key management.** `CREDENTIAL_KEYS` is an environment variable ([docs/secrets.md](docs/secrets.md)); a KMS with audited rotation and a re-seal command is next.
-4. **Auth.** API keys with three roles fit a service integration; users, sessions and SSO are next for a team.
-5. **Distinct counts.** `customers` and `users` are per-day distinct counts, so the report averages users over the days that have data.
-6. **Connectors.** All eight are built against stand-ins and take an issued token; refresh is next, then a first run against a real account of each.
-7. **Alerting.** A stuck or stale sync posts to a webhook ([docs/observability.md](docs/observability.md)); paging is next.
-8. **Quarantine.** Rows that will not normalise are captured in a table; review and replay is next.
-9. **Traces.** JSON logs, a request id and per process Prometheus metrics are in; traces are next.
-10. **Backfill.** A real one needs chunking, restart-safe resumption and a rate-limit budget shared with the live syncs.
+The list, in the order I would do it, is in [docs/roadmap.md](docs/roadmap.md).
