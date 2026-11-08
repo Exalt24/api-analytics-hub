@@ -4,9 +4,11 @@
 
 ![The dashboard against a local stack: an API key unlocks it, 90 days of orders and sales read from stored Shopify data, an admin queues a sync, and a viewer key is refused with its reason](docs/demo.gif)
 
-*Recorded against the local stack (docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard) with `scripts/record_dashboard.cjs`. [Full video](docs/demo.mp4).*
+*Recorded against the local stack with `scripts/record_dashboard.cjs`. The stack is docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard. [Full video](docs/demo.mp4).*
 
-Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard. There are ten connectors: **Shopify Admin GraphQL**, verified against a real development store, and nine (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Google Business Profile**, **Square**, **QuickBooks Online**, **Shopmonkey**) built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side; an n8n workflow builds it for each tenant on the first of the month.
+Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard.
+
+There are ten connectors. **Shopify Admin GraphQL** is verified against a real development store. Nine more (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Google Business Profile**, **Square**, **QuickBooks Online**, **Shopmonkey**) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page. It reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side. An n8n workflow builds it for each tenant on the first of the month.
 
 | Source | Built and tested against |
 |---|---|
@@ -51,96 +53,95 @@ cd web && npm install && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run buil
 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store (a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`); anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema; `seed_demo.py` applies every migration, `seed_local.py` only 001 to 003 (run 004 to 012 after) and loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key to see the role split. The dashboard is built and started, not run with `npm run dev`, which did not hydrate the page in the browsers this was recorded in; open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` needs the owner's Shopify development store. That is a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`. Anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema. `seed_demo.py` applies every migration. `seed_local.py` applies only 001 to 003, so run 004 to 012 after. It loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key to see the role split. The dashboard is built and started, not run with `npm run dev`. `npm run dev` did not hydrate the page in the browsers this was recorded in. Open it as `http://localhost:3100` (the API's CORS origin).
 
-Paste a key into the box: the viewer key can read, and Sync now comes back 403 with the reason.
+Paste a key into the box. The viewer key can read. Sync now comes back 403 with the reason.
 
 ---
 
 ## Layout
 
-`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)), `migrations/` the SQL in order, `n8n/` the monthly workflow, `web/` the dashboard and `tests/` the suite and guards. File by file: [docs/layout.md](docs/layout.md).
+`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)). `migrations/` holds the SQL in order. `n8n/` holds the monthly workflow. `web/` is the dashboard. `tests/` holds the suite and guards. File by file: [docs/layout.md](docs/layout.md).
 
 ---
 
 ## Architecture, briefly
 
 **Connectors translate, and nothing else.** A connector fetches a window and yields
-`CanonicalPoint` values. It never returns a vendor's field names, so `spend` from
+`CanonicalPoint` values. It never returns a vendor's field names. So `spend` from
 one platform and `cost` from another arrive as one metric key with one unit.
-Adding a platform means writing one connector and registering it; the scheduler,
+Adding a platform means writing one connector and registering it. The scheduler,
 the API and the dashboard do not change. GA4, Meta, Search Console and the five newest each landed as one
-class, one registry entry and a migration of metric keys; the exceptions were the currency check, which names its money metrics,
-Search Console's per query rows, which got a table of their own, and the monthly report, which assumed a single source (see Monthly report).
+class, one registry entry and a migration of metric keys. There were three exceptions. The currency check names its money metrics. Search Console's per query rows got a table of their own. The monthly report assumed a single source (see Monthly report).
 
-**Money is an integer in minor units with its currency beside it**, enforced by a
-`currency_iff_money` CHECK in the database as well as at the connector boundary,
-because a later connector or a manual backfill bypasses the Python guard. Parsing
-uses `Decimal`, since `float("19.99")` is `19.989999999999998` and a day of orders
+**Money is an integer in minor units with its currency beside it.** A
+`currency_iff_money` CHECK enforces that in the database as well as at the connector boundary.
+A later connector or a manual backfill bypasses the Python guard. Parsing
+uses `Decimal`. `float("19.99")` is `19.989999999999998`, so a day of orders
 drifts by cents. Zero-decimal currencies such as JPY are not scaled.
 
 **History is accumulated, not fetched.** Snapshots are dated rows per (connection,
-metric, day), keyed on the date the *platform* attributed the value to, so 90-day growth
-is answerable when an API only exposes a current value, and the clock starts when a
+metric, day). They are keyed on the date the *platform* attributed the value to. So 90-day growth
+is answerable when an API only exposes a current value. The clock starts when a
 connector goes live. Shopify exposes only 60 days of orders without `read_all_orders`.
 
 **Revenue is attributed to `processedAt`, not `createdAt`.** They differ for every
-imported order, and `createdAt` renders a migrated shop's history as one enormous day.
+imported order. `createdAt` renders a migrated shop's history as one enormous day.
 
 **The tenant boundary is in the database.** Row level security is enabled *and
-forced* on every tenant table (all but `api_key`, which is read before the tenant is known and says so in its migration), policies read the tenant from a transaction-local
-GUC, and the pool drops into a non-superuser role and refuses to start if that role
-can bypass RLS. The API does not rely on a `WHERE tenant_id` clause for isolation, so a forgotten one cannot leak; a few updates (the report run, the sync command) repeat it as a second guard.
+forced* on every tenant table. The one exception is `api_key`, which is read before the tenant is known and says so in its migration. Policies read the tenant from a transaction-local
+GUC. The pool drops into a non-superuser role and refuses to start if that role
+can bypass RLS. The API does not rely on a `WHERE tenant_id` clause for isolation, so a forgotten one cannot leak. A few updates (the report run, the sync command) repeat it as a second guard.
 
 **Credentials are encrypted with the row bound in.** AES-256-GCM, and the AAD is
-`(tenant_id, connection_id, platform)`. RLS stops a tenant *reading* another row but not
-a ciphertext being *copied* between rows; the binding makes a moved blob undecryptable.
+`(tenant_id, connection_id, platform)`. RLS stops a tenant *reading* another row. It does not stop
+a ciphertext being *copied* between rows. The binding makes a moved blob undecryptable.
 
-**Syncs are leased, not flagged.** `claim_sync` takes a non-blocking advisory lock, so a
-scheduled run and a Sync Now click cannot overlap; the claim expires unless renewed, and a
+**Syncs are leased, not flagged.** `claim_sync` takes a non-blocking advisory lock. A
+scheduled run and a Sync Now click cannot overlap. The claim expires unless renewed. A
 reaper turns a silently dead worker into a visible failure.
 
 ---
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and tested against stand-in servers that follow it. Google Ads also counts Local Services Ads leads. Google Business Profile reads a local listing's daily calls, website clicks, direction requests and impressions. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side (spend, conversions, cost per conversion, by platform and week, with the shop's booked jobs). Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation. They are tested against stand-in servers that follow it. Google Ads also counts Local Services Ads leads. Google Business Profile reads a local listing's daily calls, website clicks, direction requests and impressions. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. It shows spend, conversions and cost per conversion, by platform and week, with the shop's booked jobs. Details and limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 
 ## Grounded catalogue copy
 
-`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions that refuses to publish a number it was not given: `verify_grounded` requires every number in the output to appear in the product facts in the prompt, and a failure is a rejected row listing the unsupported figures. Against a live model (`ai_live_check.py`) three runs with the rule in the prompt invented nothing; with it stripped the model produced a 99.99% purity and 150 x 100 x 30 mm dimensions from nowhere and the verifier refused all four figures, which is why there are two layers. Fixes found by its own tests: [docs/catalogue-copy.md](docs/catalogue-copy.md); 30 tests and four mutation guards cover it.
+`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions. It refuses to publish a number it was not given. `verify_grounded` requires every number in the output to appear in the product facts in the prompt. A failure is a rejected row listing the unsupported figures. Against a live model (`ai_live_check.py`), three runs with the rule in the prompt invented nothing. With the rule stripped, the model produced a 99.99% purity and 150 x 100 x 30 mm dimensions from nowhere. The verifier refused all four figures. That is why there are two layers. Fixes found by its own tests: [docs/catalogue-copy.md](docs/catalogue-copy.md). 30 tests and four mutation guards cover it.
 
 ---
 
 ## Competitor price watch
 
-`app/price_watch/` reads competitor pages in Chromium (Playwright), matches them to the catalogue (an uncertain match waits for a person), labels estimated shipping ESTIMATED, reports where a competitor's landed price beats ours without breaking a floor, and syncs person-approved prices to Shopify and Zoho Inventory. Tested against stand-in pages and stand-in vendor servers: the vendor calls are written from their [documentation](docs/vendor-contract/README.md). Details and the demo: [docs/price-watch.md](docs/price-watch.md).
+`app/price_watch/` reads competitor pages in Chromium (Playwright). It matches them to the catalogue, and an uncertain match waits for a person. It labels estimated shipping ESTIMATED. It reports where a competitor's landed price beats ours without breaking a floor. It syncs person-approved prices to Shopify and Zoho Inventory. It is tested against stand-in pages and stand-in vendor servers. The vendor calls are written from their [documentation](docs/vendor-contract/README.md). Details and the demo: [docs/price-watch.md](docs/price-watch.md).
 
 ---
 
 ## Prepaid wallet and billing ledger
 
-`app/billing/` is a prepaid wallet for a multi-tenant SaaS: a double-entry ledger in integer minor units (an unbalanced transaction cannot commit, entries are append only, a wallet cannot go below zero, all enforced by the database under forced row level security), top-ups and refunds through a provider interface (the official Stripe SDK, or a hand written client), per-tenant usage prices, subscriptions with proration, and a signed webhook receiver that applies each event once. Every money command takes an idempotency key and a lost response is settled with the same key, so a retry cannot charge twice. The hand written client was tested against a stand-in written from Stripe's [saved pages](docs/vendor-contract/README.md). [docs/billing.md](docs/billing.md).
+`app/billing/` is a prepaid wallet for a multi-tenant SaaS. It has a double-entry ledger in integer minor units. The database enforces it under forced row level security: an unbalanced transaction cannot commit, entries are append only, and a wallet cannot go below zero. It also has top-ups and refunds through a provider interface (the official Stripe SDK, or a hand written client). It has per-tenant usage prices and subscriptions with proration. A signed webhook receiver applies each event once. Every money command takes an idempotency key. A lost response is settled with the same key, so a retry cannot charge twice. The hand written client was tested against a stand-in written from Stripe's [saved pages](docs/vendor-contract/README.md). [docs/billing.md](docs/billing.md).
 
-**The official Stripe SDK.** `app/billing/stripe_sdk.py` runs payments and refunds through the `stripe` SDK and checks webhooks with its own `stripe.Webhook.construct_event`. It ran against stripe-mock, Stripe's own mock server, and a stand-in that scripts declines, 5xx errors and lost responses. A good signature credits once; a bad or stale one, a replayed event id, another amount and an unknown event type credit nothing more, and eleven mutation guards on these tests went red ([output](docs/test-runs/2026-10-31-stripe-sdk-mutation.txt)).
+**The official Stripe SDK.** `app/billing/stripe_sdk.py` runs payments and refunds through the `stripe` SDK. It checks webhooks with its own `stripe.Webhook.construct_event`. It ran against stripe-mock, Stripe's own mock server. It also ran against a stand-in that scripts declines, 5xx errors and lost responses. A good signature credits once. A bad or stale one credits nothing more. So do a replayed event id, another amount and an unknown event type. Eleven mutation guards on these tests went red ([output](docs/test-runs/2026-10-31-stripe-sdk-mutation.txt)).
 
 ---
 
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck: seven slides for a store, up to ten with a website, an ad account and a search property. Each added source gets a slide, a headline row and a data health row naming its days with no data. Ads are in the ad account's own currency and never added to a store figure, rates come from the sums, average position is weighted by impressions, and the last days before the report date are marked provisional. The narrative is a fixed template without a model key; a model's text is used only if every figure in it is a computed one, in the right currency and beside its own metric, otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role.
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck. It has seven slides for a store and up to ten with a website, an ad account and a search property. Each added source gets a slide, a headline row and a data health row naming its days with no data. Ads are in the ad account's own currency and never added to a store figure. Rates come from the sums. Average position is weighted by impressions. The last days before the report date are marked provisional. The narrative is a fixed template without a model key. A model's text is used only if every figure in it is a computed one, in the right currency and beside its own metric. Otherwise it is dropped for the template. That check does not catch a wrong direction word, a cause or a right figure in the wrong role.
 
-**The monthly run.** `POST /api/reports/monthly` builds the same deck, byte for byte, for the same month and says whether it was delivered, so a rerun builds and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month, and a failing tenant does not stop the others. A real n8n container found two faults a file check could not, both fixed and pinned ([output](docs/test-runs/2026-10-26-n8n.txt)); the schedule, the error branch and the rest are in [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md#the-monthly-run).
+**The monthly run.** `POST /api/reports/monthly` builds the same deck, byte for byte, for the same month. It says whether it was delivered, so a rerun builds and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month. A failing tenant does not stop the others. A real n8n container found two faults a file check could not. Both are fixed and pinned ([output](docs/test-runs/2026-10-26-n8n.txt)). The schedule, the error branch and the rest are in [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md#the-monthly-run).
 
-**What it was tested against.** Meta and Search Console ran against stand-in servers on 127.0.0.1. The sample deck's figures are sample data, and the model path is tested through a mocked transport. Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
+**What it was tested against.** Meta and Search Console ran against stand-in servers on 127.0.0.1. The sample deck's figures are sample data. The model path is tested through a mocked transport. Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
 ## Change detection on a daily file
 
-`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 (desktop PC, local Docker Postgres): day 2 (400,200 rows, 0.5 percent changed) took 9.89 s and raised 2,371 events; the same file again raised 0, and an error at each of 7 stages left the tables unchanged. Runs on sample data. Method and limits: [docs/change-detection.md](docs/change-detection.md).
+`app/changes.py` loads one day of about 400,000 carriers. It finds the few that changed with one hash compare. It keeps every change in history. It raises each alert once behind a UNIQUE key. Measured on 2026-10-24 (desktop PC, local Docker Postgres): day 2 (400,200 rows, 0.5 percent changed) took 9.89 s and raised 2,371 events. The same file again raised 0. An error at each of 7 stages left the tables unchanged. Runs on sample data. Method and limits: [docs/change-detection.md](docs/change-detection.md).
 
 ---
 
@@ -153,9 +154,9 @@ python live_check.py                      # against the real store
 nix run .#fast-tests                      # 470 of them in a pinned Nix shell, about a second ([docs/nix.md](docs/nix.md))
 ```
 
-Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)) and 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
+Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
 
-The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code and four blind review passes: figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
+The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code. It also holds four blind review passes. Figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
