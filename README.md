@@ -4,11 +4,11 @@
 
 ![The dashboard against a local stack: an API key unlocks it, 90 days of orders and sales read from stored Shopify data, an admin queues a sync, and a viewer key is refused with its reason](docs/demo.gif)
 
-*Recorded against the local stack with `scripts/record_dashboard.cjs`. The stack is docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard. [Full video](docs/demo.mp4).*
+*Recorded against the local stack (`scripts/record_dashboard.cjs`): docker Postgres, `seed_local.py` with real figures from a Shopify development store, the API and the built dashboard. [Full video](docs/demo.mp4).*
 
 Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard.
 
-There are ten connectors. **Shopify Admin GraphQL** is verified against a real development store. Nine more (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Google Business Profile**, **Square**, **QuickBooks Online**, **Shopmonkey**) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page. It reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side. An n8n workflow builds it for each tenant on the first of the month.
+There are ten connectors. **Shopify Admin GraphQL** is verified against a real development store. Nine more (**Google Analytics 4**, **Meta Ads**, **Search Console**, **Google Ads**, **TikTok Ads**, **Google Business Profile**, **Square**, **QuickBooks Online**, **Shopmonkey**) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page. It reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side, built by an n8n workflow for each tenant on the first of the month.
 
 | Source | Built and tested against |
 |---|---|
@@ -125,7 +125,7 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 `app/billing/` is a prepaid wallet for a multi-tenant SaaS. It has a double-entry ledger in integer minor units. The database enforces it under forced row level security: an unbalanced transaction cannot commit, entries are append only, and a wallet cannot go below zero. It also has top-ups and refunds through a provider interface (the official Stripe SDK, or a hand written client). It has per-tenant usage prices and subscriptions with proration. A signed webhook receiver applies each event once. Every money command takes an idempotency key. A lost response is settled with the same key, so a retry cannot charge twice. The hand written client was tested against a stand-in written from Stripe's [saved pages](docs/vendor-contract/README.md). [docs/billing.md](docs/billing.md).
 
-**The official Stripe SDK.** `app/billing/stripe_sdk.py` runs payments and refunds through the `stripe` SDK. It checks webhooks with its own `stripe.Webhook.construct_event`. It ran against stripe-mock, Stripe's own mock server. It also ran against a stand-in that scripts declines, 5xx errors and lost responses. A good signature credits once. A bad or stale one credits nothing more. So do a replayed event id, another amount and an unknown event type. Eleven mutation guards on these tests went red ([output](docs/test-runs/2026-10-31-stripe-sdk-mutation.txt)).
+**The official Stripe SDK.** Payments, refunds and webhooks also run through the `stripe` SDK, against stripe-mock and a scripted stand-in. Eleven mutation guards went red ([output](docs/test-runs/2026-10-31-stripe-sdk-mutation.txt)). Detail: [docs/billing.md](docs/billing.md#the-stripe-sdk-provider).
 
 ---
 
@@ -141,7 +141,7 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 ## Report export from the dashboard
 
-The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security, the mechanism `app/db.py` uses. An AI summary is optional: a code guard refuses any figure not in the data, a refused summary is retried once, then a plain template is used and the file says so. An attached document goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, shadcn/ui style Radix UI components and the Vercel AI SDK. Tested against real Postgres, a scripted fake model, a stand-in Anthropic server and SeaweedFS as the stand-in S3. No real model and no AWS account was used. Page state is held in React Context; 129 tests, 10 browser tests, and 65 deliberate breakages each caught. Each claim with its test: [docs/web-reports.md](docs/web-reports.md).
+The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security. An AI summary is optional: a code guard refuses any figure not in the data, a refused one is retried once, then a plain template is used and the file says so. A document attached goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, the Vercel AI SDK and shadcn/ui components built on Radix UI primitives (Select, Switch, Label, Slot). Saved presets are local first: Replicache keeps them in IndexedDB so a save works offline, and route handlers sync them to tenant scoped Postgres. Tested on real Postgres, a scripted fake model and SeaweedFS for S3; no real model or AWS account. Page state is held in React Context; 156 tests, 12 browser tests, and 76 deliberate breakages each caught. Claims and tests: [docs/web-reports.md](docs/web-reports.md).
 
 ---
 
@@ -158,12 +158,12 @@ python -m pytest tests/ -q                # 6,627 tests: 6,612 passed, 10 skippe
 python tests/mutation_check.py            # all 300 hand matched guards; edits source in place, so use a copy (--help)
 python live_check.py                      # against the real store
 nix run .#fast-tests                      # 470 of them in a pinned Nix shell, about a second ([docs/nix.md](docs/nix.md))
-cd web && npm test                        # 129 tests ([docs/web-reports.md](docs/web-reports.md))
-cd web && npm run build && npx playwright test    # 10 browser tests
-cd web && node scripts/mutation_check.mjs # 65 guards broken one at a time; use a copy
+cd web && npm test                        # 156 tests ([docs/web-reports.md](docs/web-reports.md))
+cd web && npm run build && npx playwright test    # 12 browser tests
+cd web && node scripts/mutation_check.mjs # 76 guards broken one at a time; use a copy
 ```
 
-Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
+Python: run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI); web: 2026-11-10. The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
 
 The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code. Figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
 

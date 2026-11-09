@@ -1,0 +1,13 @@
+caught    sync.replay_applied_twice
+caught    sync.skipped_ahead_accepted
+caught    sync.invalid_save_stored
+caught    sync.other_group_client_accepted
+caught    sync.counter_row_not_locked
+caught    sync.future_cookie_trusted
+caught    sync.delete_not_sent
+caught    sync.first_pull_without_clear
+caught    sync.pull_not_tenant_scoped
+caught    sync.push_not_tenant_scoped
+caught    sync.client_accepts_any_preset
+
+11 of 11 mutants caught

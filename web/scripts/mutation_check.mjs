@@ -33,6 +33,7 @@ const T = {
   strict: "tests/typescript-strict.test.ts",
   state: "tests/reports-state.test.ts",
   prov: "tests/reports-provider.test.tsx",
+  sync: "tests/replicache-sync.test.ts",
 };
 
 /** One edit: the text must occur exactly once in the file. */
@@ -116,6 +117,19 @@ const MUTANTS = [
   { name: "context.month_not_shared", tests: [T.prov], edits: [e("components/ReportForm.tsx", "                    setMonth(e.target.value);\n", "")] },
   { name: "context.summary_switch_not_shared", tests: [T.prov], edits: [e("components/ReportForm.tsx", "                    setIncludeSummary(v);\n", "")] },
   { name: "context.key_bar_not_wired", tests: [T.prov], edits: [e("components/ReportsPanel.tsx", "<KeyGate onSet={setTenantKey} />", "<KeyGate onSet={() => undefined} />")] },
+
+  // ---- local-first sync of saved presets (lib/replicache/server.ts, client.ts)
+  { name: "sync.replay_applied_twice", tests: [T.sync], edits: [e("lib/replicache/server.ts", "    if (m.id < expected) continue; // already applied: a retried push must not apply it again\n", "")] },
+  { name: "sync.skipped_ahead_accepted", tests: [T.sync], edits: [e("lib/replicache/server.ts", "    if (m.id > expected) throw new BadRequest(`mutation ${m.id} arrived before ${expected}`);\n", "")] },
+  { name: "sync.invalid_save_stored", tests: [T.sync], edits: [e("lib/replicache/server.ts", "    // An invalid mutation is acknowledged and has no effect, so one bad one cannot block the queue behind it.\n    if (!parsed.success) return;\n", "")] },
+  { name: "sync.other_group_client_accepted", tests: [T.sync], edits: [e("lib/replicache/server.ts", '    if (client.client_group_id !== req.clientGroupID) throw new BadRequest("client belongs to another client group");\n', "")] },
+  { name: "sync.counter_row_not_locked", tests: [T.sync], edits: [e("lib/replicache/server.ts", '.select("version").forUpdate().executeTakeFirstOrThrow()', '.select("version").executeTakeFirstOrThrow()')] },
+  { name: "sync.future_cookie_trusted", tests: [T.sync], edits: [e("lib/replicache/server.ts", "req.cookie === null || req.cookie > current ? 0 : req.cookie", "req.cookie === null ? 0 : req.cookie")] },
+  { name: "sync.delete_not_sent", tests: [T.sync], edits: [e("lib/replicache/server.ts", '        if (!full) patch.push({ op: "del", key });\n', "")] },
+  { name: "sync.first_pull_without_clear", tests: [T.sync], edits: [e("lib/replicache/server.ts", '= full ? [{ op: "clear" }] : [];', "= [];")] },
+  { name: "sync.pull_not_tenant_scoped", tests: [T.sync], edits: [e("lib/replicache/server.ts", "const body = await withTenant(db, tenant, async (trx) => {", "const body = await db.transaction().execute(async (trx) => {")] },
+  { name: "sync.push_not_tenant_scoped", tests: [T.sync], edits: [e("lib/replicache/server.ts", "await withTenant(db, tenant, (trx) => push(trx, tenant, parsed.data));", "await db.transaction().execute((trx) => push(trx, tenant, parsed.data));")] },
+  { name: "sync.client_accepts_any_preset", tests: [T.sync], edits: [e("lib/replicache/client.ts", "    const p = presetSchema.parse(args);\n", "    const p = args;\n")] },
 
   // ---- the compiler and the linter
   { name: "tsc.strict_off", tests: [T.strict], edits: [e("tsconfig.json", '"strict": true,\n    "noImplicitAny": true,', '"strict": false,\n    "noImplicitAny": false,')] },

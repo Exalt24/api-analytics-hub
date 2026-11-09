@@ -46,7 +46,34 @@ export interface QueryEmbeddingTable {
   embedding: string;
 }
 
+/** migrations/015: the per tenant version counter, the per browser last mutation id, and the saved presets. */
+export interface ReplicacheSpaceTable {
+  tenant_id: string;
+  version: string;
+}
+
+export interface ReplicacheClientTable {
+  tenant_id: string;
+  client_id: string;
+  client_group_id: string;
+  last_mutation_id: string;
+  version: string;
+}
+
+export interface ReportPresetTable {
+  tenant_id: string;
+  id: string;
+  name: string;
+  format: "csv" | "xlsx" | "pdf";
+  include_summary: boolean;
+  deleted: boolean;
+  version: string;
+}
+
 export interface Database {
+  replicache_space: ReplicacheSpaceTable;
+  replicache_client: ReplicacheClientTable;
+  report_preset: ReportPresetTable;
   tenant: TenantTable;
   metric: MetricTable;
   metric_snapshot: MetricSnapshotTable;

@@ -2,6 +2,7 @@
 
 import { exportCsvAction, exportPdfAction, exportXlsxAction } from "@/app/reports/actions";
 import { KeyGate } from "@/components/KeyGate";
+import { PresetsPanel } from "@/components/PresetsPanel";
 import { ReportForm } from "@/components/ReportForm";
 import { ReportsProvider, useReports, type ExportActions } from "@/components/ReportsProvider";
 
@@ -13,12 +14,13 @@ function ReportsKeyGate() {
   return <KeyGate onSet={setTenantKey} />;
 }
 
-/** The key bar and the export form, sharing one ReportsProvider. */
+/** The key bar, the export form and the saved presets, sharing one ReportsProvider. */
 export function ReportsPanel() {
   return (
     <ReportsProvider actions={ACTIONS}>
       <ReportsKeyGate />
       <ReportForm />
+      <PresetsPanel />
     </ReportsProvider>
   );
 }
