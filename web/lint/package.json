@@ -1,0 +1,11 @@
+{
+  "name": "analytics-hub-web-lint",
+  "private": true,
+  "description": "ESLint with typescript-eslint, kept apart from web/ because typescript-eslint only runs on the TypeScript 5 and 6 JavaScript API and web/ type checks with TypeScript 7, which has none.",
+  "type": "module",
+  "devDependencies": {
+    "eslint": "^10.14.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

@@ -151,3 +151,47 @@ def test_a_tenant_only_sees_its_own_queries(world):
     assert "red running shoes for kids" not in [x["query"] for x in a]
     assert "running shoes red" not in [x["query"] for x in b]
     assert hit == 0
+
+
+@pytestmark_db
+def test_a_query_vector_taken_from_one_tenant_never_returns_another_tenants_rows(world):
+    """Tenant B's own stored vector, used as the probe by tenant A, finds none of B's rows, however many rows are asked for.
+
+    The probe is the strongest one there is: B's stored vector for a phrase only B has, so a leak would put that row first
+    at similarity 1.0. The same check runs through the TypeScript Kysely layer in web/tests/search.test.ts.
+    """
+    phrase = "invoice dispute for the harbour warehouse"
+
+    async def go():
+        db = Database(DSN, max_size=2)
+        await db.connect()
+        try:
+            async with db.tenant(str(world[5])) as conn:
+                await sq.store(conn, str(world[5]), [phrase])
+                b_vector = await conn.fetchval("select embedding::text from query_embedding where query_text = $1", phrase)
+                b_texts = {r["query_text"] for r in await conn.fetch("select query_text from query_embedding")}
+            async with db.tenant(str(world[4])) as conn:
+                a_texts = {r["query_text"] for r in await conn.fetch("select query_text from query_embedding")}
+                by_text = await sq.similar(conn, phrase, 200)
+                by_vector = await conn.fetch(
+                    "select query_text, 1 - (embedding <=> $1::text::vector) as similarity from query_embedding "
+                    "order by embedding <=> $1::text::vector limit 200", b_vector)
+                near = await conn.fetchval("select count(*) from query_embedding where embedding <=> $1::text::vector < 0.000001", b_vector)
+            async with db.unscoped() as conn:
+                nobody = await conn.fetchval("select count(*) from query_embedding")
+            return phrase_in(b_texts), a_texts, by_text, by_vector, near, nobody
+        finally:
+            await db.close()
+
+    def phrase_in(texts):
+        return phrase in texts
+
+    b_has, a_texts, by_text, by_vector, near, nobody = run(go())
+    assert b_has and phrase not in a_texts
+    assert len(by_text) == 200 and len(by_vector) == 200
+    assert {r["query"] for r in by_text} <= a_texts
+    assert {r["query_text"] for r in by_vector} <= a_texts
+    assert phrase not in {r["query"] for r in by_text}
+    assert max(r["similarity"] for r in by_vector) < 0.999999
+    assert near == 0
+    assert nobody == 0   # no tenant set: the policy shows nothing at all

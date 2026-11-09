@@ -25,3 +25,8 @@ web/out/
 *.tfvars.json
 crash.log
 live_check_evidence.txt
+
+# web/: Playwright output and the lint tool's own install
+web/test-results/
+web/playwright-report/
+web/lint/node_modules/
