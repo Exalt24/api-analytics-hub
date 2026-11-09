@@ -21,7 +21,7 @@ There are ten connectors. **Shopify Admin GraphQL** is verified against a real d
 
 ## Demo
 
-The recording above is the whole stack, started with the commands below. The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app).
+The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app).
 
 ---
 
@@ -53,7 +53,7 @@ cd web && npm install && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run buil
 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store. That is a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`. Anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema. `seed_demo.py` applies every migration. `seed_local.py` applies only 001 to 003, so run 004 to 012 after. It loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key to see the role split. The dashboard is built and started, not run with `npm run dev`. `npm run dev` did not hydrate the page in the browsers this was recorded in. Open it as `http://localhost:3100` (the API's CORS origin).
+`seed_local.py` needs the owner's Shopify development store. That is a two-line domain and token file: `SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`. Anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema. `seed_demo.py` applies every migration. `seed_local.py` applies only 001 to 003, so run 004 to 012 after. It loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key to see the role split. The dashboard is built and started, not run with `npm run dev`. `npm run dev` did not hydrate the page in the browsers this was recorded in. Open it as `http://localhost:3100`.
 
 Paste a key into the box. The viewer key can read. Sync now comes back 403 with the reason.
 
@@ -141,7 +141,7 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 ## Report export from the dashboard
 
-The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security, the mechanism `app/db.py` uses. An AI summary is optional: a code guard refuses any figure not in the data, a refused summary is retried once, then a plain template is used and the file says so. An attached document goes up by a presigned S3 URL. Tested against real Postgres, a scripted fake model, a stand-in Anthropic server and SeaweedFS as the stand-in S3. No real model and no AWS account was used. 102 tests, 10 browser tests, and 53 deliberate breakages each caught. Each claim with its test: [docs/web-reports.md](docs/web-reports.md).
+The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security, the mechanism `app/db.py` uses. An AI summary is optional: a code guard refuses any figure not in the data, a refused summary is retried once, then a plain template is used and the file says so. An attached document goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, shadcn/ui style Radix UI components and the Vercel AI SDK. Tested against real Postgres, a scripted fake model, a stand-in Anthropic server and SeaweedFS as the stand-in S3. No real model and no AWS account was used. 102 tests, 10 browser tests, and 53 deliberate breakages each caught. Each claim with its test: [docs/web-reports.md](docs/web-reports.md).
 
 ---
 
@@ -165,7 +165,7 @@ cd web && node scripts/mutation_check.mjs # 53 guards broken one at a time; use 
 
 Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
 
-The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code. It also holds four blind review passes. Figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
+The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code. Figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
