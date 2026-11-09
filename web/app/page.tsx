@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { KeyGate } from "@/components/KeyGate";
 import { KpiCard } from "@/components/KpiCard";
@@ -75,6 +76,9 @@ export default function Page() {
           </p>
         </div>
         <div className="controls">
+          <Link href="/reports" className="linkish">
+            Reports
+          </Link>
           <label className="field">
             <span>Connection</span>
             <select

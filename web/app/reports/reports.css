@@ -1,0 +1,19 @@
+/*
+ * Tailwind for the Reports page only. The dashboard stylesheet (globals.css) is plain CSS with
+ * custom properties, so the Tailwind reset is left out: only the theme and the utility classes
+ * load, and the colours below point at the dashboard tokens, so the page follows its light and
+ * dark scheme.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--card);
+  --color-border: var(--line);
+  --color-muted-foreground: var(--muted);
+  --color-primary: var(--accent);
+  --color-destructive: var(--bad);
+}

@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "web_test",
+      "credentials": [{ "accessKey": "webtestaccesskey", "secretKey": "webtest-secret-key-not-real" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}
