@@ -74,3 +74,63 @@ jobs:
           docker run --rm -v "$PWD/deploy:/etc/caddy:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile
           docker run --rm -v "$PWD/deploy:/deploy:ro" debian:bookworm-slim sh /deploy/verify_units.sh
       - run: python tests/mutation_check.py --check-targets
+
+  # The web dashboard's own tests: strict TypeScript, ESLint with no explicit any, the Kysely layer against Postgres with row level security,
+  # the figure guard, the three export formats read back, the presigned upload against a stand-in S3, the browser test on the built dashboard,
+  # and the mutation script. WEB_REQUIRE_DB and WEB_REQUIRE_S3 make a missing Postgres or stand-in FAIL here instead of skipping.
+  web:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    env:
+      WEB_REQUIRE_DB: "1"
+      WEB_REQUIRE_S3: "1"
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_DB: analytics
+          POSTGRES_USER: analytics
+          POSTGRES_PASSWORD: analytics
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U analytics -d analytics"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            web/lint/package-lock.json
+      - name: S3 stand-in (SeaweedFS, checks AWS signature v4)
+        run: docker compose --profile s3 up -d --wait s3
+      - name: Install
+        working-directory: web
+        run: |
+          npm ci
+          npm run lint:install
+      - name: Typecheck, lint, and the lint gate's own tests
+        working-directory: web
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run lint:test
+      - name: Unit and database tests
+        working-directory: web
+        run: npm test
+      - name: Build
+        working-directory: web
+        run: npm run build
+      - name: Browser test on the built dashboard
+        working-directory: web
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - name: Mutation check, every guard broken one at a time
+        working-directory: web
+        run: node scripts/mutation_check.mjs

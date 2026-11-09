@@ -1,0 +1,175 @@
+web/ test run, 2026-11-09. Local: Node v24.18.0, Postgres 17 with pgvector 0.8.7 (compose db service), S3 stand-in SeaweedFS 4.53 (compose s3 service, profile s3), Anthropic stand-in e2e/stand-ins/anthropic.mts.
+
+== npm run typecheck
+
+exit 0
+
+== npm run lint
+
+
+== npm run lint:test
+
+✔ an explicit any is an error, not a warning (499.2012ms)
+✔ any in a generic, a cast and a parameter is each caught (6.1207ms)
+✔ typed code passes (3.0865ms)
+✔ every source file in web/ passes with no warnings (232.2317ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 905.3184
+
+== WEB_REQUIRE_DB=1 WEB_REQUIRE_S3=1 npm test
+ RUN  v5.1.0 C:/Projects/Professional/Projects/Apps/api-analytics-hub/web
+ ✓ tests/mutation-harness.test.ts > scripts/mutation_check.mjs > refuses an argument it does not know, and edits nothing 65ms
+ ✓ tests/mutation-harness.test.ts > scripts/mutation_check.mjs > finds the text of every mutant exactly once 63ms
+ ✓ tests/typescript-strict.test.ts > TypeScript strictness of the web project > refuses an implicit any parameter (TS7006) 139ms
+ ✓ tests/typescript-strict.test.ts > TypeScript strictness of the web project > refuses a possibly null value being used (strictNullChecks, TS18047 or TS2531) 134ms
+ ✓ tests/typescript-strict.test.ts > TypeScript strictness of the web project > accepts typed code 142ms
+ ✓ tests/typescript-strict.test.ts > TypeScript strictness of the web project > names strict and noImplicitAny in the config, so a reader sees them 0ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > returns tenant A's October as the fixture rows say, with the second connection folded in 41ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > never returns a gauge, and never a day outside the month 12ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > never returns the second tenant's rows, for either tenant 12ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > filters a raw query with no WHERE clause, and a WHERE for the other tenant matches nothing 8ms
+ ✓ tests/search.test.ts > embed, the TypeScript port of app/similar_queries.py > gives the vector the Python function gave, for 12 texts including accents, CJK, an emoji and a 300 character query 15ms
+ ✓ tests/search.test.ts > embed, the TypeScript port of app/similar_queries.py > is case and spacing independent, unit length, and refuses an empty query 3ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > a query for tenant B's own text, asked as tenant A, returns only A's rows 35ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > returns A's copy of a text that both tenants stored, once, and B's lookup sees B's rows only 13ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > ranks the identical text first with similarity 1, nearest first 6ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > returns nothing for a tenant with no stored queries, and for no tenant at all 6ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > stays isolated when one tenant stores a text another already has, and when the text is refreshed 25ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > uses the model's summary when every figure is in the data, after one call 30ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > retries once when a figure is invented, names it to the model, and uses the second try if it is clean 3ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > falls back to the template after the second refusal, and says so in the summary 3ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > refuses an invented number written as a word, then falls back 2ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > treats a reply that is not the schema as a failed try: bad JSON, an unknown metric, a missing field 6ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > falls back, with the reason, when the model call itself throws 1ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > uses the template with no model call at all when no key is configured 0ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > makes exactly as many calls as it is allowed 1ms
+ ✓ tests/summary.test.ts > generateSummary with a scripted model > gives the model only the data's own figures in the prompt 0ms
+ ✓ tests/summary.test.ts > the template > states each total with its day count, in the reader's format, and names no tenant 0ms
+ ✓ tests/summary.test.ts > the template > says 1 day, not 1 days 0ms
+ ✓ tests/summary.test.ts > modelFromEnv > is null without a key, and a model for the configured name with one 0ms
+ ✓ tests/guard.test.ts > canon > drops commas, sign, and leading and trailing zeros 1ms
+ ✓ tests/guard.test.ts > digits > accepts every figure of the data in any of its written forms 1ms
+ ✓ tests/guard.test.ts > digits > rejects a figure that is in no row, however small 0ms
+ ✓ tests/guard.test.ts > digits > rejects a percentage, a rounded figure and a worked out sum 0ms
+ ✓ tests/guard.test.ts > digits > does not read a sign as a way round: -38 is still the figure 38, and -39 is not 0ms
+ ✓ tests/guard.test.ts > digits > reads digits glued to letters, and full width digits 0ms
+ ✓ tests/guard.test.ts > digits > refuses a digit from another script outright 1ms
+ ✓ tests/guard.test.ts > digits > reads every text it is given, not just the first 0ms
+ ✓ tests/guard.test.ts > digits > digitTokens keeps a comma list apart from a thousands separator 0ms
+ ✓ tests/guard.test.ts > dates are labels, not figures, when they are the data's own > accepts the report month, a day in the data, in ISO and in words 0ms
+ ✓ tests/guard.test.ts > dates are labels, not figures, when they are the data's own > rejects a day that is not one of the data's days, and another year 1ms
+ ✓ tests/guard.test.ts > dates are labels, not figures, when they are the data's own > does not let a date hide a figure next to it 0ms
+ ✓ tests/guard.test.ts > numbers written as words > reads compounds, hundreds, scales and ordinals 0ms
+ ✓ tests/guard.test.ts > numbers written as words > reads the quantity words that carry no digit 0ms
+ ✓ tests/guard.test.ts > numbers written as words > rejects a number word that is not a figure of the data, and accepts one that is 0ms
+ ✓ tests/guard.test.ts > numbers written as words > reads one as a number except in 'one of' and 'no one' 0ms
+ ✓ tests/guard.test.ts > the template summary passes its own guard > holds over 300 generated months, and an invented figure is refused in every one 52ms
+ ✓ tests/s3.test.ts > keys and file names > builds the key under the tenant and month, never from the browser's path 2ms
+ ✓ tests/s3.test.ts > keys and file names > cleans a file name to letters, digits, dot, dash and underscore, at most 100 long, never hidden or empty 0ms
+ ✓ tests/s3.test.ts > keys and file names > reads its config from the environment, and is off without a bucket 1ms
+ ✓ tests/s3.test.ts > what the signed URL says > is for one key, signs the type and length, and expires in 300 seconds 11ms
+ ✓ tests/s3.test.ts > what the signed URL says > gives two uploads of the same file two different keys 1ms
+ ✓ tests/s3.test.ts > what the signed URL says > will not sign a read link for another tenant's key 1ms
+ ✓ tests/s3.test.ts > the upload request, with the key resolved against the database > signs under the tenant of the key, and the browser cannot pick another 18ms
+ ✓ tests/s3.test.ts > the upload request, with the key resolved against the database > refuses an unknown key, a type outside the list, 10 MB and a byte, zero bytes, a future month and a missing bucket 11ms
+ ✓ tests/s3.test.ts > against a stand-in S3 that verifies AWS signature v4 (SeaweedFS) > stores a correct PUT and returns the same bytes, through the client and through a presigned read link 26ms
+ ✓ tests/s3.test.ts > against a stand-in S3 that verifies AWS signature v4 (SeaweedFS) > refuses a PUT that changes the content type 6ms
+ ✓ tests/s3.test.ts > against a stand-in S3 that verifies AWS signature v4 (SeaweedFS) > refuses a PUT whose body is not the length that was signed 10ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > a write for another tenant is refused by the policy's check, not silently stored 13ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > stays isolated when 40 requests for two tenants share a pool of two connections 307ms
+ ✓ tests/s3.test.ts > against a stand-in S3 that verifies AWS signature v4 (SeaweedFS) > refuses a URL whose key has been changed, so one signature cannot write another object 12ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > sees nothing when no tenant is set, and a tenant with no rows gets a no-data error 10ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > refuses a missing or malformed tenant id before running any SQL 1ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > keeps the tenant setting and the role inside the transaction: the pooled connection comes back clean 9ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > holds for a login role that is not a superuser, with no role switch of its own 15ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > refuses to start as a superuser, which would make every policy inert 6ms
+ ✓ tests/tenant-isolation.test.ts > the Kysely layer reads one tenant's snapshots under forced row level security > returns a superuser every tenant's rows, which is the failure the assertion above exists for 1ms
+ ✓ tests/tenant-isolation.test.ts > an API key resolves to its tenant and nothing else > maps each key to its own tenant and role 12ms
+ ✓ tests/tenant-isolation.test.ts > an API key resolves to its tenant and nothing else > refuses an unknown, an empty and a revoked key 6ms
+ ✓ tests/format.test.ts > money in integers > formats minor units without a float 1ms
+ ✓ tests/format.test.ts > money in integers > is exact past 2^53, where a float is not 0ms
+ ✓ tests/format.test.ts > money in integers > groups the reader form and prefixes the currency 0ms
+ ✓ tests/format.test.ts > money in integers > names months and bounds them, December into January included 1ms
+ ✓ tests/format.test.ts > csv cells > quotes a comma, a double quote and a line break, and doubles the quote 0ms
+ ✓ tests/format.test.ts > csv cells > defuses a text cell a spreadsheet would run as a formula, but not a signed number 0ms
+ ✓ tests/format.test.ts > csv cells > round trips a hostile label through a CSV parser 2ms
+ ✓ tests/format.test.ts > the three formats hold the same data > csv: a header, one line per day and metric, one per total 1ms
+ ✓ tests/format.test.ts > the three formats hold the same data > xlsx: three sheets, numbers as numbers, money with two decimals shown 31ms
+ ✓ tests/format.test.ts > the three formats hold the same data > pdf: the title, every total and every daily line come back as text 72ms
+ ✓ tests/format.test.ts > the three formats hold the same data > pdf: a long report runs onto more pages and keeps its last row 22ms
+ ✓ tests/format.test.ts > the three formats hold the same data > pdf: a tenant name outside Latin-1 does not throw 5ms
+ ✓ tests/format.test.ts > the three formats hold the same data > every format carries the summary, its source and the reason for a fallback 14ms
+ ✓ tests/format.test.ts > the three formats hold the same data > every format names the attached source document 10ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > csv: tenant A's October, read back, equals the fixture rows and the hand-worked totals 35ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > xlsx: the workbook holds the same figures as numbers 38ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > pdf: the text extracted from the file has the tenant, the totals and every day 76ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > never puts the other tenant's figures or name in any format 51ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > holds a request that skips the form to the same Zod rules: nothing reaches the database 2ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > refuses a month that has not started, an unknown key and a revoked key 6ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > says there is no data for a month with none, instead of sending an empty file 8ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > holds each action to its own format 0ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > accepts a document under the tenant's own prefix and refuses one under another's 11ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > with the summary on and a clean model reply, the summary is in all three formats as AI-written 52ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > with the summary on and a model that keeps inventing figures, every format says it used the template 41ms
+ ✓ tests/export.test.ts > exporting a tenant's month through the real database layer > with no model key the export still works and says why there is no AI summary 8ms
+ ✓ tests/export.test.ts > the request schema > accepts a well formed request and rejects the tenant id as an input 0ms
+ ✓ tests/mutation-harness.test.ts > scripts/mutation_check.mjs > lists more than 40 mutants, each with a unique name 59ms
+ ✓ tests/mutation-harness.test.ts > scripts/mutation_check.mjs > catches a lint rule turned off, and writes the file back exactly 2219ms
+ ✓ tests/mutation-harness.test.ts > scripts/mutation_check.mjs > refuses --only with a name that matches nothing 34ms
+ ✓ tests/s3.test.ts > against a stand-in S3 that verifies AWS signature v4 (SeaweedFS) > refuses a URL after it has expired 2521ms
+ ✓ tests/s3.test.ts > against a stand-in S3 that verifies AWS signature v4 (SeaweedFS) > refuses a client with the wrong secret 16ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > returns a full page of 20 for a tenant that owns a tenth of 6,000 rows, which the HNSW index alone does not 3724ms
+ ✓ tests/search.test.ts > AI search through the Kysely layer: one tenant's query vector never returns another tenant's rows > refuses a limit outside 1 to 200 6ms
+ Test Files  9 passed (9)
+      Tests  102 passed (102)
+   Start at  15:57:12
+   Duration  4.83s (tests 71%, import 28%, transform 1%)
+
+== npm run build
+
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.mjs took 11ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 660ms
+  Running TypeScript ...
+  Finished TypeScript in 472ms ...
+  Collecting page data using 5 workers ...
+  Generating static pages using 5 workers (0/4) ...
+  Generating static pages using 5 workers (1/4) 
+  Generating static pages using 5 workers (2/4) 
+  Generating static pages using 5 workers (3/4) 
+✓ Generating static pages using 5 workers (4/4) in 590ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+└ ○ /reports
+
+
+○  (Static)  prerendered as static content
+
+
+== npx playwright test
+
+Running 10 tests using 1 worker
+
+  ✓   1 e2e\reports.spec.ts:67:3 › Reports page on the built dashboard › the dashboard links to Reports, and an export with no key says to add one (375ms)
+  ✓   2 e2e\reports.spec.ts:73:3 › Reports page on the built dashboard › CSV: the downloaded file holds tenant A's October, row for row (1.1s)
+  ✓   3 e2e\reports.spec.ts:82:3 › Reports page on the built dashboard › Excel: the downloaded workbook holds the same figures as numbers (474ms)
+  ✓   4 e2e\reports.spec.ts:100:3 › Reports page on the built dashboard › PDF: the text extracted from the downloaded file holds the tenant, totals and every day (544ms)
+  ✓   5 e2e\reports.spec.ts:120:3 › Reports page on the built dashboard › another tenant's key gets its own figures and none of tenant A's (377ms)
+  ✓   6 e2e\reports.spec.ts:130:3 › Reports page on the built dashboard › AI summary on: the model is called with the data and its checked summary is in the file (443ms)
+  ✓   7 e2e\reports.spec.ts:146:3 › Reports page on the built dashboard › AI summary on, and a model that invents a figure twice: the file says it fell back to the template (544ms)
+  ✓   8 e2e\reports.spec.ts:164:3 › Reports page on the built dashboard › an unknown key, and a month with no data, each show an error and no download (511ms)
+  ✓   9 e2e\reports.spec.ts:178:3 › Reports page on the built dashboard › the export button shows a working state until the server answers (393ms)
+  ✓  10 e2e\reports.spec.ts:199:3 › Reports page on the built dashboard › a document attached through a presigned URL is stored in S3 and named in the export (427ms)
+
+  10 passed (9.6s)

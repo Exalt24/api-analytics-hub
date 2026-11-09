@@ -91,5 +91,12 @@ scripts/billing.py   price, topup, debit, refund, adjust, statement, report, rec
 seed_billing_demo.py plans and two invented tenants for the billing demo
 docs/billing.md      the ledger, the flows, how a duplicate charge is prevented, the demo, what is not done; docs/vendor-contract/stripe/ the Stripe pages the provider is written from
 web/                 Next.js dashboard
+  app/reports/       the Reports page and its Server Actions (CSV, Excel, PDF, presigned upload)
+  lib/server/        Kysely database layer with the tenant setting and role switch, API key to tenant, the TypeScript port of the query embedding and lookup
+  lib/report/        month data, CSV, Excel and PDF writers, the Zod input schemas, the figure guard, the AI summary and its template fallback
+  lib/s3/            presigned upload and read links, and the upload request
+  components/ui/     shadcn/ui style components on Radix primitives; ReportForm.tsx is the export form
+  tests/             Vitest suites (database, formats, guard, summary, S3, search, compiler, mutation script)
+  e2e/               Playwright test and the Anthropic stand-in server; scripts/mutation_check.mjs breaks 53 guards; lint/ holds ESLint (docs/web-reports.md)
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
 ```

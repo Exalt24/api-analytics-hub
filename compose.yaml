@@ -15,3 +15,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # A stand-in S3 for the web tests of the presigned upload helper (web/tests/s3.test.ts). SeaweedFS verifies AWS signature v4
+  # (headers and presigned URLs) against the one fake identity in web/tests/s3/seaweedfs-s3.json. It is not AWS.
+  # Not started by a plain `docker compose up`; run `docker compose --profile s3 up -d --wait s3`.
+  s3:
+    profiles: ["s3"]
+    image: chrislusf/seaweedfs:4.53
+    command: server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333
+    ports:
+      - "127.0.0.1:8333:8333"
+    volumes:
+      - ./web/tests/s3/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null && wget -S --spider -q http://127.0.0.1:8333/ 2>&1 | grep -q '403'"]
+      interval: 3s
+      timeout: 5s
+      retries: 20

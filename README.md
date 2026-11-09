@@ -139,6 +139,12 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 ---
 
+## Report export from the dashboard
+
+The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security, the mechanism `app/db.py` uses. An AI summary is optional: a code guard refuses any figure not in the data, a refused summary is retried once, then a plain template is used and the file says so. An attached document goes up by a presigned S3 URL. Tested against real Postgres, a scripted fake model, a stand-in Anthropic server and SeaweedFS as the stand-in S3. No real model and no AWS account was used. 102 tests, 10 browser tests, and 53 deliberate breakages each caught. Each claim with its test: [docs/web-reports.md](docs/web-reports.md).
+
+---
+
 ## Change detection on a daily file
 
 `app/changes.py` loads one day of about 400,000 carriers. It finds the few that changed with one hash compare. It keeps every change in history. It raises each alert once behind a UNIQUE key. Measured on 2026-10-24 (desktop PC, local Docker Postgres): day 2 (400,200 rows, 0.5 percent changed) took 9.89 s and raised 2,371 events. The same file again raised 0. An error at each of 7 stages left the tables unchanged. Runs on sample data. Method and limits: [docs/change-detection.md](docs/change-detection.md).
@@ -152,6 +158,9 @@ python -m pytest tests/ -q                # 6,627 tests: 6,612 passed, 10 skippe
 python tests/mutation_check.py            # all 300 hand matched guards; edits source in place, so use a copy (--help)
 python live_check.py                      # against the real store
 nix run .#fast-tests                      # 470 of them in a pinned Nix shell, about a second ([docs/nix.md](docs/nix.md))
+cd web && npm test                        # 102 tests ([docs/web-reports.md](docs/web-reports.md))
+cd web && npm run build && npx playwright test    # 10 browser tests
+cd web && node scripts/mutation_check.mjs # 53 guards broken one at a time; use a copy
 ```
 
 Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
