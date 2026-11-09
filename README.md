@@ -141,7 +141,7 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 ## Report export from the dashboard
 
-The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security, the mechanism `app/db.py` uses. An AI summary is optional: a code guard refuses any figure not in the data, a refused summary is retried once, then a plain template is used and the file says so. An attached document goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, shadcn/ui style Radix UI components and the Vercel AI SDK. Tested against real Postgres, a scripted fake model, a stand-in Anthropic server and SeaweedFS as the stand-in S3. No real model and no AWS account was used. 102 tests, 10 browser tests, and 53 deliberate breakages each caught. Each claim with its test: [docs/web-reports.md](docs/web-reports.md).
+The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security, the mechanism `app/db.py` uses. An AI summary is optional: a code guard refuses any figure not in the data, a refused summary is retried once, then a plain template is used and the file says so. An attached document goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, shadcn/ui style Radix UI components and the Vercel AI SDK. Tested against real Postgres, a scripted fake model, a stand-in Anthropic server and SeaweedFS as the stand-in S3. No real model and no AWS account was used. Page state is held in React Context; 129 tests, 10 browser tests, and 65 deliberate breakages each caught. Each claim with its test: [docs/web-reports.md](docs/web-reports.md).
 
 ---
 
@@ -158,9 +158,9 @@ python -m pytest tests/ -q                # 6,627 tests: 6,612 passed, 10 skippe
 python tests/mutation_check.py            # all 300 hand matched guards; edits source in place, so use a copy (--help)
 python live_check.py                      # against the real store
 nix run .#fast-tests                      # 470 of them in a pinned Nix shell, about a second ([docs/nix.md](docs/nix.md))
-cd web && npm test                        # 102 tests ([docs/web-reports.md](docs/web-reports.md))
+cd web && npm test                        # 129 tests ([docs/web-reports.md](docs/web-reports.md))
 cd web && npm run build && npx playwright test    # 10 browser tests
-cd web && node scripts/mutation_check.mjs # 53 guards broken one at a time; use a copy
+cd web && node scripts/mutation_check.mjs # 65 guards broken one at a time; use a copy
 ```
 
 Counts are from the run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI). The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).

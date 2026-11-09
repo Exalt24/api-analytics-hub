@@ -97,6 +97,6 @@ web/                 Next.js dashboard
   lib/s3/            presigned upload and read links, and the upload request
   components/ui/     shadcn/ui style components on Radix primitives; ReportForm.tsx is the export form
   tests/             Vitest suites (database, formats, guard, summary, S3, search, compiler, mutation script)
-  e2e/               Playwright test and the Anthropic stand-in server; scripts/mutation_check.mjs breaks 53 guards; lint/ holds ESLint (docs/web-reports.md)
+  e2e/               Playwright test and the Anthropic stand-in server; scripts/mutation_check.mjs breaks 65 guards; lint/ holds ESLint (docs/web-reports.md)
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
 ```

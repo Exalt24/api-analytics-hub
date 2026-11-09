@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { exportCsvAction, exportPdfAction, exportXlsxAction, createUploadUrlAction } from "@/app/reports/actions";
-import type { ExportActionResult } from "@/lib/report/action-types";
-import { MAX_UPLOAD_BYTES, UPLOAD_TYPES, exportFormSchema, type ExportForm, type Format } from "@/lib/report/input";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { createUploadUrlAction } from "@/app/reports/actions";
+import { ExportResult } from "@/components/ExportResult";
+import { useReports } from "@/components/ReportsProvider";
+import { FORMATS, MAX_UPLOAD_BYTES, UPLOAD_TYPES, exportFormSchema, type ExportForm, type Format } from "@/lib/report/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,84 +14,43 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-const ACTIONS: Record<Format, (raw: unknown) => Promise<ExportActionResult>> = {
-  csv: exportCsvAction,
-  xlsx: exportXlsxAction,
-  pdf: exportPdfAction,
-};
-
 const FORMAT_LABELS: Record<Format, string> = { csv: "CSV", xlsx: "Excel (.xlsx)", pdf: "PDF" };
 
-/** The month before this one, as YYYY-MM, in UTC (the server reads months the same way). */
-function lastMonth(now: Date = new Date()): string {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function storedKey(): string {
-  try {
-    return window.localStorage.getItem("apiKey") ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function saveFile(base64: string, filename: string, mimeType: string): void {
-  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-type Done = { filename: string; summary?: { source: "ai" | "template"; fallbackReason?: string } };
-
+/**
+ * The export form. What the visitor picks (month, format, summary switch, attachment) lives in the
+ * Reports context, so the key bar and the result alerts read the same state. React Hook Form stays
+ * as the validator: it holds a mirror of those four values, kept in step both ways, and the Zod
+ * schema runs over it at submit.
+ */
 export function ReportForm() {
+  const { state, busy, setMonth, setFormat, setIncludeSummary, setAttachment, setError, exportReport } = useReports();
   const form = useForm<ExportForm>({
     resolver: zodResolver(exportFormSchema),
-    defaultValues: { format: "csv", month: lastMonth(), includeSummary: false },
+    defaultValues: { format: state.format, month: state.month, includeSummary: state.includeSummary },
   });
-  const { control, register, handleSubmit, setValue, watch, formState } = form;
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [done, setDone] = useState<Done | undefined>(undefined);
+  const { control, handleSubmit, setValue, getValues, formState } = form;
   const [uploading, setUploading] = useState(false);
   // The button stays off until the page is interactive, so an early click cannot submit the form as a plain page load.
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
-  const attachment = watch("attachment");
+  const attachment = state.attachment;
 
-  async function onSubmit(values: ExportForm): Promise<void> {
-    setError(undefined);
-    setDone(undefined);
-    const apiKey = storedKey();
-    if (!apiKey) {
-      setError("Add your key above first.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const result = await ACTIONS[values.format]({ ...values, apiKey });
-      if (!result.ok) {
-        setError(result.message);
-        return;
-      }
-      saveFile(result.base64, result.filename, result.mimeType);
-      setDone({ filename: result.filename, ...(result.summary ? { summary: result.summary } : {}) });
-    } catch {
-      setError("Could not reach the server. Try again.");
-    } finally {
-      setBusy(false);
-    }
+  // A change made through the context (not through these controls) reaches the validator too.
+  useEffect(() => {
+    const revalidate = { shouldValidate: formState.isSubmitted };
+    if (getValues("format") !== state.format) setValue("format", state.format, revalidate);
+    if (getValues("month") !== state.month) setValue("month", state.month, revalidate);
+    if (getValues("includeSummary") !== state.includeSummary) setValue("includeSummary", state.includeSummary, revalidate);
+    if (getValues("attachment")?.objectKey !== state.attachment?.objectKey) setValue("attachment", state.attachment, revalidate);
+  }, [state.format, state.month, state.includeSummary, state.attachment, getValues, setValue, formState.isSubmitted]);
+
+  async function onSubmit(): Promise<void> {
+    await exportReport();
   }
 
   async function onFile(file: File | undefined): Promise<void> {
     setError(undefined);
-    setValue("attachment", undefined);
+    setAttachment(undefined);
     if (!file) return;
     const type = UPLOAD_TYPES.find((t) => t === file.type);
     if (!type) {
@@ -102,14 +61,13 @@ export function ReportForm() {
       setError("That file is over 10 MB.");
       return;
     }
-    const apiKey = storedKey();
-    if (!apiKey) {
+    if (!state.tenantKey) {
       setError("Add your key above first.");
       return;
     }
     setUploading(true);
     try {
-      const signed = await createUploadUrlAction({ apiKey, month: watch("month"), filename: file.name, contentType: type, size: file.size });
+      const signed = await createUploadUrlAction({ apiKey: state.tenantKey, month: state.month, filename: file.name, contentType: type, size: file.size });
       if (!signed.ok) {
         setError(signed.message);
         return;
@@ -119,7 +77,7 @@ export function ReportForm() {
         setError("The upload failed. Try again.");
         return;
       }
-      setValue("attachment", { objectKey: signed.objectKey, filename: file.name });
+      setAttachment({ objectKey: signed.objectKey, filename: file.name });
     } catch {
       setError("The upload failed. Try again.");
     } finally {
@@ -141,12 +99,18 @@ export function ReportForm() {
               control={control}
               name="format"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange} disabled={busy}>
+                <Select
+                  value={state.format}
+                  onValueChange={(v) => {
+                    if (setFormat(v)) field.onChange(v);
+                  }}
+                  disabled={busy}
+                >
                   <SelectTrigger id="format" aria-label="Format">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(FORMAT_LABELS) as Format[]).map((f) => (
+                    {FORMATS.map((f) => (
                       <SelectItem key={f} value={f}>
                         {FORMAT_LABELS[f]}
                       </SelectItem>
@@ -159,7 +123,26 @@ export function ReportForm() {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="month">Month</Label>
-            <Input id="month" type="month" disabled={busy} aria-invalid={Boolean(formState.errors.month)} {...register("month")} />
+            <Controller
+              control={control}
+              name="month"
+              render={({ field }) => (
+                <Input
+                  id="month"
+                  type="month"
+                  disabled={busy}
+                  aria-invalid={Boolean(formState.errors.month)}
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  value={state.month}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setMonth(e.target.value);
+                  }}
+                />
+              )}
+            />
             {formState.errors.month ? (
               <p className="text-destructive text-sm" role="alert">
                 {formState.errors.month.message}
@@ -172,7 +155,15 @@ export function ReportForm() {
               control={control}
               name="includeSummary"
               render={({ field }) => (
-                <Switch id="includeSummary" checked={field.value} onCheckedChange={field.onChange} disabled={busy} />
+                <Switch
+                  id="includeSummary"
+                  checked={state.includeSummary}
+                  onCheckedChange={(v) => {
+                    field.onChange(v);
+                    setIncludeSummary(v);
+                  }}
+                  disabled={busy}
+                />
               )}
             />
             <div className="flex flex-col gap-1">
@@ -196,25 +187,7 @@ export function ReportForm() {
             </p>
           </div>
 
-          {error ? (
-            <Alert variant="destructive">
-              <AlertTitle>Could not export</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {done ? (
-            <Alert>
-              <AlertTitle>Saved {done.filename}</AlertTitle>
-              {done.summary ? (
-                <AlertDescription>
-                  {done.summary.source === "ai"
-                    ? "Summary written by the model. Every figure matched the data."
-                    : `Summary from a plain template. ${done.summary.fallbackReason ?? ""}`}
-                </AlertDescription>
-              ) : undefined}
-            </Alert>
-          ) : null}
+          <ExportResult />
 
           <div>
             <Button type="submit" disabled={!ready || busy || uploading}>

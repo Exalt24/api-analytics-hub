@@ -1,4 +1,4 @@
-web/ mutation check, 2026-11-09. node scripts/mutation_check.mjs, run in the working tree with Postgres on 5433 and the S3 stand-in up (WEB_REQUIRE_DB=1 is set by the script).
+web/ mutation check, 2026-11-09, after the Reports context guards were added (65 guards). node scripts/mutation_check.mjs, run in the working tree with Postgres on 5433 and the S3 stand-in up (WEB_REQUIRE_DB=1 is set by the script).
 
 caught    db.no_set_config
 caught    db.session_scoped_setting
@@ -50,9 +50,21 @@ caught    search.no_iterative_scan
 caught    search.embed_wrong_bit
 caught    search.embed_utf16_trigrams
 caught    search.limit_unchecked
+caught    context.format_not_validated
+caught    context.old_result_kept_on_new_export
+caught    context.failure_keeps_old_result
+caught    context.hook_works_outside_provider
+caught    context.export_without_key
+caught    context.always_csv_action
+caught    context.file_not_saved
+caught    context.double_export_allowed
+caught    context.other_tab_key_ignored
+caught    context.month_not_shared
+caught    context.summary_switch_not_shared
+caught    context.key_bar_not_wired
 caught    tsc.strict_off
 caught    lint.any_is_a_warning
 caught    lint.any_is_off
 
-53 of 53 mutants caught
+65 of 65 mutants caught
 exit 0

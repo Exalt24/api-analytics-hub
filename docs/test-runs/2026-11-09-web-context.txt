@@ -1,0 +1,69 @@
+web/ test run after the Reports context was added, 2026-11-09. Same local setup as 2026-11-09-web-tests.txt (Node v24.18.0, Postgres 17 with pgvector, SeaweedFS S3 stand-in, Anthropic stand-in). Test output trimmed to the summary lines.
+
+== npm run typecheck
+> typecheck
+> tsc --noEmit
+
+exit 0
+
+== npm run lint
+
+> lint
+> node lint/node_modules/eslint/bin/eslint.js --config lint/eslint.config.mjs --max-warnings 0 app components lib tests e2e
+
+
+== npm run lint:test
+✔ an explicit any is an error, not a warning (503.5267ms)
+✔ any in a generic, a cast and a parameter is each caught (5.9368ms)
+✔ typed code passes (2.986ms)
+✔ every source file in web/ passes with no warnings (265.3985ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 946.6507
+
+== WEB_REQUIRE_DB=1 WEB_REQUIRE_S3=1 npm test
+
+ RUN  v5.1.0 C:/Projects/Professional/Projects/Apps/api-analytics-hub/web
+
+
+ Test Files  11 passed (11)
+      Tests  129 passed (129)
+   Start at  16:51:23
+   Duration  5.20s (tests 66%, import 27%, environment 5%, transform 1%)
+
+
+== npm run build
+  Generating static pages using 5 workers (3/4) 
+✓ Generating static pages using 5 workers (4/4) in 572ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+└ ○ /reports
+
+
+○  (Static)  prerendered as static content
+
+
+== npx playwright test
+
+Running 10 tests using 1 worker
+
+  ✓   1 e2e\reports.spec.ts:67:3 › Reports page on the built dashboard › the dashboard links to Reports, and an export with no key says to add one (373ms)
+  ✓   2 e2e\reports.spec.ts:73:3 › Reports page on the built dashboard › CSV: the downloaded file holds tenant A's October, row for row (1.1s)
+  ✓   3 e2e\reports.spec.ts:82:3 › Reports page on the built dashboard › Excel: the downloaded workbook holds the same figures as numbers (528ms)
+  ✓   4 e2e\reports.spec.ts:100:3 › Reports page on the built dashboard › PDF: the text extracted from the downloaded file holds the tenant, totals and every day (557ms)
+  ✓   5 e2e\reports.spec.ts:120:3 › Reports page on the built dashboard › another tenant's key gets its own figures and none of tenant A's (407ms)
+  ✓   6 e2e\reports.spec.ts:130:3 › Reports page on the built dashboard › AI summary on: the model is called with the data and its checked summary is in the file (463ms)
+  ✓   7 e2e\reports.spec.ts:146:3 › Reports page on the built dashboard › AI summary on, and a model that invents a figure twice: the file says it fell back to the template (541ms)
+  ✓   8 e2e\reports.spec.ts:164:3 › Reports page on the built dashboard › an unknown key, and a month with no data, each show an error and no download (494ms)
+  ✓   9 e2e\reports.spec.ts:178:3 › Reports page on the built dashboard › the export button shows a working state until the server answers (375ms)
+  ✓  10 e2e\reports.spec.ts:199:3 › Reports page on the built dashboard › a document attached through a presigned URL is stored in S3 and named in the export (445ms)
+
+  10 passed (10.5s)

@@ -25,7 +25,8 @@ import { useEffect, useState } from "react";
 // The hosted demo this repo once shipped a key for is offline, so no key is committed any more.
 const DEMO_VIEWER_KEY = process.env.NEXT_PUBLIC_DEMO_VIEWER_KEY ?? "";
 
-export function KeyGate({ onSet }: { onSet: () => void }) {
+/** `onSet` gets the key that is now stored, or null after a sign out. */
+export function KeyGate({ onSet }: { onSet: (key: string | null) => void }) {
   const [value, setValue] = useState("");
   const [hasKey, setHasKey] = useState<boolean | null>(null);
 
@@ -36,15 +37,16 @@ export function KeyGate({ onSet }: { onSet: () => void }) {
   }, []);
 
   function save(key: string) {
-    window.localStorage.setItem("apiKey", key.trim());
+    const trimmed = key.trim();
+    window.localStorage.setItem("apiKey", trimmed);
     setHasKey(true);
-    onSet();
+    onSet(trimmed || null);
   }
 
   function clear() {
     window.localStorage.removeItem("apiKey");
     setHasKey(false);
-    onSet();
+    onSet(null);
   }
 
   if (hasKey === null) return null;

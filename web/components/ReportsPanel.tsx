@@ -1,14 +1,24 @@
 "use client";
 
+import { exportCsvAction, exportPdfAction, exportXlsxAction } from "@/app/reports/actions";
 import { KeyGate } from "@/components/KeyGate";
 import { ReportForm } from "@/components/ReportForm";
+import { ReportsProvider, useReports, type ExportActions } from "@/components/ReportsProvider";
 
-/** The key bar and the export form. The form reads the key at submit, so the bar needs no callback. */
+const ACTIONS: ExportActions = { csv: exportCsvAction, xlsx: exportXlsxAction, pdf: exportPdfAction };
+
+/** The key bar writes the key into the Reports context; the form reads it from there at submit. */
+function ReportsKeyGate() {
+  const { setTenantKey } = useReports();
+  return <KeyGate onSet={setTenantKey} />;
+}
+
+/** The key bar and the export form, sharing one ReportsProvider. */
 export function ReportsPanel() {
   return (
-    <>
-      <KeyGate onSet={() => undefined} />
+    <ReportsProvider actions={ACTIONS}>
+      <ReportsKeyGate />
       <ReportForm />
-    </>
+    </ReportsProvider>
   );
 }

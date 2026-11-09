@@ -31,6 +31,8 @@ const T = {
   s3: "tests/s3.test.ts",
   search: "tests/search.test.ts",
   strict: "tests/typescript-strict.test.ts",
+  state: "tests/reports-state.test.ts",
+  prov: "tests/reports-provider.test.tsx",
 };
 
 /** One edit: the text must occur exactly once in the file. */
@@ -100,6 +102,20 @@ const MUTANTS = [
   { name: "search.embed_wrong_bit", tests: [T.search], edits: [e("lib/server/search.ts", "((n >> 32n) & 1n) === 1n", "((n >> 31n) & 1n) === 1n")] },
   { name: "search.embed_utf16_trigrams", tests: [T.search], edits: [e("lib/server/search.ts", "Array.from(`  ${t} `)", "`  ${t} `.split(\"\")")] },
   { name: "search.limit_unchecked", tests: [T.search], edits: [e("lib/server/search.ts", "if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw", "if (false) throw")] },
+
+  // ---- the Reports context (lib/report/reports-state.ts, components/ReportsProvider.tsx, ReportForm.tsx, ReportsPanel.tsx)
+  { name: "context.format_not_validated", tests: [T.state, T.prov], edits: [e("lib/report/reports-state.ts", "return isFormat(action.format) ? { ...state, format: action.format } : state;", "return { ...state, format: action.format as Format };")] },
+  { name: "context.old_result_kept_on_new_export", tests: [T.state], edits: [e("lib/report/reports-state.ts", 'const { error: _e, lastExport: _l, ...rest } = state;\n      return { ...rest, exportStatus: "exporting" };', 'const { error: _e, ...rest } = state;\n      return { ...rest, exportStatus: "exporting" };')] },
+  { name: "context.failure_keeps_old_result", tests: [T.state], edits: [e("lib/report/reports-state.ts", 'const { lastExport: _l, ...rest } = state;\n      return { ...rest, exportStatus: "failed", error: action.message };', 'const { ...rest } = state;\n      return { ...rest, exportStatus: "failed", error: action.message };')] },
+  { name: "context.hook_works_outside_provider", tests: [T.prov], edits: [e("components/ReportsProvider.tsx", "if (ctx === null) throw new Error(", "if (false) throw new Error(")] },
+  { name: "context.export_without_key", tests: [T.prov], edits: [e("components/ReportsProvider.tsx", "if (!s.tenantKey) {", "if (false) {")] },
+  { name: "context.always_csv_action", tests: [T.prov], edits: [e("components/ReportsProvider.tsx", "await actions[s.format]({", "await actions.csv({")] },
+  { name: "context.file_not_saved", tests: [T.prov], edits: [e("components/ReportsProvider.tsx", "      save(result.base64, result.filename, result.mimeType);\n", "")] },
+  { name: "context.double_export_allowed", tests: [T.prov], edits: [e("components/ReportsProvider.tsx", 'if (s.exportStatus === "exporting") return;', "")] },
+  { name: "context.other_tab_key_ignored", tests: [T.prov], edits: [e("components/ReportsProvider.tsx", 'window.addEventListener("storage", onStorage);', "")] },
+  { name: "context.month_not_shared", tests: [T.prov], edits: [e("components/ReportForm.tsx", "                    setMonth(e.target.value);\n", "")] },
+  { name: "context.summary_switch_not_shared", tests: [T.prov], edits: [e("components/ReportForm.tsx", "                    setIncludeSummary(v);\n", "")] },
+  { name: "context.key_bar_not_wired", tests: [T.prov], edits: [e("components/ReportsPanel.tsx", "<KeyGate onSet={setTenantKey} />", "<KeyGate onSet={() => undefined} />")] },
 
   // ---- the compiler and the linter
   { name: "tsc.strict_off", tests: [T.strict], edits: [e("tsconfig.json", '"strict": true,\n    "noImplicitAny": true,', '"strict": false,\n    "noImplicitAny": false,')] },
