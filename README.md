@@ -133,13 +133,15 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 **The monthly run.** `POST /api/reports/monthly` builds the same deck, byte for byte, for the same month. It says whether it was delivered, so a rerun builds and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month. A failing tenant does not stop the others. A real n8n container found two faults a file check could not. Both are fixed and pinned ([output](docs/test-runs/2026-10-26-n8n.txt)). The schedule, the error branch and the rest are in [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md#the-monthly-run).
 
+**Google Drive delivery.** `scripts/monthly_report.py --drive-folder <folder id>` uploads the finished deck to a Drive folder through the Drive API v3 (multipart or resumable, with backoff). The file name is stable for a tenant and month, so a rerun replaces the file and never adds a copy. Tested against a stand-in written from Google's documentation and once for real into a personal Drive: created, replaced, read back, deleted ([output](docs/test-runs/2026-11-10-drive-delivery.txt)). The n8n workflow does not call it yet. [Detail](docs/drive-delivery.md).
+
 **What it was tested against.** Meta and Search Console ran against stand-in servers on 127.0.0.1. The sample deck's figures are sample data. The model path is tested through a mocked transport. Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
 ---
 
 ## Report export from the dashboard
 
-The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security. An AI summary is optional: a code guard refuses any figure not in the data, a refused one is retried once, then a plain template is used and the file says so. A document attached goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, the Vercel AI SDK and shadcn/ui components built on Radix UI primitives (Select, Switch, Label, Slot). Saved presets are local first: Replicache keeps them in IndexedDB so a save works offline, and route handlers sync them to tenant scoped Postgres. Tested on real Postgres, a scripted fake model and SeaweedFS for S3; no real model or AWS account. The Kysely read path also ran against a free Neon Postgres project, seeded with the invented demo data and read through a non superuser login role: two months came back, 480 snapshot rows were visible to the seeded tenant and none to another tenant id, and Neon's owner role was refused at startup because it bypasses row level security (`web/tests/neon-read.test.ts`). Page state is held in React Context; 156 tests, 12 browser tests, and 76 deliberate breakages each caught. Claims and tests: [docs/web-reports.md](docs/web-reports.md).
+The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security. An AI summary is optional: a code guard refuses any figure not in the data, a refused one is retried once, then a plain template is used and the file says so. A document attached goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, the Vercel AI SDK and shadcn/ui on Radix UI. Saved presets are local first: Replicache keeps them in IndexedDB so a save works offline, and route handlers sync them to tenant scoped Postgres. Tested on real Postgres, a scripted fake model and SeaweedFS for S3; no real model or AWS account. The Kysely read path also ran against a free Neon Postgres project under a non superuser role, and Neon's owner role was refused at startup ([detail](docs/web-reports.md#the-neon-run)). Page state is held in React Context; 156 tests, 12 browser tests, and 76 deliberate breakages each caught. Claims and tests: [docs/web-reports.md](docs/web-reports.md).
 
 ---
 
@@ -161,7 +163,7 @@ cd web && npm run build && npx playwright test    # 12 browser tests
 cd web && node scripts/mutation_check.mjs # 76 guards broken one at a time; use a copy
 ```
 
-Python: run of 2026-11-07 ([output](docs/test-runs/2026-11-07-full-pytest.txt); the skips are the stripe-mock and pg_dump tests, which run in CI); web: 2026-11-10. The ad and business connectors have their own run ([output](docs/test-runs/2026-11-07-ads-business-pytest.txt)). 22 deliberate breakages of them each turned a test red ([output](docs/test-runs/2026-11-07-ads-business-mutation.txt)).
+Run dates, outputs and the skipped tests (the stripe-mock and pg_dump ones, which run in CI): [docs/TESTING.md](docs/TESTING.md).
 
 The harness holds 300 hand matched guards plus 2,779 syntax tree mutants of the 2026-10-26 code. Figures, outputs and known limits are in [docs/TESTING.md](docs/TESTING.md).
 

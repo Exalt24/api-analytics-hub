@@ -1,0 +1,78 @@
+Google Drive delivery step (app/report/drive.py), run of 2026-11-10.
+
+== python -m pytest tests/test_drive.py -q
+........................................................................ [ 80%]
+.................                                                        [100%]
+89 passed in 4.41s
+
+== python tests/mutation_check_drive.py (run in a copy of the repository)
+baseline: green
+[ok]   search keeps trashed files: failed 1 test(s), including the expected one
+[ok]   search not limited to the folder: failed 1 test(s), including the expected one
+[ok]   name not escaped in the query: failed 1 test(s), including the expected one
+[ok]   backslash not escaped: failed 2 test(s), including the expected one
+[ok]   oldest copy not asked for first: failed 1 test(s), including the expected one
+[ok]   search stops after the first page: failed 1 test(s), including the expected one
+[ok]   search result ignored: failed 50 test(s), including the expected one
+[ok]   same bytes still uploaded: failed 4 test(s), including the expected one
+[ok]   replace creates a new file: failed 44 test(s), including the expected one
+[ok]   replace sent as POST: failed 42 test(s), including the expected one
+[ok]   duplicates not counted: failed 2 test(s), including the expected one
+[ok]   folder never checked: failed 6 test(s), including the expected one
+[ok]   a file accepted as the folder: failed 1 test(s), including the expected one
+[ok]   a trashed folder accepted: failed 1 test(s), including the expected one
+[ok]   multipart limit off by one: failed 1 test(s), including the expected one
+[ok]   large decks never go resumable: failed 1 test(s), including the expected one
+[ok]   multipart metadata part not JSON: failed 26 test(s), including the expected one
+[ok]   multipart closing boundary missing: failed 26 test(s), including the expected one
+[ok]   resumable length header wrong: failed 5 test(s), including the expected one
+[ok]   resume restarts from zero: failed 2 test(s), including the expected one
+[ok]   resume offset off by one: failed 1 test(s), including the expected one
+[ok]   nothing is retried: failed 6 test(s), including the expected one
+[ok]   every 403 is retried: failed 1 test(s), including the expected one
+[ok]   429 not retried: failed 2 test(s), including the expected one
+[ok]   Retry-After ignored: failed 2 test(s), including the expected one
+[ok]   Retry-After not capped: failed 1 test(s), including the expected one
+[ok]   backoff does not grow: failed 2 test(s), including the expected one
+[ok]   backoff not capped: failed 1 test(s), including the expected one
+[ok]   attempt limit removed: failed 9 test(s), including the expected one
+[ok]   a 401 is not renewed: failed 1 test(s), including the expected one
+[ok]   an expired token is used as is: failed 3 test(s), including the expected one
+[ok]   no margin before expiry: failed 1 test(s), including the expected one
+[ok]   wrong grant type: failed 5 test(s), including the expected one
+[ok]   unreadable token file names its path: failed 1 test(s), including the expected one
+[ok]   static token repr shows the token: failed 1 test(s), including the expected one
+[ok]   token file repr shows the refresh token: failed 1 test(s), including the expected one
+[ok]   folder id not required: failed 1 test(s), including the expected one
+[ok]   missing token message names no variable: failed 5 test(s), including the expected one
+[ok]   file name not slugged: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 39: killed 39, survived 0, killed by the wrong test 0
+mutation control: PASS
+
+== The real run: the same delivery step against a personal Google Drive with its stored OAuth token (nothing secret printed)
+   Folder made with the existing gsuite gdrive.py mkdir; the sample deck from docs/monthly-report-sample; the test file deleted afterwards, the folder moved to the Drive trash.
+deck report_2026-10.pptx: 100125 bytes, sha256 d657aaf70d7fe662..., Drive name monthly-report-0b1c2d3e-2026-10.pptx
+
+== run 1: first delivery
+Drive: created monthly-report-0b1c2d3e-2026-10.pptx (id 1UJpFvEScuHYutbruvRHIr3p_jGgb1VLM, 100125 bytes)
+exit 0
+== run 2: the same deck again
+Drive: unchanged monthly-report-0b1c2d3e-2026-10.pptx (id 1UJpFvEScuHYutbruvRHIr3p_jGgb1VLM, 100125 bytes)
+exit 0
+== run 3: the deck rebuilt (different bytes), same tenant and month
+Drive: replaced monthly-report-0b1c2d3e-2026-10.pptx (id 1UJpFvEScuHYutbruvRHIr3p_jGgb1VLM, 100141 bytes)
+exit 0
+
+== folder now holds 1 file named monthly-report-0b1c2d3e-2026-10.pptx
+   id 1UJpFvEScuHYutbruvRHIr3p_jGgb1VLM, size 100141, md5 4a8ab7e4093ab7c1e9ea4ab22b981b83, parents True
+== read back: 100141 bytes, sha256 1660b193b41309f8..., equal to the deck sent in run 3: True
+== folder id checked and a wrong folder id reported:
+   the Drive folder 1nonexistentfolderid000000000000000000 was not found or this account cannot see it
+file id for the clean-up step: 1UJpFvEScuHYutbruvRHIr3p_jGgb1VLM
+== forced resumable upload of the sample deck, same name
+action replaced, upload resumable, id 1UJpFvEScuHYutbruvRHIr3p_jGgb1VLM, size 100125
+read back equal: True | copies in the folder: 1
+== clean-up: delete the test file
+copies left in the folder: 0

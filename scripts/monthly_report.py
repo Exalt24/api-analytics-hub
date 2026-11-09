@@ -1,7 +1,7 @@
 # LIFESPAN: permanent
 """Build the monthly report deck for one tenant's connection from the stored snapshots.
 
-    DATABASE_URL=postgresql://... python scripts/monthly_report.py --month 2026-10 --tenant <tenant uuid> [--connection <uuid>] [--web-connection <uuid>] [--paid-connection <uuid>] [--search-connection <uuid>] [--out report.pptx] [--dump]
+    DATABASE_URL=postgresql://... python scripts/monthly_report.py --month 2026-10 --tenant <tenant uuid> [--connection <uuid>] [--web-connection <uuid>] [--paid-connection <uuid>] [--search-connection <uuid>] [--out report.pptx] [--dump] [--drive-folder <folder id>]
 
 Reads stored snapshots only, never a vendor API. A tenant with an active Google Analytics 4 connection
 gets the website figures in the same deck, one with a Meta ad account gets a paid media slide and one with a
@@ -11,7 +11,12 @@ when GROQ_API_KEY or LLM_API_KEY is set (and --no-model is not); otherwise, or w
 model's text names a number that is not among the computed figures, a fixed template writes
 it. The command prints which writer ran and why a refused text was refused; no slide says so. The key is never printed.
 
-Exit 0: the deck was written. Exit 2: the report could not be produced, with the reason.
+With --drive-folder (or GOOGLE_DRIVE_FOLDER_ID) the finished deck is then delivered to that Google Drive folder, the same step the
+n8n run does for Slack and email (app/report/drive.py, docs/drive-delivery.md): the file name is stable for a tenant and month, so a rerun
+replaces the file and never adds a second one. A Drive failure is reported and exits 3, after the deck itself was written.
+
+Exit 0: the deck was written (and delivered, when asked). Exit 2: the report could not be produced, with the reason. Exit 3: the deck was
+written but the Drive delivery failed.
 """
 from __future__ import annotations
 
@@ -28,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import asyncpg  # noqa: E402
 
 from app.db import Database, UnsafeDatabaseRole  # noqa: E402
+from app.report import drive  # noqa: E402
 from app.report.deck import dump_deck  # noqa: E402
 from app.report.insights import ReportInsightWriter  # noqa: E402
 from app.report.monthly import ReportError  # noqa: E402
@@ -80,6 +86,25 @@ async def run(args: argparse.Namespace) -> int:
         print("model text not used: %s" % insights.rejected_reason)
     if args.dump:
         print(dump_deck(path))
+    if args.drive_folder or os.environ.get("GOOGLE_DRIVE_FOLDER_ID"):
+        return deliver_to_drive(path, args)
+    return 0
+
+
+def deliver_to_drive(path: str, args: argparse.Namespace) -> int:
+    """The Drive delivery step: upload the finished deck under its stable name. Returns the exit code."""
+    year, month = args.month
+    name = args.drive_name or drive.deck_name("%04d-%02d" % (year, month), args.tenant[:8])
+    try:
+        env = {**os.environ, "GOOGLE_DRIVE_FOLDER_ID": args.drive_folder or os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")}
+        client, folder = drive.from_env(env)
+        with open(path, "rb") as fh:
+            done = client.deliver(fh.read(), name, folder)
+    except (drive.DriveError, OSError) as exc:
+        print("deck written, but not delivered to Drive: %s" % exc, file=sys.stderr)
+        return 3
+    print("Drive: %s %s (id %s, %d bytes%s)" % (done.action, done.name, done.file_id, done.size,
+                                                  ", %d other file(s) with that name left alone" % done.duplicates if done.duplicates else ""))
     return 0
 
 
@@ -92,6 +117,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--paid-connection", help="ad account (Meta) connection uuid, needed when the tenant has more than one")
     p.add_argument("--search-connection", help="search property (Search Console) connection uuid, needed when the tenant has more than one")
     p.add_argument("--out", help="deck path, default monthly_report_<month>.pptx")
+    p.add_argument("--drive-folder", help="Google Drive folder id to deliver the finished deck to (default: GOOGLE_DRIVE_FOLDER_ID)")
+    p.add_argument("--drive-name", help="the file name in Drive (default: monthly-report-<tenant prefix>-<month>.pptx, stable so a rerun replaces it)")
     p.add_argument("--no-model", action="store_true", help="use the template even when a key is set")
     p.add_argument("--dump", action="store_true", help="print the saved deck back as text")
     p.add_argument("--data-note", default="", help="a line printed on the title slide")

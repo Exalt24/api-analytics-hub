@@ -88,6 +88,12 @@ Tests: `web/tests/replicache-sync.test.ts` (27, against real Postgres under forc
 
 Limits of this slice. It was run against a local Postgres and Chromium, with the sync routes aborted to stand for a dead network; no phone, no real offline radio and no production traffic. Changes arrive by polling every 10 seconds, with no push notification (a poke), so another device sees a change within about 10 seconds. Two devices that edit the same preset resolve by arrival order, last write wins. A viewer key can save presets: they hold no report data. There is no cleanup of deleted rows.
 
+## The Neon run
+
+The Kysely read path also ran against a free Neon Postgres project, seeded with the invented demo data and read through a non superuser login role: two months came back, 480 snapshot rows were visible to the seeded tenant and none to another tenant id, and Neon's owner role was refused at startup because it bypasses row level security (`web/tests/neon-read.test.ts`).
+
+The page uses shadcn/ui components built on Radix UI primitives (Select, Switch, Label, Slot).
+
 ## Radix UI primitives
 
 The shadcn style components in `web/components/ui/` sit on four Radix UI packages, listed in `web/package.json`: `@radix-ui/react-select` in `select.tsx` (the Format picker), `@radix-ui/react-switch` in `switch.tsx` (the Include AI summary switch), `@radix-ui/react-label` in `label.tsx` (every form label) and `@radix-ui/react-slot` in `button.tsx` (the `asChild` button). The browser tests drive them by their accessible roles (`combobox`, `option`, `switch`), which is the behaviour Radix supplies: keyboard and screen reader support, focus handling and the open and close state of the select.

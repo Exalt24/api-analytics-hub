@@ -44,9 +44,10 @@ app/
     runs.py          the record of each report a tenant asked for: one deck for each key, delivered flag, takeover of a dead run
     adspend.py       the combined ad spend view: cost per conversion by platform and week, booked jobs beside it, text and JSON
     adspend_service.py  reads a tenant's ad and booking snapshots for the view
+    drive.py         the Google Drive delivery step: Drive API v3 multipart and resumable upload, a stable file name so a rerun replaces, retries, token renewal (docs/drive-delivery.md)
 scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
 scripts/db_backup.py           pg_dump with a manifest, a scratch restore that compares row counts, and the backup alert
-scripts/monthly_report.py      builds the monthly deck from stored snapshots: store, website, ads and search
+scripts/monthly_report.py      builds the monthly deck from stored snapshots: store, website, ads and search; with --drive-folder it then delivers the deck to Google Drive
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
 scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, sync_shopmonkey.py   the same for a Google Ads customer, TikTok advertiser, Square location, QuickBooks company or Shopmonkey shop
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
