@@ -97,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--tool", required=True, help="path to mutate_ast.py")
     p.add_argument("--target", required=True, help="the file to mutate, relative to the repository")
     p.add_argument("--tests", required=True, help="the test files that must go red, space separated")
-    p.add_argument("--jobs", type=int, default=4)
+    p.add_argument("--jobs", type=int, default=max(2, (os.cpu_count() or 4) // 2))
     p.add_argument("--timeout", type=int, default=240)
     p.add_argument("--db", action="store_true", help="give each worker its own scratch database")
     p.add_argument("--only-functions", default="", help="comma separated function names to mutate")
