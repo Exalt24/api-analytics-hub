@@ -149,4 +149,17 @@ describe("modelFromEnv", () => {
     const named = modelFromEnv({ ANTHROPIC_API_KEY: "test-key-not-real", ANTHROPIC_MODEL: "claude-sonnet-4-5" });
     expect(typeof named === "object" && named !== null && "modelId" in named ? named.modelId : "").toBe("claude-sonnet-4-5");
   });
+
+  it("takes an OpenAI-compatible provider only when all three settings are present and no Anthropic key is set", () => {
+    const full = { OPENAI_COMPATIBLE_API_KEY: "test-key-not-real", OPENAI_COMPATIBLE_BASE_URL: "https://example.test/v1", OPENAI_COMPATIBLE_MODEL: "some-model" };
+    const m = modelFromEnv(full);
+    expect(typeof m === "object" && m !== null && "modelId" in m ? m.modelId : "").toBe("some-model");
+    for (const missing of Object.keys(full)) {
+      const partial: Record<string, string> = { ...full };
+      delete partial[missing];
+      expect(modelFromEnv(partial), "missing " + missing).toBeNull();
+    }
+    const both = modelFromEnv({ ...full, ANTHROPIC_API_KEY: "test-key-not-real" });
+    expect(typeof both === "object" && both !== null && "modelId" in both ? both.modelId : "").toBe(DEFAULT_MODEL);
+  });
 });

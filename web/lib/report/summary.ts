@@ -13,6 +13,7 @@
  */
 import { generateText, Output, type LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
 import type { ReportData } from "@/lib/report/data";
 import { checkFigures } from "@/lib/report/guard";
@@ -26,9 +27,22 @@ export const DEFAULT_MODEL = "claude-haiku-4-5";
 /** The model for this process, or null when no key is configured (then the template is used). */
 export function modelFromEnv(env: Record<string, string | undefined> = process.env): LanguageModel | null {
   const apiKey = env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return openAICompatibleFromEnv(env);
   const provider = createAnthropic({ apiKey, ...(env.ANTHROPIC_BASE_URL ? { baseURL: env.ANTHROPIC_BASE_URL } : {}) });
   return provider(env.ANTHROPIC_MODEL ?? DEFAULT_MODEL);
+}
+
+/**
+ * A second way in for any provider that speaks the OpenAI chat format (Gemini, Groq, OpenRouter, a local server):
+ * OPENAI_COMPATIBLE_API_KEY, OPENAI_COMPATIBLE_BASE_URL and OPENAI_COMPATIBLE_MODEL, all three required, used only when no
+ * Anthropic key is set. The same guard, retry and template fallback apply to whatever it returns.
+ */
+function openAICompatibleFromEnv(env: Record<string, string | undefined>): LanguageModel | null {
+  const apiKey = env.OPENAI_COMPATIBLE_API_KEY;
+  const baseURL = env.OPENAI_COMPATIBLE_BASE_URL;
+  const model = env.OPENAI_COMPATIBLE_MODEL;
+  if (!apiKey || !baseURL || !model) return null;
+  return createOpenAICompatible({ name: "openai-compatible", apiKey, baseURL, supportsStructuredOutputs: true })(model);
 }
 
 function plural(n: number, word: string): string {

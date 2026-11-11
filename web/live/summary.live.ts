@@ -14,7 +14,7 @@ import { sampleData } from "../tests/report-data";
 describe("summary through a live model", () => {
   it("returns a guarded summary or an honest template, and reports which", async () => {
     const model = modelFromEnv();
-    expect(model, "set ANTHROPIC_API_KEY to run the live check").not.toBeNull();
+    expect(model, "set a model key first, see the README").not.toBeNull();
     const data = sampleData();
     const started = Date.now();
     const out = await generateSummary(data, model);

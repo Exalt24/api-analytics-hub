@@ -108,6 +108,6 @@ The shadcn style components in `web/components/ui/` sit on four Radix UI package
 
 - The Reports page runs from `next start` with `DATABASE_URL` set, because the export is built in Server Actions that read Postgres.
 - Only the node-postgres Kysely dialect was run.
-- The summary was only ever produced by a scripted fake model and a stand-in server. No real model was called.
+- The automated tests and the browser test use a scripted fake model and a stand-in server. The summary was run once through a real model on 2026-11-11 with `npm run live:model` (gpt-oss-120b on Groq, set with `OPENAI_COMPATIBLE_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL` and `OPENAI_COMPATIBLE_MODEL`): one attempt, none refused, 3.6 seconds, and the guard agreed. Sample figures only, one run, not part of CI.
 - `exceljs` brings in `uuid` below 11.1.1, which `npm audit` rates moderate (a bounds check when a buffer argument is passed). This code never passes one.
 - The browser tests run Chromium only.
