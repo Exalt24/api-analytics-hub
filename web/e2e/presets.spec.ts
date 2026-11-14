@@ -8,6 +8,7 @@
  */
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { KEY_A, KEY_B } from "../tests/fixtures";
+import { persistedAfter } from "./idb";
 
 async function openReports(page: Page, key: string): Promise<void> {
   await page.goto("/reports");
@@ -41,7 +42,9 @@ test.describe("Saved presets, local first", () => {
     await expect(list).toContainText("PDF, summary");
     await expect(status(page)).toHaveText(/Offline|1 change waiting to sync/);
 
-    // IndexedDB keeps it: reload the page (sync is still blocked) and it is still there with its change still queued.
+    // IndexedDB keeps it, once it is written (WebKit takes over a second, see persist-timing.spec.ts): reload the page
+    // (sync is still blocked) and it is still there with its change still queued.
+    expect(await persistedAfter(page, "Board pack", 10_000), "the preset never reached IndexedDB").toBeGreaterThanOrEqual(0);
     await page.reload();
     await expect(page.getByLabel("Preset name")).toBeVisible();
     await expect(page.getByRole("list", { name: "Saved presets" })).toContainText("Board pack");
@@ -73,6 +76,11 @@ test.describe("Saved presets, local first", () => {
     await otherDevice.getByRole("button", { name: "Use Board pack" }).click();
     await expect(otherDevice.getByRole("combobox", { name: "Format" })).toContainText("PDF");
     await expect(otherDevice.getByRole("switch", { name: "Include AI summary" })).toBeChecked();
+
+    // Leave the shared test tenant as it was found: the same suite runs once per engine against one database,
+    // and a preset left behind by the first engine showed up twice for the next (found 2026-11-15).
+    await otherDevice.getByRole("button", { name: "Delete Board pack" }).click();
+    await expect(status(otherDevice)).toHaveText("Everything is synced.", { timeout: 60_000 });
 
     await second.close();
     await third.close();

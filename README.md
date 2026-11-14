@@ -172,7 +172,7 @@ python tests/mutation_check.py            # all 300 hand matched guards; edits s
 python live_check.py                      # against the real store
 nix run .#fast-tests                      # 470 of them in a pinned Nix shell, about a second ([docs/nix.md](docs/nix.md))
 cd web && npm test                        # 205 tests, 11 need the S3 stand-in ([docs/web-reports.md](docs/web-reports.md))
-cd web && npm run build && npx playwright test    # 12 browser tests
+cd web && npm run build && npx playwright test    # 13 browser tests in Chromium, Firefox and WebKit
 cd web && node scripts/mutation_check.mjs # 101 guards broken one at a time; use a copy
 ```
 
