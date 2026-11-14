@@ -148,7 +148,7 @@ The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through
 
 ![Power BI Desktop, Sales and ads page: cards, daily net sales with a seven day average, ad spend by month, a month table](docs/powerbi/sales-and-ads.png)
 
-`powerbi/` holds a Power BI report over the same snapshot tables, as `AnalyticsHub.pbix` and as a `.pbip` project (TMDL and PBIR text). It has a five table star schema with 27 DAX measures, Power Query (M) loading four CSV files, two pages and 18 visuals. Built against invented figures loaded through the hub's own tables (`python powerbi/export_data.py`). Opened in Power BI Desktop 2.159; `python powerbi/check_model.py` runs the measures through the model's own port and compares 56 figures with ones worked out from the CSV files: all 56 match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
+`powerbi/` holds a Power BI report over the same snapshot tables, as `AnalyticsHub.pbix` and as a `.pbip` project (TMDL and PBIR text). It has a five table star schema with 27 DAX measures, Power Query (M) loading four CSV files, two pages and 18 visuals. Built against sample figures loaded through the hub's own tables (`python powerbi/export_data.py`). Opened in Power BI Desktop 2.159; `python powerbi/check_model.py` runs the measures through the model's own port and compares 56 figures with ones worked out from the CSV files: all 56 match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
 
 ---
 

@@ -1,6 +1,6 @@
 # Power BI report
 
-The hub's data is stored as dated snapshots in Postgres. This folder reads the same tables in Power BI: a star schema, DAX measures, a Power Query load and two report pages. It is built on invented figures, so it can sit in a public repo and open on anyone's machine.
+The hub's data is stored as dated snapshots in Postgres. This folder reads the same tables in Power BI: a star schema, DAX measures, a Power Query load and two report pages. It is built on sample figures, so it can sit in a public repo and open on anyone's machine.
 
 ![Sales and ads page in Power BI Desktop: five cards, a daily net sales line with a seven day average, a month column chart and a month table](powerbi/sales-and-ads.png)
 
@@ -17,7 +17,7 @@ To read the files from a clone instead of the web: Home > Transform data > Edit 
 
 ## Where the data comes from
 
-`powerbi/export_data.py` loads three invented sources for one invented tenant (a store, an ad account and a website, 184 days, 1 May to 31 October 2026) through the hub's own migrations and its `upsert_snapshots` function, then reads them back from the tables as four CSV files. The figures are fixed formulas, so two runs give identical bytes. `python powerbi/export_data.py --check` compares the files on disk with the formulas and needs no database.
+`powerbi/export_data.py` loads three sample sources for one sample tenant (a store, an ad account and a website, 184 days, 1 May to 31 October 2026) through the hub's own migrations and its `upsert_snapshots` function, then reads them back from the tables as four CSV files. The figures are fixed formulas, so two runs give identical bytes. `python powerbi/export_data.py --check` compares the files on disk with the formulas and needs no database.
 
 | File | Rows | What it holds |
 |---|---|---|
@@ -58,4 +58,4 @@ What the first Desktop runs found, now fixed: the Source health total row said z
 
 ## Limits
 
-Built against invented figures loaded through the hub's own tables. The source is four CSV files written from Postgres, and the report runs in Desktop. Publishing to the Power BI service is a separate step (Fabric needs a work or school account), and the model would not change for it.
+Built against sample figures loaded through the hub's own tables. The source is four CSV files written from Postgres, and the report runs in Desktop. Publishing to the Power BI service is a separate step (Fabric needs a work or school account), and the model would not change for it.

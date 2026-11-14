@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# LIFESPAN: permanent (writes the four CSV files the Power BI project in this folder reads; run again whenever the invented figures or the schema change)
-"""Write the Power BI project's data: invented store, ad and website figures, loaded through the hub's own Postgres tables and read back out as CSV.
+# LIFESPAN: permanent (writes the four CSV files the Power BI project in this folder reads; run again whenever the sample figures or the schema change)
+"""Write the Power BI project's data: sample store, ad and website figures, loaded through the hub's own Postgres tables and read back out as CSV.
 
 The figures come from fixed formulas (no randomness, no clock), so two runs write byte for byte the same files. They go through the real migrations, the real
 `upsert_snapshots` function and the same constraints as any connector's output (the currency check, one row per connection, metric and day), then the files are read
@@ -10,7 +10,7 @@ back from the tables under the tenant's row level security setting. That way the
     python powerbi/export_data.py            # writes powerbi/data/*.csv
     python powerbi/export_data.py --check    # rebuilds in memory and compares with the files on disk, no database needed
 
-Three invented sources for one invented tenant: a store (orders, gross sales, refunds, net sales, customers), an ad account (spend, impressions, clicks, purchases,
+Three sample sources for one sample tenant: a store (orders, gross sales, refunds, net sales, customers), an ad account (spend, impressions, clicks, purchases,
 purchase value) and a website (sessions, users, page views, key events). Four things are planted on purpose so the model's checks have something to find:
 the website sync missed two days (and has a failed sync run saying so), the ad account double counted purchases on three days (purchase value above the store's
 net sales that day), and a few days carry a refund spike.
@@ -37,9 +37,9 @@ DAYS = 184  # 1 May to 31 October 2026
 NS = uuid.UUID("5a1f0e0e-7b0c-4d19-9d62-0f3c8f3a9a11")
 TENANT_ID = uuid.uuid5(NS, "tenant:powerbi-demo")
 CONNECTIONS = {
-    "shopify": (uuid.uuid5(NS, "conn:shopify"), "demo-store.invalid", "Invented store"),
-    "meta": (uuid.uuid5(NS, "conn:meta"), "act_0000000000", "Invented ad account"),
-    "ga4": (uuid.uuid5(NS, "conn:ga4"), "properties/000000000", "Invented website"),
+    "shopify": (uuid.uuid5(NS, "conn:shopify"), "demo-store.invalid", "Sample store"),
+    "meta": (uuid.uuid5(NS, "conn:meta"), "act_0000000000", "Sample ad account"),
+    "ga4": (uuid.uuid5(NS, "conn:ga4"), "properties/000000000", "Sample website"),
 }
 #: the website sync missed these two day indexes; the ad account double counted on these three
 GA4_MISSING = (120, 121)
@@ -53,7 +53,7 @@ FILES = {
 }
 
 
-def invented_points() -> list[dict]:
+def sample_points() -> list[dict]:
     """Every (platform, metric, day) value, money in minor units (cents). A pure function of the constants above."""
     out: list[dict] = []
     for i in range(DAYS):
@@ -87,7 +87,7 @@ def invented_points() -> list[dict]:
     return out
 
 
-def invented_sync_runs() -> list[dict]:
+def sample_sync_runs() -> list[dict]:
     """One run per connection per 28 day window, plus the failed website run that explains the two missing days."""
     runs = []
     start = END - timedelta(days=DAYS - 1)
@@ -117,7 +117,7 @@ def _csv_text(header: list[str], rows: list[list]) -> str:
 def expected_files() -> dict[str, str]:
     """The four CSVs built straight from the formulas, with no database. `--check` and the tests compare the database's output to this."""
     from_metrics = {}
-    points = invented_points()
+    points = sample_points()
     conn_id = {p: str(v[0]) for p, v in CONNECTIONS.items()}
     fact = sorted(([p["observed_on"], conn_id[p["platform"]], p["metric_key"], p["value_numeric"], p["currency"] or ""] for p in points), key=lambda r: (r[0], r[1], r[2]))
     for p in points:
@@ -125,7 +125,7 @@ def expected_files() -> dict[str, str]:
     metrics = [[k, *METRIC_META[k]] for k in sorted(from_metrics)]
     conns = sorted([[str(cid), plat, name, ext] for plat, (cid, ext, name) in CONNECTIONS.items()], key=lambda r: r[1])
     runs = []
-    for r in invented_sync_runs():
+    for r in sample_sync_runs():
         rows_written = sum(1 for p in points if p["platform"] == r["platform"] and r["window_start"].isoformat() <= p["observed_on"] < r["window_end"].isoformat())
         finished = r["started_at"] + timedelta(minutes=3)
         runs.append([conn_id[r["platform"]], r["trigger"], r["window_start"].isoformat(), r["window_end"].isoformat(), r["status"], rows_written, r["error_code"] or "", r["started_at"].isoformat(), finished.isoformat()])
@@ -182,21 +182,21 @@ async def load_and_export(dsn: str) -> dict[str, str]:
             await conn.execute(path.read_text(encoding="utf-8"))
 
         await conn.execute("select set_config('app.tenant_id', $1, false)", str(TENANT_ID))
-        await conn.execute("insert into tenant (id, slug, name) values ($1,$2,$3)", TENANT_ID, "powerbi-demo", "Power BI demo (invented data)")
+        await conn.execute("insert into tenant (id, slug, name) values ($1,$2,$3)", TENANT_ID, "powerbi-demo", "Power BI demo (sample data)")
         os.environ.setdefault("CREDENTIAL_KEYS", "1:" + gen_crypto_key())
         cipher = CredentialCipher()
         for platform, (cid, ext, name) in CONNECTIONS.items():
-            blob = cipher.encrypt(json.dumps({"access_token": "invented"}), CredentialCipher.aad(str(TENANT_ID), str(cid), platform))
+            blob = cipher.encrypt(json.dumps({"access_token": "sample"}), CredentialCipher.aad(str(TENANT_ID), str(cid), platform))
             await conn.execute(
                 "insert into platform_connection (id, tenant_id, platform, external_account, display_name, credentials_enc, scopes) values ($1,$2,$3,$4,$5,$6,$7)",
                 cid, TENANT_ID, platform, ext, name, blob, [])
         payload = [
             {"tenant_id": str(TENANT_ID), "connection_id": str(CONNECTIONS[p["platform"]][0]), "metric_key": p["metric_key"], "observed_on": p["observed_on"],
              "value_numeric": p["value_numeric"], "currency": p["currency"], "raw": "{}"}
-            for p in invented_points()]
+            for p in sample_points()]
         await conn.fetchval("select upsert_snapshots($1::jsonb)", json.dumps(payload))
-        points = invented_points()
-        for r in invented_sync_runs():
+        points = sample_points()
+        for r in sample_sync_runs():
             cid = CONNECTIONS[r["platform"]][0]
             n = sum(1 for p in points if p["platform"] == r["platform"] and r["window_start"].isoformat() <= p["observed_on"] < r["window_end"].isoformat())
             await conn.execute(

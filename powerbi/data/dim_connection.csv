@@ -1,4 +1,4 @@
 connection_id,platform,display_name,external_account
-e3d8805f-dd61-530d-8503-d7aa4ad13ebb,ga4,Invented website,properties/000000000
-8d9cca43-46a7-599b-8a52-eee859e160b5,meta,Invented ad account,act_0000000000
-96417e0f-6029-5f4e-b4e6-d0c08535a3f7,shopify,Invented store,demo-store.invalid
+e3d8805f-dd61-530d-8503-d7aa4ad13ebb,ga4,Sample website,properties/000000000
+8d9cca43-46a7-599b-8a52-eee859e160b5,meta,Sample ad account,act_0000000000
+96417e0f-6029-5f4e-b4e6-d0c08535a3f7,shopify,Sample store,demo-store.invalid
