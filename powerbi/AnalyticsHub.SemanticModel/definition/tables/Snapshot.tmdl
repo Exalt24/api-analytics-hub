@@ -140,8 +140,8 @@ table Snapshot
 		formatString: 0
 		displayFolder: Checks
 
-	/// Days in context with no snapshot rows for the selected source.
-	measure 'Days Without Data' = COALESCE ( COUNTROWS ( FILTER ( VALUES ( 'Date'[Date] ), ISBLANK ( CALCULATE ( COUNTROWS ( Snapshot ) ) ) ) ), 0 )
+	/// Days in context on which a source has no snapshot rows, added up over the sources in context, so the total row counts every missing source day.
+	measure 'Days Without Data' = SUMX ( VALUES ( Connection[ConnectionId] ), CALCULATE ( COALESCE ( COUNTROWS ( FILTER ( VALUES ( 'Date'[Date] ), ISBLANK ( CALCULATE ( COUNTROWS ( Snapshot ) ) ) ) ), 0 ) ) )
 		formatString: 0
 		displayFolder: Checks
 
