@@ -1,0 +1,33 @@
+table Connection
+
+	column ConnectionId
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: ConnectionId
+
+	column Platform
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Platform
+
+	column DisplayName
+		dataType: string
+		summarizeBy: none
+		sourceColumn: DisplayName
+
+	column ExternalAccount
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ExternalAccount
+
+	partition Connection = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(GetFile("dim_connection.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"connection_id", type text}, {"platform", type text}, {"display_name", type text}, {"external_account", type text}}, "en-US"),
+				    Renamed = Table.RenameColumns(Typed, {{"connection_id", "ConnectionId"}, {"platform", "Platform"}, {"display_name", "DisplayName"}, {"external_account", "ExternalAccount"}})
+				in
+					Renamed

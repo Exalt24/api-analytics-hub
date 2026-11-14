@@ -30,3 +30,8 @@ live_check_evidence.txt
 web/test-results/
 web/playwright-report/
 web/lint/node_modules/
+
+# Power BI Desktop writes a local cache and per user settings next to a project it has opened.
+powerbi/**/.pbi/
+powerbi/**/localSettings.json
+powerbi/**/cache.abf

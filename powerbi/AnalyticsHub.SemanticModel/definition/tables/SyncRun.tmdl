@@ -1,0 +1,64 @@
+table SyncRun
+
+	column ConnectionId
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: ConnectionId
+
+	column Trigger
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Trigger
+
+	column WindowStart
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: WindowStart
+
+	column WindowEnd
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: WindowEnd
+
+	column Status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Status
+
+	column RowsWritten
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: RowsWritten
+
+	column ErrorCode
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ErrorCode
+
+	column StartedAt
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: StartedAt
+
+	column FinishedAt
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: FinishedAt
+
+	partition SyncRun = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(GetFile("sync_run.csv"), [Delimiter = ",", Columns = 9, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"connection_id", type text}, {"trigger", type text}, {"window_start", type date}, {"window_end", type date}, {"status", type text}, {"rows_written", Int64.Type}, {"error_code", type text}, {"started_at", type text}, {"finished_at", type text}}, "en-US"),
+				    Cleaned = Table.TransformColumns(Table.ReplaceValue(Typed, "", null, Replacer.ReplaceValue, {"error_code"}), {{"started_at", each DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime}, {"finished_at", each DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime}}),
+				    Renamed = Table.RenameColumns(Cleaned, {{"connection_id", "ConnectionId"}, {"trigger", "Trigger"}, {"window_start", "WindowStart"}, {"window_end", "WindowEnd"}, {"status", "Status"}, {"rows_written", "RowsWritten"}, {"error_code", "ErrorCode"}, {"started_at", "StartedAt"}, {"finished_at", "FinishedAt"}})
+				in
+					Renamed

@@ -1,0 +1,33 @@
+table Date
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: [Date]
+
+	column 'Year' = YEAR ( [Date] )
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	column 'Month' = DATE ( YEAR ( [Date] ), MONTH ( [Date] ), 1 )
+		dataType: dateTime
+		formatString: mmm yyyy
+		summarizeBy: none
+
+	column 'Weekday No' = WEEKDAY ( [Date], 2 )
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	column 'Weekday' = FORMAT ( [Date], "ddd" )
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Weekday No'
+
+	partition Date = calculated
+		mode: import
+		source = CALENDAR ( MIN ( Snapshot[ObservedOn] ), MAX ( Snapshot[ObservedOn] ) )

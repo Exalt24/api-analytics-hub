@@ -1,0 +1,15 @@
+relationship snapshot_date
+	fromColumn: Snapshot.ObservedOn
+	toColumn: Date.Date
+
+relationship snapshot_metric
+	fromColumn: Snapshot.MetricKey
+	toColumn: Metric.MetricKey
+
+relationship snapshot_connection
+	fromColumn: Snapshot.ConnectionId
+	toColumn: Connection.ConnectionId
+
+relationship syncrun_connection
+	fromColumn: SyncRun.ConnectionId
+	toColumn: Connection.ConnectionId

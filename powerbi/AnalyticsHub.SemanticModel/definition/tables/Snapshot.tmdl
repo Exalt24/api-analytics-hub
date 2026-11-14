@@ -1,0 +1,166 @@
+table Snapshot
+
+	column ObservedOn
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		summarizeBy: none
+		sourceColumn: ObservedOn
+
+	column ConnectionId
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: ConnectionId
+
+	column MetricKey
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: MetricKey
+
+	column Value
+		dataType: int64
+		formatString: 0
+		isHidden
+		summarizeBy: sum
+		sourceColumn: Value
+
+	column Currency
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Currency
+
+	/// Orders in the period.
+	measure 'Orders' = CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "orders" )
+		formatString: #,0
+		displayFolder: Sales
+
+	/// Money is stored in cents; this is dollars.
+	measure 'Gross Sales' = DIVIDE ( CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "gross_sales" ), 100 )
+		formatString: "$"#,0
+		displayFolder: Sales
+
+	measure 'Refunds' = DIVIDE ( CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "refunds" ), 100 )
+		formatString: "$"#,0
+		displayFolder: Sales
+
+	/// The store's own net sales figure, as the hub stored it.
+	measure 'Net Sales' = DIVIDE ( CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "net_sales" ), 100 )
+		formatString: "$"#,0
+		displayFolder: Sales
+
+	/// Gross sales per order.
+	measure 'Average Order Value' = DIVIDE ( [Gross Sales], [Orders] )
+		formatString: "$"#,0.00
+		displayFolder: Sales
+
+	measure 'Refund Rate' = DIVIDE ( [Refunds], [Gross Sales] )
+		formatString: 0.0%
+		displayFolder: Sales
+
+	/// Blank for the first month, which has no month before it in the data.
+	measure 'Net Sales Previous Month' = CALCULATE ( [Net Sales], DATEADD ( 'Date'[Date], -1, MONTH ) )
+		formatString: "$"#,0
+		displayFolder: Time intelligence
+
+	measure 'Net Sales MoM %' = IF ( ISINSCOPE ( 'Date'[Month] ), DIVIDE ( [Net Sales] - [Net Sales Previous Month], [Net Sales Previous Month] ) )
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: Time intelligence
+
+	measure 'Net Sales MTD' = TOTALMTD ( [Net Sales], 'Date'[Date] )
+		formatString: "$"#,0
+		displayFolder: Time intelligence
+
+	/// Trailing seven days ending on the last day in context.
+	measure 'Net Sales 7 Day Avg' = AVERAGEX ( DATESINPERIOD ( 'Date'[Date], MAX ( 'Date'[Date] ), -7, DAY ), [Net Sales] )
+		formatString: "$"#,0
+		displayFolder: Time intelligence
+
+	measure 'Ad Spend' = DIVIDE ( CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "ad_spend" ), 100 )
+		formatString: "$"#,0
+		displayFolder: Ads
+
+	measure 'Ad Purchases' = CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "ad_purchases" )
+		formatString: #,0
+		displayFolder: Ads
+
+	/// What the ad platform says its ads sold.
+	measure 'Ad Purchase Value' = DIVIDE ( CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "ad_purchase_value" ), 100 )
+		formatString: "$"#,0
+		displayFolder: Ads
+
+	/// Return on ad spend as the ad platform reports it.
+	measure 'ROAS' = DIVIDE ( [Ad Purchase Value], [Ad Spend] )
+		formatString: 0.00"x"
+		displayFolder: Ads
+
+	measure 'Cost per Purchase' = DIVIDE ( [Ad Spend], [Ad Purchases] )
+		formatString: "$"#,0.00
+		displayFolder: Ads
+
+	measure 'Sessions' = CALCULATE ( SUM ( Snapshot[Value] ), Metric[MetricKey] = "sessions" )
+		formatString: #,0
+		displayFolder: Website
+
+	/// Orders per session, counting only days the website sync has a figure for, so a missing day does not inflate it.
+	measure 'Conversion Rate' = DIVIDE ( CALCULATE ( [Orders], FILTER ( VALUES ( 'Date'[Date] ), [Sessions] > 0 ) ), [Sessions] )
+		formatString: 0.00%
+		displayFolder: Website
+
+	/// Gross sales minus refunds minus the stored net sales. Zero when the three agree.
+	measure 'Net Sales Gap' = [Gross Sales] - [Refunds] - [Net Sales]
+		formatString: "$"#,0.00;-"$"#,0.00;"$"0
+		displayFolder: Checks
+
+	/// Days where gross minus refunds is not the stored net sales.
+	measure 'Days Net Sales Does Not Reconcile' = COALESCE ( COUNTROWS ( FILTER ( VALUES ( 'Date'[Date] ), [Gross Sales] - [Refunds] - [Net Sales] <> 0 ) ), 0 )
+		formatString: 0
+		displayFolder: Checks
+
+	/// How far the ad platform's claimed sales are above the store's own net sales that day. Blank on a normal day, so a table lists only the bad days.
+	measure 'Overclaim Amount' = VAR Gap = [Ad Purchase Value] - [Net Sales] RETURN IF ( Gap > 0, Gap )
+		formatString: "$"#,0
+		displayFolder: Checks
+
+	measure 'Claimed On Overclaim Days' = IF ( [Overclaim Amount] > 0, [Ad Purchase Value] )
+		formatString: "$"#,0
+		displayFolder: Checks
+
+	measure 'Store Net Sales On Overclaim Days' = IF ( [Overclaim Amount] > 0, [Net Sales] )
+		formatString: "$"#,0
+		displayFolder: Checks
+
+	/// Days the ad platform claims more sales than the store made.
+	measure 'Overclaim Days' = COALESCE ( COUNTROWS ( FILTER ( VALUES ( 'Date'[Date] ), [Ad Purchase Value] > [Net Sales] && [Net Sales] > 0 ) ), 0 )
+		formatString: 0
+		displayFolder: Checks
+
+	/// One when a source has no snapshot rows for a day. Blank otherwise, so a table lists only the missing days.
+	measure 'Missing Day Flag' = IF ( ISEMPTY ( Snapshot ), 1 )
+		formatString: 0
+		displayFolder: Checks
+
+	/// Days in context with no snapshot rows for the selected source.
+	measure 'Days Without Data' = COALESCE ( COUNTROWS ( FILTER ( VALUES ( 'Date'[Date] ), ISBLANK ( CALCULATE ( COUNTROWS ( Snapshot ) ) ) ) ), 0 )
+		formatString: 0
+		displayFolder: Checks
+
+	measure 'Partial Or Failed Syncs' = COALESCE ( CALCULATE ( COUNTROWS ( SyncRun ), SyncRun[Status] <> "succeeded" ), 0 )
+		formatString: 0
+		displayFolder: Checks
+
+	measure 'Last Sync Started' = MAX ( SyncRun[StartedAt] )
+		formatString: yyyy-mm-dd hh:nn
+		displayFolder: Checks
+
+	partition Snapshot = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(GetFile("fact_snapshot.csv"), [Delimiter = ",", Columns = 5, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"observed_on", type date}, {"connection_id", type text}, {"metric_key", type text}, {"value", Int64.Type}, {"currency", type text}}, "en-US"),
+				    Cleaned = Table.ReplaceValue(Typed, "", null, Replacer.ReplaceValue, {"currency"}),
+				    Renamed = Table.RenameColumns(Cleaned, {{"observed_on", "ObservedOn"}, {"connection_id", "ConnectionId"}, {"metric_key", "MetricKey"}, {"value", "Value"}, {"currency", "Currency"}})
+				in
+					Renamed

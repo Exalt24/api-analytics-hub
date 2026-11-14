@@ -1,0 +1,15 @@
+metric_key,label,unit,kind
+ad_clicks,Clicks,count,delta
+ad_impressions,Impressions,count,delta
+ad_purchase_value,Purchase value,minor_currency,delta
+ad_purchases,Purchases,count,delta
+ad_spend,Ad spend,minor_currency,delta
+customers,Customers,count,gauge
+gross_sales,Gross sales,minor_currency,delta
+key_events,Key events,count,delta
+net_sales,Net sales,minor_currency,delta
+orders,Orders,count,delta
+page_views,Page views,count,delta
+refunds,Refunds,minor_currency,delta
+sessions,Sessions,count,delta
+users,Users,count,gauge

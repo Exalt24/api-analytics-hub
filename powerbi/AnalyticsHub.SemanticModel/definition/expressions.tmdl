@@ -1,0 +1,7 @@
+/// Where the four CSV files are. A folder path ending in a backslash, or the web address of the same folder (the default, the public repo). Change it in Home > Transform data > Edit parameters.
+expression DataFolder = "https://raw.githubusercontent.com/Exalt24/api-analytics-hub/main/powerbi/data/" meta [IsParameterQuery=true, IsParameterQueryRequired=true, Type="Text"]
+
+/// Opens one CSV by name from DataFolder, from disk or from the web, so the same model works from a clone or from the public address.
+expression GetFile =
+			(name as text) as binary =>
+			if Text.StartsWith(DataFolder, "http") then Web.Contents(DataFolder, [RelativePath = name]) else File.Contents(DataFolder & name)

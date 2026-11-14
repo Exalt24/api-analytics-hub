@@ -1,0 +1,32 @@
+table Metric
+
+	column MetricKey
+		dataType: string
+		summarizeBy: none
+		sourceColumn: MetricKey
+
+	column Label
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Label
+
+	column Unit
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Unit
+
+	column Kind
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Kind
+
+	partition Metric = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(GetFile("dim_metric.csv"), [Delimiter = ",", Columns = 4, Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"metric_key", type text}, {"label", type text}, {"unit", type text}, {"kind", type text}}, "en-US"),
+				    Renamed = Table.RenameColumns(Typed, {{"metric_key", "MetricKey"}, {"label", "Label"}, {"unit", "Unit"}, {"kind", "Kind"}})
+				in
+					Renamed
