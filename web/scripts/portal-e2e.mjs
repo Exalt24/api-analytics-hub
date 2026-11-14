@@ -1,3 +1,4 @@
+// LIFESPAN: permanent
 // Drives a RUNNING web server (npm run start) over real HTTP with different Host headers, so the
 // proxy, the portal page and the key check are exercised together.
 //
