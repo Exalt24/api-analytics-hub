@@ -1,3 +1,4 @@
+# LIFESPAN: permanent
 """Shared setup for the e-signature tests: a fresh schema with 001, 002, 003, 011 and 016, two tenants, a request-role Database, and the superuser's tool for tampering.
 
 Like the other database suites this DROPS and recreates the `public` schema of the database it points at (ANALYTICS_TEST_DSN, default the compose Postgres on 5433), so aim it
