@@ -34,12 +34,22 @@ const T = {
   state: "tests/reports-state.test.ts",
   prov: "tests/reports-provider.test.tsx",
   sync: "tests/replicache-sync.test.ts",
+  portal: "tests/portal.test.ts",
 };
 
 /** One edit: the text must occur exactly once in the file. */
 const e = (file, find, replace) => ({ file, find, replace });
 
 const MUTANTS = [
+  // ---- subdomain client portals (lib/portal.ts, proxy.ts)
+  { name: "portal.slug_not_compared", tests: [T.portal], edits: [e("lib/portal.ts", "if (!tenant || tenant.slug !== slug) {", "if (!tenant) {")] },
+  { name: "portal.reserved_labels_open", tests: [T.portal], edits: [e("lib/portal.ts", "if (!LABEL.test(label) || RESERVED_LABELS.has(label)) return null;", "if (!LABEL.test(label)) return null;")] },
+  { name: "portal.label_not_checked", tests: [T.portal], edits: [e("lib/portal.ts", "if (!LABEL.test(label) || RESERVED_LABELS.has(label)) return null;", "if (RESERVED_LABELS.has(label)) return null;")] },
+  { name: "portal.suffix_without_dot", tests: [T.portal], edits: [e("lib/portal.ts", "const suffix = `.${base}`;", "const suffix = base;")] },
+  { name: "portal.port_not_stripped", tests: [T.portal], edits: [e("lib/portal.ts", 'h = h.replace(/:\\d{1,5}$/, "");', "")] },
+  { name: "portal.trailing_dot_kept", tests: [T.portal], edits: [e("lib/portal.ts", 'if (h.endsWith(".")) h = h.slice(0, -1);', "")] },
+  { name: "proxy.portal_path_open", tests: [T.portal], edits: [e("proxy.ts", 'if (path === "/portal" || path.startsWith("/portal/")) {', "if (false) {")] },
+  { name: "proxy.tenant_from_path", tests: [T.portal], edits: [e("proxy.ts", "url.pathname = `/portal/${slug}${path === \"/\" ? \"\" : path}`;", "url.pathname = path;")] },
   // ---- the tenant boundary (lib/server/db.ts, auth.ts, data.ts)
   { name: "db.no_set_config", tests: [T.iso], edits: [e("lib/server/db.ts", "    await sql`select set_config('app.tenant_id', ${tenantId}, true)`.execute(trx);\n    return fn(trx);", "    return fn(trx);")] },
   { name: "db.session_scoped_setting", tests: [T.iso], edits: [e("lib/server/db.ts", "set_config('app.tenant_id', ${tenantId}, true)", "set_config('app.tenant_id', ${tenantId}, false)")] },
