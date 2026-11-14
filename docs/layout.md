@@ -107,5 +107,10 @@ web/                 Next.js dashboard
   components/ui/     shadcn/ui style components on Radix primitives; ReportForm.tsx is the export form
   tests/             Vitest suites (database, formats, guard, summary, S3, search, compiler, mutation script)
   e2e/               Playwright test and the Anthropic stand-in server; scripts/mutation_check.mjs breaks 65 guards; lint/ holds ESLint (docs/web-reports.md)
+powerbi/             the Power BI report (docs/powerbi.md)
+  AnalyticsHub.pbix  the report with its data inside; AnalyticsHub.pbip, .SemanticModel/ (TMDL) and .Report/ (PBIR) are the same report as text
+  data/              the four CSV files the model reads, written by export_data.py
+  export_data.py     invented figures through the hub's migrations and upsert function, read back out as CSV; --check needs no database
+  check_model.py     opens a copy of the .pbix in Desktop and compares the measures with figures worked out from the CSV files; run_dax.ps1 is its query runner
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
 ```

@@ -53,7 +53,7 @@ cd web && npm install && NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run buil
 npm start -- -p 3100
 ```
 
-`seed_local.py` needs the owner's Shopify development store. That is a two-line domain and token file (`SHOPIFY_DEV_TOKEN_FILE` or `.secrets/shopify_dev_token.txt`). Anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema. `seed_demo.py` applies every migration; `seed_local.py` applies 001 to 003, so run the rest after, and loads the last 120 days (`SEED_DAYS`). Each prints an admin and a viewer API key to see the role split. Build and start the dashboard (`npm run dev` did not hydrate the page in the browsers this was recorded in) and open `http://localhost:3100`.
+`seed_local.py` needs the owner's Shopify development store (a two-line domain and token file). Anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema. `seed_demo.py` applies every migration; `seed_local.py` applies 001 to 003, so run the rest after. Each prints an admin and a viewer API key to see the role split. Build and start the dashboard (not `npm run dev`, which did not hydrate) and open `http://localhost:3100`.
 
 The viewer key can read, and Sync now comes back 403 with the reason.
 
@@ -61,7 +61,7 @@ The viewer key can read, and Sync now comes back 403 with the reason.
 
 ## Layout
 
-`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)). `migrations/` holds the SQL in order. `n8n/` holds the monthly workflow. `web/` is the dashboard. `tests/` holds the suite and guards. File by file: [docs/layout.md](docs/layout.md).
+`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)). `migrations/` holds the SQL in order. `n8n/` holds the monthly workflow. `web/` is the dashboard. `powerbi/` is the Power BI report. `tests/` holds the suite and guards. File by file: [docs/layout.md](docs/layout.md).
 
 ---
 
@@ -72,7 +72,7 @@ The viewer key can read, and Sync now comes back 403 with the reason.
 one platform and `cost` from another arrive as one metric key with one unit.
 Adding a platform means one connector and a registry entry; the scheduler,
 the API and the dashboard do not change. GA4, Meta, Search Console and the five newest each landed as one
-class, one registry entry and a migration of metric keys, with three exceptions. The currency check names its money metrics. Search Console's per query rows got a table of their own. The monthly report assumed a single source (see Monthly report).
+class, one registry entry and a migration of metric keys.
 
 **Money is an integer in minor units with its currency beside it.** A
 `currency_iff_money` CHECK enforces that in the database as well as at the connector boundary.
@@ -105,7 +105,7 @@ reaper turns a silently dead worker into a visible failure.
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and tested against stand-in servers that follow it. Google Ads also counts Local Services Ads leads. Google Business Profile reads a local listing's daily calls, website clicks, direction requests and impressions. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side: spend, conversions and cost per conversion by platform and week, with the shop's booked jobs. Limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and tested against stand-in servers that follow it. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 
@@ -129,11 +129,10 @@ Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendo
 
 ## Monthly report
 
-`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck. It has seven slides for a store and up to ten with a website, ads and search. The narrative is a fixed template without a model key. A model's text is used only if every figure in it is a computed one, in the right currency and beside its own metric. Otherwise the template is used. The check does not catch a wrong direction word, a cause or a right figure in the wrong role.
+`scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck. It has seven slides for a store and up to ten with a website, ads and search. The narrative is a fixed template; a model's text is used only if every figure in it is a computed one, in the right currency and beside its own metric.
+**The monthly run.** `POST /api/reports/monthly` builds the same deck byte for byte and says whether it was delivered, so a rerun sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month. A real n8n container found two faults a file check could not, both fixed and pinned ([output](docs/test-runs/2026-10-26-n8n.txt)).
 
-**The monthly run.** `POST /api/reports/monthly` builds the same deck, byte for byte, for the same month. It says whether it was delivered, so a rerun builds and sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month. A real n8n container found two faults a file check could not. Both are fixed and pinned ([output](docs/test-runs/2026-10-26-n8n.txt)).
-
-**Google Drive delivery.** `scripts/monthly_report.py --drive-folder <folder id>` uploads the finished deck to a Drive folder through the Drive API v3. The file name is stable for a tenant and month, so a rerun replaces the file and never adds a copy. Tested against a stand-in written from Google's documentation and once for real into a personal Drive: created, replaced, read back, deleted ([output](docs/test-runs/2026-11-10-drive-delivery.txt)). The n8n workflow does not call it yet ([detail](docs/drive-delivery.md)).
+**Google Drive delivery.** `scripts/monthly_report.py --drive-folder <folder id>` uploads the finished deck to a Drive folder through the Drive API v3. The file name is stable for a tenant and month, so a rerun replaces the file. Tested against a stand-in written from Google's documentation and once for real into a personal Drive ([output](docs/test-runs/2026-11-10-drive-delivery.txt)). The n8n workflow does not call it yet ([detail](docs/drive-delivery.md)).
 
 Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-sheet.png). Method, tests and limits: [docs/MONTHLY_REPORT.md](docs/MONTHLY_REPORT.md).
 
@@ -142,6 +141,14 @@ Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-she
 ## Report export from the dashboard
 
 The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. It reads through Kysely under forced row level security. An AI summary is optional: a code guard refuses any figure not in the data, a refused one is retried once, then a plain template is used and the file says so. A document attached goes up by a presigned S3 URL. The page is Next.js App Router with strict TypeScript, Tailwind CSS 4, React Hook Form with Zod and shadcn/ui. Saved presets are local first: Replicache keeps them in IndexedDB, so a save works offline, and route handlers sync them to tenant scoped Postgres. Tested on real Postgres, a fake model and SeaweedFS for S3 (no AWS account). One live Groq run passed the guard, and Kysely ran against a free Neon Postgres project under a non superuser role ([detail](docs/web-reports.md#the-neon-run)). 156 tests, 12 browser tests, and 76 deliberate breakages each caught. Claims and tests: [docs/web-reports.md](docs/web-reports.md).
+
+---
+
+## Power BI report
+
+![Power BI Desktop, Sales and ads page: cards, daily net sales with a seven day average, ad spend by month, a month table](docs/powerbi/sales-and-ads.png)
+
+`powerbi/` holds a Power BI report over the same snapshot tables, as `AnalyticsHub.pbix` and as a `.pbip` project (TMDL and PBIR text). It has a five table star schema with 27 DAX measures, Power Query (M) loading four CSV files, two pages and 18 visuals. Built against invented figures loaded through the hub's own tables (`python powerbi/export_data.py`). Opened in Power BI Desktop 2.159; `python powerbi/check_model.py` runs the measures through the model's own port and compares 56 figures with ones worked out from the CSV files: all 56 match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
 
 ---
 
