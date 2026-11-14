@@ -41,10 +41,10 @@ class Role(str, Enum):
 #: because "operator is above viewer" stops being obviously true the moment a role
 #: is added that is not on the same line, and a silent misordering grants power.
 PERMISSIONS: dict[Role, frozenset[str]] = {
-    Role.VIEWER: frozenset({"read:kpis", "read:runs", "read:report"}),
-    Role.OPERATOR: frozenset({"read:kpis", "read:runs", "read:report", "write:sync", "write:report"}),
+    Role.VIEWER: frozenset({"read:kpis", "read:runs", "read:report", "read:esign", "sign:esign"}),
+    Role.OPERATOR: frozenset({"read:kpis", "read:runs", "read:report", "write:sync", "write:report", "read:esign", "sign:esign", "write:esign"}),
     Role.ADMIN: frozenset({"read:kpis", "read:runs", "read:report", "write:sync", "write:report",
-                           "write:connections", "read:credentials"}),
+                           "write:connections", "read:credentials", "read:esign", "sign:esign", "write:esign"}),
 }
 
 

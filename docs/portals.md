@@ -39,3 +39,7 @@ Run on 2026-11-14 against a throwaway Postgres 17 with pgvector (the scratch dat
 - Built and run on `*.portal.example.com` names sent as Host headers to a local server. No wildcard DNS record, no wildcard certificate and no deployed portal were used, so the DNS and TLS side is not shown here.
 - The portal home shows the tenant's name, the key's role and a count of stored figures. It is the isolation path, not a finished client area.
 - A viewer key is typed into a form and kept in a host-only cookie. There is no password, SSO or session expiry.
+
+## What is built on it
+
+The signing pages (`/sign/<id>` on a tenant subdomain, with the document download and the form post under it) use the same host rule and the same key check, then call the backend with the key. Rules, tests and limits: [esign.md](esign.md).

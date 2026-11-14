@@ -1,0 +1,25 @@
+Whole suite with the e-signature slice, 2026-11-14 (Windows 11, Python 3.13.14, compose Postgres pgvector/pgvector:0.8.7-pg17 on 5433; stripe-mock and pg_dump tools were not available here, so the stripe-mock and backup tests skip locally and run in CI).
+Command: .venv/Scripts/python.exe -m pytest tests -q -rs -p no:cacheprovider
+The 221 new tests are tests/test_esign_chain.py 71, test_esign_db.py 74, test_esign_api_db.py 16, test_esign_simulation.py 51 and test_mutation_check_esign.py 9. Without them the same command gives 6,896 passed.
+An earlier whole run the same day had one failure, tests/test_doc_links.py, because the test-run files this slice links to did not exist yet; this run is the one after they were written.
+
+============================== warnings summary ===============================
+tests/test_billing_simulation.py: 99 warnings
+tests/test_billing_stripe_sdk.py: 24 warnings
+tests/test_billing_stripe_sdk_db.py: 11 warnings
+  C:\Projects\Professional\Projects\Apps\api-analytics-hub\.venv\Lib\site-packages\httpx\_models.py:408: DeprecationWarning: Use 'content=<...>' to upload raw bytes/text content.
+    headers, stream = encode_request(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_billing_stripe_sdk.py:59: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:65: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:73: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:79: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:86: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_db.py:175: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_db.py:192: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_db_backup.py:200: needs pg_dump, pg_restore and psql, or PG_CMD_PREFIX
+SKIPPED [1] tests\test_db_backup.py:210: needs pg_dump, pg_restore and psql, or PG_CMD_PREFIX
+SKIPPED [1] tests\test_db_backup.py:251: needs pg_dump, pg_restore and psql, or PG_CMD_PREFIX
+7117 passed, 10 skipped, 5 xfailed, 134 warnings in 540.86s (0:09:00)

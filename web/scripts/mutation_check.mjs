@@ -35,6 +35,7 @@ const T = {
   prov: "tests/reports-provider.test.tsx",
   sync: "tests/replicache-sync.test.ts",
   portal: "tests/portal.test.ts",
+  esign: "tests/esign.test.ts",
 };
 
 /** One edit: the text must occur exactly once in the file. */
@@ -50,6 +51,24 @@ const MUTANTS = [
   { name: "portal.trailing_dot_kept", tests: [T.portal], edits: [e("lib/portal.ts", 'if (h.endsWith(".")) h = h.slice(0, -1);', "")] },
   { name: "proxy.portal_path_open", tests: [T.portal], edits: [e("proxy.ts", 'if (path === "/portal" || path.startsWith("/portal/")) {', "if (false) {")] },
   { name: "proxy.tenant_from_path", tests: [T.portal], edits: [e("proxy.ts", "url.pathname = `/portal/${slug}${path === \"/\" ? \"\" : path}`;", "url.pathname = path;")] },
+  // ---- e-signatures in the portal (lib/esign.ts)
+  { name: "esign.id_not_checked_on_sign", tests: [T.esign], edits: [e("lib/esign.ts", "Promise<Result<SignOutcome>> {\n  if (!isRequestId(id)) return Promise.resolve({ ok: false, status: 404, message: refusalMessage(404, undefined) });\n", "Promise<Result<SignOutcome>> {\n")] },
+  { name: "esign.id_not_checked_on_open", tests: [T.esign], edits: [e("lib/esign.ts", "Promise<Result<SigningRequest>> {\n  if (!isRequestId(id)) return Promise.resolve({ ok: false, status: 404, message: refusalMessage(404, undefined) });\n", "Promise<Result<SigningRequest>> {\n")] },
+  { name: "esign.id_pattern_unanchored", tests: [T.esign], edits: [e("lib/esign.ts", "const REQUEST_ID = /^[0-9a-f]{8}-", "const REQUEST_ID = /[0-9a-f]{8}-")] },
+  { name: "esign.no_bearer_key", tests: [T.esign], edits: [e("lib/esign.ts", "const out: Record<string, string> = { Authorization: `Bearer ${key}` };", "const out: Record<string, string> = {};")] },
+  { name: "esign.agent_not_forwarded", tests: [T.esign], edits: [e("lib/esign.ts", 'if (caller?.userAgent) out["User-Agent"] = caller.userAgent;', "")] },
+  { name: "esign.address_not_forwarded", tests: [T.esign], edits: [e("lib/esign.ts", 'if (caller?.forwardedFor) out["X-Forwarded-For"] = caller.forwardedFor;', "")] },
+  { name: "esign.consent_not_checked", tests: [T.esign], edits: [e("lib/esign.ts", 'if (data.get("consent") !== "on") return', "if (false) return")] },
+  { name: "esign.empty_name_allowed", tests: [T.esign], edits: [e("lib/esign.ts", 'if (!typedName) return { ok: false, message: "Type your full name to sign." };', "")] },
+  { name: "esign.key_in_the_url", tests: [T.esign], edits: [e("lib/esign.ts", "`${esignBase()}/api/esign/requests/${id}/sign`,", "`${esignBase()}/api/esign/requests/${id}/sign?key=${key}`,")] },
+  { name: "esign.tenant_in_the_body", tests: [T.esign], edits: [e("lib/esign.ts", "    consent: form.consent,\n", "    consent: form.consent,\n    tenant_id: \"x\",\n")] },
+  { name: "esign.refusal_status_ignored", tests: [T.esign], edits: [e("lib/esign.ts", "  if (!res.ok) return { ok: false, status: res.status, message: refusalMessage(res.status, await detailOf(res)) };", "")] },
+  { name: "esign.network_error_thrown", tests: [T.esign], edits: [e("lib/esign.ts", "    return { ok: false, status: 0, message: refusalMessage(0, undefined) };\n  }\n  if (!res.ok)", "    throw new Error(\"down\");\n  }\n  if (!res.ok)")] },
+  { name: "esign.expired_message_lost", tests: [T.esign], edits: [e("lib/esign.ts", 'return "This request has expired.";', 'return "Something went wrong.";')] },
+  { name: "esign.redirect_to_another_site", tests: [T.esign], edits: [e("lib/esign.ts", 'path.startsWith("/") && !path.startsWith("//") ? path : "/"', "path")] },
+  { name: "esign.post_from_any_origin", tests: [T.esign], edits: [e("lib/esign.ts", "return new URL(origin).host.toLowerCase() === host.toLowerCase();", "return true;")] },
+  { name: "esign.redirect_is_not_303", tests: [T.esign], edits: [e("lib/esign.ts", "status: 303,", "status: 302,")] },
+  { name: "esign.document_returned_on_error", tests: [T.esign], edits: [e("lib/esign.ts", "return res.ok ? res : null;", "return res;")] },
   // ---- the tenant boundary (lib/server/db.ts, auth.ts, data.ts)
   { name: "db.no_set_config", tests: [T.iso], edits: [e("lib/server/db.ts", "    await sql`select set_config('app.tenant_id', ${tenantId}, true)`.execute(trx);\n    return fn(trx);", "    return fn(trx);")] },
   { name: "db.session_scoped_setting", tests: [T.iso], edits: [e("lib/server/db.ts", "set_config('app.tenant_id', ${tenantId}, true)", "set_config('app.tenant_id', ${tenantId}, false)")] },

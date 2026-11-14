@@ -1,0 +1,9 @@
+The e-signature tests, 2026-11-14 (Windows 11, Python 3.13.14, compose Postgres pgvector/pgvector:0.8.7-pg17 on 5433).
+Command: ESIGN_REQUIRE_DB=1 .venv/Scripts/python.exe -m pytest tests/test_esign_chain.py tests/test_esign_db.py tests/test_esign_api_db.py tests/test_esign_simulation.py tests/test_mutation_check_esign.py -q -rs -p no:cacheprovider
+Files: test_esign_chain.py 71 (no database), test_esign_db.py 74 (Postgres, as the request role), test_esign_api_db.py 16 (HTTP), test_esign_simulation.py 51 (50 seeded worlds and the census of the cases they reach), test_mutation_check_esign.py 9 (the harness's own safety).
+
+........................................................................ [ 32%]
+........................................................................ [ 65%]
+........................................................................ [ 97%]
+.....                                                                    [100%]
+221 passed in 60.96s (0:01:00)

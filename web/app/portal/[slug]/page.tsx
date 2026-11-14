@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { PORTAL_COOKIE, authorizePortal, readPortalSummary } from "@/lib/portal";
 import { getDb } from "@/lib/server/db";
+import { listSigningRequests } from "@/lib/esign";
 import { portalSignIn, portalSignOut } from "./actions";
 
 export const metadata: Metadata = { title: "Client portal" };
@@ -59,6 +60,7 @@ export default async function Page({
   }
 
   const summary = await readPortalSummary(db, access.tenant.id);
+  const signing = await listSigningRequests(key);
   return (
     <main>
       <header className="top">
@@ -73,6 +75,18 @@ export default async function Page({
         </form>
       </header>
       <p>{`${summary.snapshots} stored figures${summary.latestDay ? `, latest day ${summary.latestDay}` : ""}.`}</p>
+      {signing.ok && signing.value.length > 0 ? (
+        <>
+          <h2>Documents to sign</h2>
+          <ul>
+            {signing.value.map((r) => (
+              <li key={r.id}>
+                <a href={`/sign/${r.id}`}>{r.document_name}</a> ({r.status})
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </main>
   );
 }

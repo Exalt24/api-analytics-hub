@@ -1,0 +1,58 @@
+web/ e-signature portal client, 2026-11-14. Local: Windows 11, Node v24.18.0, Postgres 17 with pgvector 0.8.7 (compose db service), the S3 stand-in was not running so its tests skip here and run in CI.
+The full web suite with the portal client (web/lib/esign.ts, web/tests/esign.test.ts: 27 new tests) in it.
+Commands: npm run typecheck, npm run lint, WEB_REQUIRE_DB=1 npm test, then node scripts/mutation_check.mjs --only esign,portal,proxy in a copy of web/ (the script edits source in place).
+
+== npm run typecheck
+> typecheck
+> tsc --noEmit
+
+exit 0
+
+== npm run lint
+> lint
+> node lint/node_modules/eslint/bin/eslint.js --config lint/eslint.config.mjs --max-warnings 0 app components lib tests e2e live
+
+
+== npm test
+
+> test
+> vitest run
+
+
+ RUN  v5.1.0 C:/Projects/Professional/Projects/Apps/api-analytics-hub/web
+
+
+ Test Files  14 passed | 1 skipped (15)
+      Tests  194 passed | 11 skipped (205)
+   Start at  22:49:18
+   Duration  9.19s (tests 54%, import 35%, environment 10%, transform 1%)
+
+
+== node scripts/mutation_check.mjs --only esign,portal,proxy   (17 of the 25 are the new esign guards; the other 8 are the portal and proxy guards of 2026-11-14)
+caught    portal.slug_not_compared
+caught    portal.reserved_labels_open
+caught    portal.label_not_checked
+caught    portal.suffix_without_dot
+caught    portal.port_not_stripped
+caught    portal.trailing_dot_kept
+caught    proxy.portal_path_open
+caught    proxy.tenant_from_path
+caught    esign.id_not_checked_on_sign
+caught    esign.id_not_checked_on_open
+caught    esign.id_pattern_unanchored
+caught    esign.no_bearer_key
+caught    esign.agent_not_forwarded
+caught    esign.address_not_forwarded
+caught    esign.consent_not_checked
+caught    esign.empty_name_allowed
+caught    esign.key_in_the_url
+caught    esign.tenant_in_the_body
+caught    esign.refusal_status_ignored
+caught    esign.network_error_thrown
+caught    esign.expired_message_lost
+caught    esign.redirect_to_another_site
+caught    esign.post_from_any_origin
+caught    esign.redirect_is_not_303
+caught    esign.document_returned_on_error
+
+25 of 25 mutants caught

@@ -1,0 +1,22 @@
+Portal driven in a real browser, 2026-11-14. Local: Windows 11, Chromium from Playwright (web/node_modules), Node v24.18.0, Postgres 17 with pgvector 0.8.7 (compose db service, a scratch database analytics_esign_e2e).
+Setup: migrations 001, 002, 003, 011, 016; tenants alpha and bravo; an operator and a viewer key for alpha and a viewer key for bravo. Backend: uvicorn app.api.main:app --port 8100 with ESIGN_PII_KEY set and ESIGN_TRUST_FORWARDED=1. Portal: the built app, PORTAL_BASE_DOMAIN=portal.localhost npx next start -p 3200 with ESIGN_API_BASE=http://127.0.0.1:8100. Chromium maps *.portal.localhost to 127.0.0.1.
+Command: node scripts/esign-e2e.mjs http://127.0.0.1:3200 http://127.0.0.1:8100
+What it found on the way: the portal's sign-in server action redirects through a render that does not see the Host rewrite, so a browser lands on the ordinary dashboard until the page is loaded again (that is why this script loads the portal home page again after signing in, and why the signing form posts to a route handler that answers 303 instead of using a server action).
+
+PASS  a firm user creates the request over the API
+PASS  the client signs in at alpha and sees the document to sign
+PASS  the page shows the document's SHA-256
+PASS  the page shows the consent text
+PASS  the document downloads through the portal with the key kept on the server
+PASS  the same address without the sign-in cookie is a 404
+PASS  a wrong name is refused with words on the page
+PASS  the right name and the tick sign it
+PASS  a signed request offers no form to sign again
+PASS  verify is true for the record the portal made
+PASS  the certificate lists created, viewed, consented and signed
+PASS  the certificate holds no raw user agent and no address
+PASS  bravo's key at bravo's portal cannot open alpha's request
+PASS  nor download its document
+PASS  nor verify it over the API: the same 404 as for an id nobody has
+PASS  alpha's key at bravo's portal is refused: still the sign-in form
+every check passed

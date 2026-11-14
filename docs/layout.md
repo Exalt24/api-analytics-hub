@@ -53,7 +53,7 @@ scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, 
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security), 013 the metric keys of Google Ads, TikTok, Square, QuickBooks and Shopmonkey with the money check and the milli_count unit
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security), 013 the metric keys of Google Ads, TikTok, Square, QuickBooks and Shopmonkey with the money check and the milli_count unit, 014 Business Profile metric keys, 015 report presets sync, 016 e-signatures (signing requests, signatures and a hash chained audit log, forced row level security, append only)
 docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md, AD_AND_BUSINESS_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
 docs/ad-spend.md   the five connectors, their env variables, the ad spend view, its rules and limits
 seed_demo.py         invented figures and two API keys, for anyone without the owner's Shopify store
@@ -91,6 +91,14 @@ app/billing/         prepaid wallet and billing ledger; the provider is the offi
 scripts/billing.py   price, topup, debit, refund, adjust, statement, report, reconcile, simulate-webhook and demo
 seed_billing_demo.py plans and two invented tenants for the billing demo
 docs/billing.md      the ledger, the flows, how a duplicate charge is prevented, the demo, what is not done; docs/vendor-contract/stripe/ the Stripe pages the provider is written from
+app/esign/           e-signature slice: a signing request, a signature record and a hash chained audit log, tested against a local Postgres (docs/esign.md)
+  service.py         create, open, sign, decline, expire, verify and the certificate; one transaction for each command, ordered by an advisory lock on the request
+  chain.py           the hashes and every check on them (pure): an edited, deleted or reordered row, a changed document, an edited signature
+  consent.py         the versioned consent text and the typed-name rule
+  certificate.py     the completion certificate as JSON and text, and the offline check a third party can run
+app/api/esign.py     the routes under /api/esign: who may create, open, sign, decline and verify, and the status of each refusal
+migrations/016_esign.sql   the three tables: forced row level security, append only, a frozen request, one signature for each request
+web/lib/esign.ts, web/app/portal/[slug]/sign/   the portal page where the client reads, signs or declines, and the portal route that serves the document
 web/                 Next.js dashboard
   app/reports/       the Reports page and its Server Actions (CSV, Excel, PDF, presigned upload)
   lib/server/        Kysely database layer with the tenant setting and role switch, API key to tenant, the TypeScript port of the query embedding and lookup

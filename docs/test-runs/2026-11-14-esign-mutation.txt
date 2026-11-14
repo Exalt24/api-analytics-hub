@@ -1,0 +1,72 @@
+python tests/mutation_check_esign.py
+2026-11-14, run in a copy of the repository (the harness edits source in place), against the compose Postgres (pgvector/pgvector:0.8.7-pg17 on 5433), Windows 11, Python 3.13.14. 63 guards: the double sign check, the retry, the advisory lock, the unique key, the expiry check and its boundary, the declined check, the consent check, the name rule, the document hash comparisons, the tenant policy, forced row level security, the append only triggers and grants, the chain link, each part of verify, the keyed hash, a raw address in a log, the certificate checks, the role table and the statuses. Each mutant runs only the tests it names (a -k selection over tests/test_esign_*.py); the baseline and the final restore run all of them.
+An earlier run of the same command, before one test was extended, caught 62 of 63: the guard 'privacy: the connection address is logged' survived because the log test only sent a forwarded address. A signing without that header was added to the log test (tests/test_esign_api_db.py) and this run caught all 63.
+
+baseline: green
+[ok]   double-sign: a different attempt after a success is answered as a retry: failed 1 test(s), including the expected one
+[ok]   retry: a retry after a lost answer is refused: failed 3 test(s), including the expected one
+[ok]   retry: the name is not compared, so another name gets the first result: failed 2 test(s), including the expected one
+[ok]   double-sign: the request is not locked, so two signers race: failed 18 test(s), including the expected one
+[ok]   double-sign: the database's unique key on the request is gone: failed 1 test(s), including the expected one
+[ok]   expiry: a request past its expiry is signable: failed 2 test(s), including the expected one
+[ok]   expiry: the boundary instant counts as still valid: failed 1 test(s), including the expected one
+[ok]   expiry: an already expired request can be signed again: failed 1 test(s), including the expected one
+[ok]   expiry: sweeping expires requests that are not yet due: failed 1 test(s), including the expected one
+[ok]   decline: a declined request can be signed: failed 1 test(s), including the expected one
+[ok]   decline: a signed request can be declined: failed 1 test(s), including the expected one
+[ok]   consent: the box is not checked: failed 2 test(s), including the expected one
+[ok]   consent: any truthy value counts: failed 1 test(s), including the expected one
+[ok]   consent: the version is not compared: failed 1 test(s), including the expected one
+[ok]   name: an empty name is not named as such: failed 2 test(s), including the expected one
+[ok]   name: the match is not checked: failed 4 test(s), including the expected one
+[ok]   name: an over-long name is accepted: failed 1 test(s), including the expected one
+[ok]   name rule: case matters: failed 2 test(s), including the expected one
+[ok]   name rule: compatibility forms are not normalised: failed 1 test(s), including the expected one
+[ok]   name rule: whitespace is not collapsed: failed 2 test(s), including the expected one
+[ok]   name rule: two empty names match: failed 1 test(s), including the expected one
+[ok]   document: the stored bytes are not rehashed at signing: failed 1 test(s), including the expected one
+[ok]   document: the hash the signer saw is not compared: failed 2 test(s), including the expected one
+[ok]   document: the download is not rehashed: failed 1 test(s), including the expected one
+[ok]   tenant: the event policy lets every tenant read: failed 1 test(s), including the expected one
+[ok]   tenant: row level security is not forced on the requests: failed 1 test(s), including the expected one
+[ok]   append only: audit rows can be changed by the owner: failed 1 test(s), including the expected one
+[ok]   append only: the request role can edit and delete the log: failed 1 test(s), including the expected one
+[ok]   append only: the request role can edit the document: failed 1 test(s), including the expected one
+[ok]   append only: the request is not frozen: failed 1 test(s), including the expected one
+[ok]   append only: a status can go backward: failed 1 test(s), including the expected one
+[ok]   chain: a new row does not link to the row before it: failed 51 test(s), including the expected one
+[ok]   chain: a row's hash leaves out its detail: failed 1 test(s), including the expected one
+[ok]   chain: a signature hash leaves out the typed name: failed 1 test(s), including the expected one
+[ok]   verify: an edited row is not detected: failed 3 test(s), including the expected one
+[ok]   verify: a broken link is not detected: failed 2 test(s), including the expected one
+[ok]   verify: a gap in the numbers is not detected: failed 2 test(s), including the expected one
+[ok]   verify: reordered rows are not detected: failed 2 test(s), including the expected one
+[ok]   verify: the document is not rehashed: failed 2 test(s), including the expected one
+[ok]   verify: the created row is not compared with the request: failed 5 test(s), including the expected one
+[ok]   verify: the signature hash is not recomputed: failed 6 test(s), including the expected one
+[ok]   verify: a deleted signature is not noticed: failed 2 test(s), including the expected one
+[ok]   verify: a status that disagrees with the signature is not noticed: failed 1 test(s), including the expected one
+[ok]   verify: the certificate is issued without verifying: failed 1 test(s), including the expected one
+[ok]   verify: a verification run is not recorded as one: failed 1 test(s), including the expected one
+[ok]   audit: opening a request writes no viewed row: failed 1 test(s), including the expected one
+[ok]   privacy: the address hash is a plain SHA-256: failed 2 test(s), including the expected one
+[ok]   privacy: the user agent is stored raw: failed 2 test(s), including the expected one
+[ok]   privacy: the hash has no key: failed 1 test(s), including the expected one
+[ok]   privacy: the hash ignores what kind of value it is: failed 1 test(s), including the expected one
+[ok]   privacy: the connection address is logged: failed 1 test(s), including the expected one
+[ok]   privacy: forwarded headers are always trusted: failed 1 test(s), including the expected one
+[ok]   certificate: the chain head is not checked: failed 2 test(s), including the expected one
+[ok]   certificate: the document is not rehashed: failed 1 test(s), including the expected one
+[ok]   certificate: the consent text is not rehashed: failed 1 test(s), including the expected one
+[ok]   certificate: rows after the signed row are included: failed 1 test(s), including the expected one
+[ok]   request: an expiry beyond a year is accepted: failed 1 test(s), including the expected one
+[ok]   request: an expiry at this moment is accepted: failed 1 test(s), including the expected one
+[ok]   request: the size limit is not checked: failed 1 test(s), including the expected one
+[ok]   request: the signer's address is not checked: failed 2 test(s), including the expected one
+[ok]   roles: a viewer may create requests: failed 1 test(s), including the expected one
+[ok]   status: a missing request is not 404: failed 1 test(s), including the expected one
+[ok]   status: an expired request is not 410: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 63: killed 63, survived 0, killed by the wrong test 0
+mutation control: PASS
