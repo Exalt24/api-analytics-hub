@@ -136,6 +136,8 @@ jobs:
         run: npm run build
       - name: Browser test on the built dashboard
         working-directory: web
+        env:
+          E2E_BROWSERS: chromium      # the three engine run is a local command (README); CI installs and runs Chromium only, to keep the minutes small
         run: |
           npx playwright install --with-deps chromium
           npx playwright test
