@@ -8,7 +8,7 @@
 
 Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard.
 
-There are ten connectors. **Shopify Admin GraphQL** is verified against a real development store. Nine more (table below) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page. It reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side, built by an n8n workflow for each tenant on the first of the month.
+There are eleven connectors. **Shopify Admin GraphQL** is verified against a real development store. Ten more (table below) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page. It reads snapshots the sync wrote. A monthly PowerPoint report puts all four side by side, built by an n8n workflow for each tenant on the first of the month.
 
 | Source | Built and tested against |
 |---|---|
@@ -16,7 +16,7 @@ There are ten connectors. **Shopify Admin GraphQL** is verified against a real d
 | Google Analytics 4 | a stand-in server ([sources](docs/GA4_SOURCES.md)) |
 | Meta Ads | a stand-in server ([sources](docs/META_SOURCES.md)) |
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
-| Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
+| Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey, Salesforce | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |
 
 ## Demo
@@ -55,8 +55,6 @@ npm start -- -p 3100
 
 `seed_local.py` needs the owner's Shopify development store (a two-line domain and token file). Anyone else runs `python seed_demo.py` (sample figures, same keys). Both drop the `public` schema. `seed_demo.py` applies every migration; `seed_local.py` applies 001 to 003, so run the rest after. Each prints an admin and a viewer API key to see the role split. Build and start the dashboard (not `npm run dev`, which did not hydrate) and open `http://localhost:3100`.
 
-The viewer key can read, and Sync now comes back 403 with the reason.
-
 ---
 
 ## Layout
@@ -71,7 +69,7 @@ The viewer key can read, and Sync now comes back 403 with the reason.
 `CanonicalPoint` values. It never returns a vendor's field names, so `spend` from
 one platform and `cost` from another arrive as one metric key with one unit.
 Adding a platform means one connector and a registry entry; the scheduler,
-the API and the dashboard do not change. Each newer connector landed as one class and one registry entry.
+the API and the dashboard do not change.
 
 **Money is an integer in minor units with its currency beside it.** A
 `currency_iff_money` CHECK enforces that in the database as well as at the connector boundary. Parsing
@@ -102,7 +100,7 @@ reaper turns a silently dead worker into a visible failure.
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks and Shopmonkey are written from the vendors' public documentation and tested against stand-in servers that follow it. `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written from the vendors' public documentation. Stand-in servers that follow it are all they ran against, never a live account. Salesforce adds OAuth refresh, SOQL paging and a lead matcher that gives a reason code per answer: [docs/salesforce.md](docs/salesforce.md). `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 

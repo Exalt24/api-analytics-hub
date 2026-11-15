@@ -202,6 +202,7 @@ def _register_builtin() -> None:
     from .meta import MetaConnector
     from .gbp import GBPConnector
     from .quickbooks import QuickBooksConnector
+    from .salesforce import SalesforceConnector
     from .shopify import ShopifyConnector
     from .shopmonkey import ShopmonkeyConnector
     from .square import SquareConnector
@@ -370,6 +371,30 @@ def _register_builtin() -> None:
                 "requests, messages and bookings. A zero is an absent value on the API, so a missing value is read as zero. Google documents "
                 "300 queries a minute for the Performance API and a quota of 0 until basic API access is granted. Never run against a live "
                 "listing: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="salesforce",
+            label="Salesforce",
+            auth_kind=AuthKind.OAUTH_REFRESH,
+            rate_limit_style=RateLimitStyle.DAILY_QUOTA,
+            supported_metrics=SalesforceConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("instance_url", "Org address", secret=False, hint="the My Domain address, such as https://yourname.my.salesforce.com"),
+                CredentialField("currency", "Currency", secret=False, hint="the org's ISO 4217 code, such as USD: a single currency org does not say it in the rows"),
+                CredentialField("client_id", "Consumer key", secret=False, hint="of the external client app or connected app that holds the refresh token"),
+                CredentialField("client_secret", "Consumer secret"),
+                CredentialField("refresh_token", "Refresh token", hint="from the web server flow with the refresh_token and api scopes"),
+            ),
+            factory=SalesforceConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Leads and opportunities per day from SOQL queries on the REST API, paged by nextRecordsUrl: leads created and converted, opportunities created "
+                "and won, and the won amount. Refreshes its access token on a 401, once, behind a lock; stops before a call when fewer than 50 of the org's daily "
+                "calls are left (Sforce-Limit-Info); a 403 REQUEST_LIMIT_EXCEEDED is handed to the runner. Never run against a live org: none is held."
             ),
         )
     )

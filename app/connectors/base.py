@@ -116,6 +116,8 @@ MONEY_METRICS = frozenset({
     "gross_sales", "refunds", "net_sales", "avg_order_value", "ad_spend", "ad_purchase_value",
     # Added with migration 013: the Google Ads conversion value, and the money of the Square, QuickBooks and Shopmonkey connectors.
     "ad_conversion_value", "payments_total", "payments_refunded", "invoiced_amount", "invoice_open_balance", "work_order_revenue",
+    # Added with migration 017: the Amount of the opportunities Salesforce says were won.
+    "sf_won_amount",
 })
 
 

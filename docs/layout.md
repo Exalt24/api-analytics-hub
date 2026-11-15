@@ -21,6 +21,8 @@ app/
     square.py        Square Payments API: completed payments per location day, refunds, tip included
     quickbooks.py    QuickBooks Online query endpoint: invoices by invoice date, total and open balance
     shopmonkey.py    Shopmonkey v3 orders: work orders booked and invoiced per day
+    salesforce.py    Salesforce REST SOQL: leads and opportunities per day, OAuth refresh token flow, Sforce-Limit-Info pacing, the lead rows for matching
+    salesforce_fake.py   stand-in Salesforce server, written from Salesforce's pages
     google_ads_fake.py, tiktok_fake.py, square_fake.py, quickbooks_fake.py, shopmonkey_fake.py   stand-in servers, written from each vendor's pages
     shopify_oauth.py install flow, offline tokens
     shopify_webhooks.py  HMAC verification over the raw body
@@ -58,6 +60,7 @@ docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md, AD_AND_BUSINESS_SOURCES.md
 docs/ad-spend.md   the five connectors, their env variables, the ad spend view, its rules and limits
 seed_demo.py         invented figures and two API keys, for anyone without the owner's Shopify store
 deploy/              Caddyfile, systemd units for the nightly backup and its alert, and the script that verifies them (docs/deploy.md)
+app/lead_match.py    lead dedupe, attribution to a call and a source, and the missed call queue, each answer with a reason code (docs/salesforce.md)
 app/similar_queries.py hashed-trigram embedding and the tenant-scoped nearest-query lookup (docs/test-runs/2026-10-30-pgvector-rls-recall.md)
 app/price_watch/     competitor price monitoring (docs/price-watch.md)
   scraper.py         Playwright reader for one competitor page, and the pure extraction over what it collects
