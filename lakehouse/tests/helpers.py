@@ -1,3 +1,4 @@
+# LIFESPAN: permanent (shared helpers for the lakehouse tests and its mutation check)
 """Builders for raw bronze records, and the small steps the tests repeat."""
 from __future__ import annotations
 
