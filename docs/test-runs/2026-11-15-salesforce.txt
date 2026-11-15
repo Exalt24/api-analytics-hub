@@ -1,0 +1,25 @@
+Salesforce connector and lead matching, run 2026-11-15 (the author's own run, against the stand-in server in app/connectors/salesforce_fake.py; no Salesforce org was used).
+
+$ python -m pytest tests/test_salesforce_connector.py tests/test_lead_match.py tests/test_salesforce_sync_db.py -q
+586 passed (170 connector tests with 60 seeded worlds, 408 matching tests with 150 seeded worlds, 8 against the compose Postgres)
+
+The rest of the repository's suite ran in two halves on the same tree (the first stopped at one error in tests/test_esign_api_db.py, which passes alone and in the second run; nothing else failed):
+
+$ python -m pytest tests -q            1093 passed, 7 skipped, 4 xfailed, 1 error (the e-signature database suite, flaky once)
+$ python -m pytest <tests from test_esign onward> -q      6543 passed, 1 xfailed
+
+The mutation check ran in a copy of the repository:
+
+$ python tests/mutation_check_salesforce.py
+baseline: green
+mutants run 58: killed 58, survived 0, killed by the wrong test 0
+mutation control: PASS
+
+Its first two runs had found three weak spots, all strengthened before this record: a datetime test that compared aware datetimes (equal across time zones, so the zone was untested), a 5xx test that exercised the token endpoint instead of the data endpoint, and the sync's api_calls total, which left out the describes and the token exchange.
+
+Two guards were added afterwards (the record link builder checks its id, and every answer carries its leads' links); each was run alone in a fresh copy and killed:
+$ python tests/mutation_check_salesforce.py --match "record link,record links"
+mutants run 2: killed 2, survived 0, killed by the wrong test 0
+
+$ python tests/mutation_check_salesforce.py --check-targets
+all 60 guards find their target

@@ -130,7 +130,11 @@ MUTATIONS = [
      ["500_502_503"], "a 503 is the vendor saying try again"),
     (SF, "lead field type not checked", [("if r.get(field) is not None and not isinstance(r[field], str):", "if False:")],
      ["phone_that_is_not_text"], "a number where text should be would reach the matcher"),
+    (SF, "record link id not checked", [("if not isinstance(record_id, str) or not _ID_RE.match(record_id):", "if not isinstance(record_id, str):")],
+     ["link_to_its_own_record"], "a value from an answer must never turn a record link into another address"),
     # -- the matching step
+    (LM, "record links dropped", [("links = tuple(by_id[l].url for l in cluster.lead_ids if by_id[l].url)", "links = ()")],
+     ["record_links_of_its_leads"], "a drill-through needs the link to the source record"),
     (LM, "trunk zero kept", [('if default_country != "1" and digits.startswith("0"):', "if False:")],
      ["become_one_key"], "09171234567 and 9171234567 are one number"),
     (LM, "extension kept", [('text = _EXT_RE.sub("", (raw or "").strip())', 'text = (raw or "").strip()')],

@@ -175,6 +175,16 @@ def test_every_lead_of_a_person_is_listed_on_their_one_attribution():
     assert [(a.survivor, a.lead_ids, a.source) for a in out] == [("L001", ("L001", "L002"), "Web"), ("L003", ("L003",), "Referral")]
 
 
+def test_every_answer_carries_the_record_links_of_its_leads_in_order_for_a_drill_through():
+    a = Lead("L001", at(0), "a@x.com", ("2125550100",), "Web", False, "https://org/lightning/r/Lead/L001/view")
+    b = Lead("L002", at(5), "a@x.com", (), None, False, "https://org/lightning/r/Lead/L002/view")
+    c = Lead("L003", at(6), "c@x.com", ("9995550100",), None, False)
+    got = {x.survivor: x for x in attribute([b, a, c], [], "1")}
+    assert got["L001"].links == ("https://org/lightning/r/Lead/L001/view", "https://org/lightning/r/Lead/L002/view") and got["L003"].links == ()
+    queue = missed_call_queue([a, b, c], [call(1, 10, "212 555 0100", answered=False)], "1")
+    assert queue[0].links == ("https://org/lightning/r/Lead/L001/view", "https://org/lightning/r/Lead/L002/view")
+
+
 # ---------------------------------------------------------------- the missed call queue
 
 def test_a_missed_call_is_queued_with_the_reason_until_someone_has_spoken_to_the_caller():

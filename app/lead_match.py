@@ -56,6 +56,7 @@ class Lead:
     phones: tuple[str, ...] = ()
     source: str | None = None                 # Salesforce LeadSource
     converted: bool = False
+    url: str | None = None                    # the link to the Salesforce record itself, so an answer can be drilled into
 
     def __post_init__(self) -> None:
         if self.created_at.tzinfo is None:
@@ -103,6 +104,8 @@ class Attribution:
     overrode_lead_source: bool = False
     #: Calls from a number shared with another person: seen, but never used to attribute anyone.
     ambiguous_call_ids: tuple[str, ...] = ()
+    #: The record links of the person's leads, in lead_ids order, for the leads that carry one.
+    links: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -110,6 +113,7 @@ class QueueItem:
     call_id: str
     reason: str
     lead_ids: tuple[str, ...] = ()
+    links: tuple[str, ...] = ()
 
 
 def normalize_email(raw: str | None) -> str | None:
@@ -244,21 +248,22 @@ def attribute(leads: Sequence[Lead], calls: Sequence[Call], default_country: str
             elif first - window <= call.started_at <= first:
                 usable.append(call)
         own = (survivor.source or "").strip() or None
+        links = tuple(by_id[l].url for l in cluster.lead_ids if by_id[l].url)
         if usable:
             call = usable[0]                                   # the earliest call in the window is the first touch
             label = (call.source or "").strip() or None
             if label:
                 out.append(Attribution(cluster.survivor, cluster.lead_ids, label, CALL_BEFORE_LEAD, call.id,
-                                       overrode_lead_source=bool(own and own != label), ambiguous_call_ids=tuple(ambiguous)))
+                                       overrode_lead_source=bool(own and own != label), ambiguous_call_ids=tuple(ambiguous), links=links))
                 continue
             out.append(Attribution(cluster.survivor, cluster.lead_ids, own or UNKNOWN_SOURCE, CALL_SOURCE_MISSING, call.id,
-                                   ambiguous_call_ids=tuple(ambiguous)))
+                                   ambiguous_call_ids=tuple(ambiguous), links=links))
             continue
         if own:
-            out.append(Attribution(cluster.survivor, cluster.lead_ids, own, LEAD_SOURCE, None, ambiguous_call_ids=tuple(ambiguous)))
+            out.append(Attribution(cluster.survivor, cluster.lead_ids, own, LEAD_SOURCE, None, ambiguous_call_ids=tuple(ambiguous), links=links))
         else:
             reason = AMBIGUOUS_NUMBER if ambiguous else NO_SOURCE
-            out.append(Attribution(cluster.survivor, cluster.lead_ids, UNKNOWN_SOURCE, reason, None, ambiguous_call_ids=tuple(ambiguous)))
+            out.append(Attribution(cluster.survivor, cluster.lead_ids, UNKNOWN_SOURCE, reason, None, ambiguous_call_ids=tuple(ambiguous), links=links))
     return out
 
 
@@ -283,5 +288,5 @@ def missed_call_queue(leads: Sequence[Lead], calls: Sequence[Call], default_coun
         if not lead_ids:
             queue.append(QueueItem(call.id, MISSED_CALL_NO_LEAD))
         elif not all(by_id[l].converted for l in lead_ids):
-            queue.append(QueueItem(call.id, MISSED_CALL_OPEN_LEAD, lead_ids))
+            queue.append(QueueItem(call.id, MISSED_CALL_OPEN_LEAD, lead_ids, tuple(by_id[l].url for l in lead_ids if by_id[l].url)))
     return queue

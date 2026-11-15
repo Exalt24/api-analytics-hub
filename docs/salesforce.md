@@ -29,8 +29,8 @@ Five daily keys per connection (migration `017_salesforce_metrics.sql`): `sf_lea
 | attribute | a call from the person's number in the 14 days before their first lead is the first touch and wins; a shared line never attributes anyone | `CALL_BEFORE_LEAD`, `LEAD_SOURCE`, `CALL_SOURCE_MISSING`, `AMBIGUOUS_NUMBER`, `NO_SOURCE` |
 | work queue | a missed call nobody has answered since, oldest first | `MISSED_CALL_NO_LEAD`, `MISSED_CALL_OPEN_LEAD`, `MISSED_CALL_NUMBER_UNUSABLE` |
 
-It never writes back to Salesforce: the clusters are a report for the administrator, who owns the merge. It matches phone numbers on digits with an explicit default country code and never on a name. Address matching is a different problem and lives in [parcelkey](https://github.com/Exalt24/parcelkey).
+Each answer also carries the Lightning link to the record behind it (`record_url`, the `/lightning/r/<Object>/<Id>/view` form, UNVERIFIED against the saved pages), so a figure or a queue item can be drilled into. It never writes back to Salesforce: the clusters are a report for the administrator, who owns the merge. It matches phone numbers on digits with an explicit default country code and never on a name. Address matching is a different problem and lives in [parcelkey](https://github.com/Exalt24/parcelkey).
 
 ## Tests
 
-`tests/test_salesforce_connector.py` (the connector against the stand-in, 60 seeded worlds recounted independently), `tests/test_lead_match.py` (150 seeded worlds with planted people, shuffled input), `tests/test_salesforce_sync_db.py` (the runner into real Postgres with row level security) and `tests/mutation_check_salesforce.py`, which breaks 58 guards one at a time and demands that the named test turns red.
+`tests/test_salesforce_connector.py` (the connector against the stand-in, 60 seeded worlds recounted independently), `tests/test_lead_match.py` (150 seeded worlds with planted people, shuffled input), `tests/test_salesforce_sync_db.py` (the runner into real Postgres with row level security) and `tests/mutation_check_salesforce.py`, which breaks 60 guards one at a time and demands that the named test turns red.

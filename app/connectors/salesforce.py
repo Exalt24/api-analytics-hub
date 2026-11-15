@@ -290,6 +290,18 @@ class SalesforceConnector(Connector):
     def refresh_rotated(self) -> bool:
         return bool(self._tokens and self._tokens.rotated_refresh_token)
 
+    def record_url(self, sobject: str, record_id: str) -> str:
+        """The link to one record in the org's Lightning UI, for a drill-through from a figure or a queue item to the source record.
+
+        UNVERIFIED against the saved pages (they do not give the form `/lightning/r/<Object>/<Id>/view`); the id is checked first so a value that came
+        from an answer can never turn the link into another address.
+        """
+        if sobject not in REQUIRED_FIELDS:
+            raise ValueError("record_url knows Lead and Opportunity, got %r" % (sobject,))
+        if not isinstance(record_id, str) or not _ID_RE.match(record_id):
+            raise ValueError("record_id is not a Salesforce Id")
+        return "%s/lightning/r/%s/%s/view" % (self._base, sobject, record_id)
+
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()
@@ -529,5 +541,6 @@ class SalesforceConnector(Connector):
                     raise UpstreamBroken("a lead's %s is not text" % field)
             if not isinstance(r.get("IsConverted"), bool):
                 raise UpstreamBroken("a lead's IsConverted is not true or false")
-            out.append(Lead(r["Id"], created, r.get("Email"), tuple(p for p in (r.get("Phone"), r.get("MobilePhone")) if p), r.get("LeadSource"), r["IsConverted"]))
+            out.append(Lead(r["Id"], created, r.get("Email"), tuple(p for p in (r.get("Phone"), r.get("MobilePhone")) if p), r.get("LeadSource"), r["IsConverted"],
+                            self.record_url("Lead", r["Id"])))
         return out

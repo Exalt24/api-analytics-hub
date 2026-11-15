@@ -665,6 +665,19 @@ def test_leads_come_back_as_records_with_both_phone_fields_and_the_source(server
     assert "Email, Phone, MobilePhone, LeadSource, IsConverted FROM Lead" in queries(server)[-1]
 
 
+def test_every_lead_carries_the_link_to_its_own_record_and_the_link_builder_refuses_a_bad_id(server):
+    ident = server.add_lead(1, utc(1, 8), email="a@x.com")
+    conn = make(server)
+    leads = run(conn.leads(window_start=START, window_end=END))
+    assert leads[0].url == server.url + "/lightning/r/Lead/" + ident + "/view"
+    assert conn.record_url("Opportunity", "006" + "0" * 15) == server.url + "/lightning/r/Opportunity/006" + "0" * 15 + "/view"
+    for bad in ("", "short", "../../x", "00Q000000000001/../x", None, 5):
+        with pytest.raises(ValueError, match="Salesforce Id"):
+            conn.record_url("Lead", bad)
+    with pytest.raises(ValueError, match="Lead and Opportunity"):
+        conn.record_url("Account", ident)
+
+
 def test_a_lead_row_with_a_phone_that_is_not_text_is_refused(server):
     fetch(server)
     conn = make(server)
