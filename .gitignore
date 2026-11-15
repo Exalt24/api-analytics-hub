@@ -35,3 +35,13 @@ web/lint/node_modules/
 powerbi/**/.pbi/
 powerbi/**/localSettings.json
 powerbi/**/cache.abf
+
+# lakehouse/: the Python venv, the Delta warehouses a run writes, the Windows winutils files, the sample CSV export and Spark's scratch
+lakehouse/.venv/
+lakehouse/.hadoop/
+lakehouse/warehouse*/
+lakehouse/data/
+lakehouse/results/tmp/
+lakehouse/spark-warehouse/
+lakehouse/metastore_db/
+derby.log

@@ -1,0 +1,7 @@
+# Pinned together: delta-spark 4.3.1 runs on Spark 4.0.x and 4.1.x (docs.delta.io/latest/releases.html) and its wheel asks for pyspark <= 4.1.1.
+pyspark==4.1.1
+delta-spark==4.3.1
+pytest==9.2.0
+# only to seed the sample Postgres (python -m lakehouse.sample_data --postgres)
+psycopg[binary]==3.3.8
+pytest-xdist==3.8.0
