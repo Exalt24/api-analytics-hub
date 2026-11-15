@@ -132,7 +132,7 @@ Sample deck: [docs/monthly-report-sample](docs/monthly-report-sample/contact-she
 
 ## Report export from the dashboard
 
-The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. An AI summary is optional: a code guard refuses any figure not in the data, a refused one is retried once, then a plain template is used and the file says so. A document attached goes up by a presigned S3 URL. Next.js App Router, strict TypeScript, Tailwind CSS 4, React Hook Form with Zod, shadcn/ui. Saved presets are local first (Replicache, IndexedDB) and sync to tenant scoped Postgres. Tested on real Postgres, a fake model and SeaweedFS for S3. One live Groq run passed the guard; Kysely ran against a free Neon project ([detail](docs/web-reports.md#the-neon-run)). 156 tests, 12 browser tests, and 76 deliberate breakages each caught. Claims and tests: [docs/web-reports.md](docs/web-reports.md).
+The Reports page in `web/` exports a tenant's month as CSV, Excel or PDF through Next.js Server Actions with Zod checks. An AI summary is optional: a code guard refuses any figure not in the data, a refused one is retried once, then a plain template is used and the file says so. A document attached goes up by a presigned S3 URL. Built with the Next.js App Router, strict TypeScript, Tailwind CSS 4 and shadcn/ui. Saved presets are local first (Replicache, IndexedDB) and sync to tenant scoped Postgres. Tested on real Postgres, a fake model and SeaweedFS for S3. One live Groq run passed the guard; Kysely ran against a free Neon project ([detail](docs/web-reports.md#the-neon-run)). 156 tests, 12 browser tests, and 76 deliberate breakages each caught.
 
 ---
 
@@ -165,7 +165,7 @@ python tests/mutation_check_esign.py             # 63 guards, each caught; edits
 
 ## Lakehouse: PySpark and Delta Lake
 
-`lakehouse/` is a medallion pipeline over the hub's own daily figures, on open source Spark 4.1 and Delta Lake 4.3 on one machine. It was never run on Databricks. It reads the hub's Postgres tables over JDBC and Salesforce style records from a stand-in REST server, lands them in append only bronze tables (an unreadable record goes to a quarantine table with its reason), merges typed, de-duplicated rows into silver with a Delta `MERGE`, and builds a star schema and two reporting tables in gold from Spark SQL files. Each run writes a run log and a quality flag per table and check; `python -m lakehouse.run --check` exits non zero when a key table fails. A second run on the same input left every Delta version and row count unchanged. On a generated table of 4,000,000 rows, one query went from a median of 0.651 s to 0.228 s with partitioning, `OPTIMIZE ZORDER` and a broadcast hint (one machine, 2026-11-15). 68 tests including a seeded property test; 24 of 24 deliberate breakages caught. [Details and limits](docs/lakehouse.md), [runbook](lakehouse/RUNBOOK.md).
+`lakehouse/` is a medallion pipeline over the hub's own daily figures, on open source Spark 4.1 and Delta Lake 4.3 on one machine. The Spark code never ran on Databricks; the same layers written as SQL did, on a Free Edition workspace ([run](docs/databricks)). It reads the hub's Postgres tables over JDBC and Salesforce style records from a stand-in REST server, lands them in append only bronze tables (an unreadable record goes to a quarantine table with its reason), merges typed, de-duplicated rows into silver with a Delta `MERGE`, and builds a star schema and two reporting tables in gold from Spark SQL files. Each run writes a run log and a quality flag per table and check; `python -m lakehouse.run --check` exits non zero when a key table fails. A second run on the same input left every Delta version and row count unchanged. On a generated table of 4,000,000 rows, one query went from a median of 0.651 s to 0.228 s with partitioning, `OPTIMIZE ZORDER` and a broadcast hint (one machine, 2026-11-15). 68 tests including a seeded property test; 24 of 24 deliberate breakages caught. [Details and limits](docs/lakehouse.md), [runbook](lakehouse/RUNBOOK.md).
 
 ---
 
@@ -180,7 +180,7 @@ cd web && npm run build && npx playwright test    # 13 browser tests in Chromium
 cd web && node scripts/mutation_check.mjs # 101 guards broken one at a time; use a copy
 ```
 
-Run dates, outputs, the skipped tests and the 2,779 syntax tree mutants beside the 300 hand matched guards: [docs/TESTING.md](docs/TESTING.md).
+Run dates, outputs, skipped tests and the 2,779 syntax tree mutants: [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
