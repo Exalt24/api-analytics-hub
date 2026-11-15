@@ -1,6 +1,6 @@
 # Lakehouse: a PySpark and Delta Lake medallion pipeline over the hub's daily figures
 
-`lakehouse/` reads the hub's own daily figures, lands them untouched, cleans them into typed tables, builds a dimensional model and two reporting tables, and writes a run log and data quality flags on every run. It runs on **open source Spark and Delta Lake on one machine**. It was never run on Databricks, and it uses none of Databricks' own products (no Unity Catalog, no managed pipelines).
+`lakehouse/` reads the hub's own daily figures, lands them untouched, cleans them into typed tables, builds a dimensional model and two reporting tables, and writes a run log and data quality flags on every run. It runs on **open source Spark and Delta Lake on one machine**. The Spark code here was never run on Databricks and uses none of its own products (no Unity Catalog, no managed pipelines); a separate SQL version of the layers ran on a Databricks Free Edition workspace ([docs/databricks](databricks/README.md)).
 
 Built and tested against: a local Spark session, seeded sample figures written through the hub's own Postgres migrations, and a stand-in REST server written from Salesforce's documentation. Operating instructions: [lakehouse/RUNBOOK.md](../lakehouse/RUNBOOK.md).
 
@@ -84,7 +84,7 @@ Partitioning took the median from 0.651 s to 0.278 s and the files read from 200
 
 - Local, single machine, local file system. No cluster, no object store, no Hive metastore: tables are Delta folders registered in the session's catalog by `warehouse.py`.
 - The sources are sample figures and a stand-in server. A real Salesforce org was not used; a few details (the form of the next page address, the status of an error) are the stand-in's own choices and are marked in its docstring.
-- Not run on Databricks. Open source Delta Lake 4.3.1 on Spark 4.1.1 (the newest pair the Delta release table lists; the delta-spark wheel itself asks for pyspark up to 4.1.1).
+- The PySpark code was not run on Databricks (the SQL version in [docs/databricks](databricks/README.md) was). Open source Delta Lake 4.3.1 on Spark 4.1.1 (the newest pair the Delta release table lists; the delta-spark wheel itself asks for pyspark up to 4.1.1).
 - On Windows Hadoop's file layer needs `winutils.exe` and `hadoop.dll` ([lakehouse/setup_windows.py](../lakehouse/setup_windows.py) fetches third party builds of Hadoop 3.4.0 and checks their SHA-256). Linux and CI need nothing. PySpark's Python worker processes crashed on Python 3.13 on Windows in this setup, so the pipeline does no Python UDF and builds its small frames on the JVM side (`frames.py`); every step is JVM work driven from Python.
 - Compute cost tracking is wall clock seconds and rows per job in the run log and a ranking report. It is not a cloud bill.
 - Silver compares extra (added) columns only when the batch brings them; a revision from a batch that lacks an added column leaves that column's old value.
