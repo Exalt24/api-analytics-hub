@@ -36,6 +36,7 @@ SAFE_NAME = r"^[A-Za-z][A-Za-z0-9_]{0,62}$"
 
 _UUID = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 _SFID = r"^[a-zA-Z0-9]{15}([a-zA-Z0-9]{3})?$"
+_TS = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})?$"
 
 
 @dataclass(frozen=True)
@@ -68,7 +69,8 @@ def typed_expr(raw: Column, kind: str) -> Column:
     if kind == "date":
         return F.when(raw.rlike(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"), raw.try_cast("date"))
     if kind == "timestamp":
-        return F.try_to_timestamp(raw)
+        # Spark reads '2026-10-05T05:0:00' and a bare date as a timestamp; a contract that quarantines retyped values must not, so the shape is checked first
+        return F.when(raw.rlike(_TS), F.try_to_timestamp(raw))
     if kind == "boolean":
         return F.when(F.lower(raw) == "true", F.lit(True)).when(F.lower(raw) == "false", F.lit(False))
     if kind == "uuid":

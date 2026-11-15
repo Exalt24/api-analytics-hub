@@ -199,25 +199,28 @@ def run_pipeline(lh: Lakehouse, pg: PgSource, rest: RestSource | None = None, *,
                  run_id: str | None = None) -> RunResult:
     """Run every step. `fail_at` names a step that raises InjectedFailure (the environment variable LAKEHOUSE_FAIL_AT does the same)."""
     fail_at = fail_at or os.environ.get("LAKEHOUSE_FAIL_AT") or None
-    log = RunLog(lh, run_id or new_run_id())
+    log = RunLog(lh, run_id or new_run_id(), buffered=True)
     result = RunResult(log.run_id)
     lh.register_all()  # a warehouse opened in a new session (or copied) has its tables on disk but not yet in the catalog the SQL files read
     for name in silver.SPECS:
         silver.ensure_silver(lh, silver.SPECS[name])
     flags_sink: list[dict] = []
     steps = plan(lh, pg, rest, flags_sink, full_refresh=full_refresh)
-    for i, (name, fn) in enumerate(steps):
-        try:
-            with log.step(name) as s:
-                if fail_at == name:
-                    raise InjectedFailure(f"injected failure at step {name}")
-                fn(s, log.run_id)
-            result.steps.append(name)
-        except StepFailed as exc:
-            result.failed_step, result.error = exc.step, exc.error
-            result.status = "FAILED_QUALITY" if name == "quality_checks" and "QualityFailed" in exc.error else "FAILED"
-            for later, _ in steps[i + 1:]:
-                log.skip(later, f"skipped: step {name} failed")
-            break
+    try:
+        for i, (name, fn) in enumerate(steps):
+            try:
+                with log.step(name) as s:
+                    if fail_at == name:
+                        raise InjectedFailure(f"injected failure at step {name}")
+                    fn(s, log.run_id)
+                result.steps.append(name)
+            except StepFailed as exc:
+                result.failed_step, result.error = exc.step, exc.error
+                result.status = "FAILED_QUALITY" if name == "quality_checks" and "QualityFailed" in exc.error else "FAILED"
+                for later, _ in steps[i + 1:]:
+                    log.skip(later, f"skipped: step {name} failed")
+                break
+    finally:
+        log.flush()  # every step of the run, in one commit, whatever happened
     result.flags = list(flags_sink)
     return result

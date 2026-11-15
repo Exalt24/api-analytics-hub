@@ -29,7 +29,8 @@ def build_gold_table(lh: Lakehouse, name: str, *, limit_days: int = config.FRESH
     # :as_of and :limit_days are filled here as literals (a date and an integer, nothing else can reach the text); Spark's own named
     # parameter binding left them unbound inside this query's nested select
     text = sql_text(name).replace(":as_of", "'" + lh.as_of.isoformat() + "'").replace(":limit_days", str(int(limit_days)))
-    df = lh.spark.sql(text)
+    df = lh.spark.sql(text).cache()
     read = df.count()
     written = lh.sync_whole(name, df)
+    df.unpersist()
     return {"read": read, "written": written}

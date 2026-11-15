@@ -104,7 +104,7 @@ class Lakehouse:
             self.register(name)
             return n
         current = self.read(name)
-        if _shape(current) == _shape(df) and current.exceptAll(df).limit(1).count() == 0 and df.exceptAll(current).limit(1).count() == 0:
+        if _shape(current) == _shape(df) and current.exceptAll(df).unionAll(df.exceptAll(current)).limit(1).count() == 0:
             return 0
         n = df.count()
         df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").save(self.path(name))

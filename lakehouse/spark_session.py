@@ -10,12 +10,13 @@ from . import config
 
 def _windows_hadoop_home() -> None:
     """Hadoop's file system layer wants winutils.exe and hadoop.dll on Windows. `python -m lakehouse.setup_windows` puts them in lakehouse/.hadoop."""
-    if os.name != "nt" or os.environ.get("HADOOP_HOME"):
+    if os.name != "nt":
         return
-    home = config.ROOT / ".hadoop"
+    home = Path(os.environ["HADOOP_HOME"]) if os.environ.get("HADOOP_HOME") else config.ROOT / ".hadoop"
     if (home / "bin" / "winutils.exe").exists():
         os.environ["HADOOP_HOME"] = str(home)
-        os.environ["PATH"] = str(home / "bin") + os.pathsep + os.environ.get("PATH", "")
+        if str(home / "bin") not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = str(home / "bin") + os.pathsep + os.environ.get("PATH", "")  # hadoop.dll is found through PATH
 
 
 def build_spark(app: str = "lakehouse", *, jdbc: bool = False, shuffle_partitions: int = 4, driver_memory: str | None = None,

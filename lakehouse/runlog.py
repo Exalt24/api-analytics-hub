@@ -54,15 +54,25 @@ class StepFailed(Exception):
 
 
 class RunLog:
-    def __init__(self, lh: Lakehouse, run_id: str | None = None):
+    def __init__(self, lh: Lakehouse, run_id: str | None = None, *, buffered: bool = False):
+        """`buffered` keeps the rows of a run in memory and writes them in one Delta commit at flush(), instead of one commit per step (a run has about 20 steps)."""
         self.lh = lh
         self.run_id = run_id or new_run_id()
+        self.buffered = buffered
+        self._pending: list[tuple] = []
         self.lh.ensure(config.OPS_RUN_LOG, SCHEMA)
 
     def _write(self, step: Step, started: datetime, ended: datetime, seconds: float, status: str, error: str | None) -> None:
         row = (self.run_id, step.name, step.rows_read, step.rows_written, step.rows_quarantined, started, ended, round(seconds, 3), status, error,
                json.dumps(step.detail, sort_keys=True, default=str) if step.detail else None)
-        self.lh.append(config.OPS_RUN_LOG, frame(self.lh.spark, [row], SCHEMA))
+        self._pending.append(row)
+        if not self.buffered:
+            self.flush()
+
+    def flush(self) -> None:
+        if self._pending:
+            rows, self._pending = self._pending, []
+            self.lh.append(config.OPS_RUN_LOG, frame(self.lh.spark, rows, SCHEMA))
 
     @contextmanager
     def step(self, name: str):
