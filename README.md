@@ -61,7 +61,7 @@ The viewer key can read, and Sync now comes back 403 with the reason.
 
 ## Layout
 
-`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)). `migrations/` holds the SQL in order. `n8n/` holds the monthly workflow. `web/` is the dashboard. `powerbi/` is the Power BI report. `tests/` holds the suite and guards. File by file: [docs/layout.md](docs/layout.md).
+`app/` holds the connectors, sync runner, API, change detection, monthly report and `sms.py` (a Twilio SMS sender, [docs/sms.md](docs/sms.md)). `migrations/` holds the SQL in order. `n8n/` holds the monthly workflow. `web/` is the dashboard. `powerbi/` is the Power BI report. `tests/` holds the suite and guards. Backups with a proven restore: [docs/backups.md](docs/backups.md); logs and metrics: [docs/observability.md](docs/observability.md). File by file: [docs/layout.md](docs/layout.md).
 
 ---
 
@@ -71,19 +71,16 @@ The viewer key can read, and Sync now comes back 403 with the reason.
 `CanonicalPoint` values. It never returns a vendor's field names, so `spend` from
 one platform and `cost` from another arrive as one metric key with one unit.
 Adding a platform means one connector and a registry entry; the scheduler,
-the API and the dashboard do not change. GA4, Meta, Search Console and the five newest each landed as one
-class, one registry entry and a migration of metric keys.
+the API and the dashboard do not change. Each newer connector landed as one class and one registry entry.
 
 **Money is an integer in minor units with its currency beside it.** A
-`currency_iff_money` CHECK enforces that in the database as well as at the connector boundary.
-A later connector or backfill bypasses the Python guard. Parsing
+`currency_iff_money` CHECK enforces that in the database as well as at the connector boundary. Parsing
 uses `Decimal`, since `float("19.99")` is `19.989999999999998` and a day of orders
-drifts by cents. Zero-decimal currencies such as JPY are not scaled.
+drifts by cents.
 
 **History is accumulated, not fetched.** Snapshots are dated rows per (connection,
 metric, day). They are keyed on the date the *platform* attributed the value to. So 90-day growth
-is answerable when an API only exposes a current value. The clock starts when a
-connector goes live. Shopify exposes only 60 days of orders without `read_all_orders`.
+is answerable when an API only exposes a current value. Shopify exposes only 60 days of orders without `read_all_orders`.
 
 **Revenue is attributed to `processedAt`, not `createdAt`.** They differ for every
 imported order. `createdAt` renders a migrated shop's history as one enormous day.
