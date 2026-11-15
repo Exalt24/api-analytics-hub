@@ -53,3 +53,24 @@ def lead(n: int, *, org: str = "00DST0000000001AAA", created: str = "2026-10-01T
            "LastModifiedDate": modified or created, "LeadSource": "Web", "Status": "Open - Not Contacted", "IsConverted": converted, "ConvertedDate": converted_date}
     rec.update(extra)
     return rec, org
+
+
+def build_mini(spark, base, as_of: date):
+    """Silver and gold for six days of the sample world, landed straight into bronze (no REST server, no run log, no quality step). Returns (warehouse path, world).
+    The `mini` fixture builds it once for the run; the mutation harness builds it once for the guards that cannot change it."""
+    from lakehouse import gold
+    from lakehouse.sample_data import SF_ORG_ID, TABLE_COLUMNS, build_world, rows_of
+    from lakehouse.warehouse import Lakehouse
+
+    world = build_world(seed=7, days=6, end=as_of)
+    lake = Lakehouse(spark, base / "wh", as_of)
+    for table in TABLE_COLUMNS:
+        land_records(lake, f"bronze_pg_{table}", source_name="postgres", source_table=table, run_id="mini-bronze",
+                     records=[{k: r[k] for k in TABLE_COLUMNS[table]} for r in rows_of(world, table)])
+    land_records(lake, "bronze_sf_lead", source_name="salesforce_rest", source_table="lead", run_id="mini-bronze",
+                 records=[(r, SF_ORG_ID) for r in world.leads[SF_ORG_ID]])
+    for spec in silver.SPECS.values():
+        silver.run_silver(lake, spec, "mini-silver")
+    for name in gold.GOLD_ORDER:
+        gold.build_gold_table(lake, name)
+    return base / "wh", world

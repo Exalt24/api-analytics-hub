@@ -8,7 +8,7 @@ reads), the selected tests run there, and the copy is thrown away.
     python -m lakehouse.tests.mutation_check --check-targets       only confirm every guard finds its text exactly once
     python -m lakehouse.tests.mutation_check --list                the guards and the rule each one breaks
     python -m lakehouse.tests.mutation_check --match dedupe,merge  only the guards whose name holds a word
-    python -m lakehouse.tests.mutation_check --jobs 2              two copies at a time (each starts its own Spark)
+    python -m lakehouse.tests.mutation_check --jobs 2              two worker processes (each starts one Spark session and runs its share of the guards in it)
     python -m lakehouse.tests.mutation_check                       every guard
 
 A mutant counts as caught only when the tests that fail include one of the fragments named for it, so a guard cannot be "covered" by an unrelated test that happens to break.
@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -29,7 +28,6 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 LAKE = REPO / "lakehouse"
-PER_MUTANT_TIMEOUT_SECONDS = 600
 
 SILVER = "lakehouse/silver.py"
 BRONZE = "lakehouse/bronze.py"
@@ -142,8 +140,32 @@ def make_copy(dest: Path) -> None:
     shutil.copytree(REPO / "migrations", dest / "migrations")
 
 
-def run_one(mutation: tuple, python: str) -> tuple[str, str, list[str], float]:
-    rel, name, edits, selection, env_extra, fragments, why = mutation
+# A guard that only changes one of these files cannot change how the shared `mini` warehouse is built, so such guards reuse one built from the real code.
+KEEPS_MINI = {QUALITY, RUN}
+# What a guard costs, to spread them over the workers: the guards that rebuild the `mini` warehouse are the slow ones.
+WEIGHT = {FACT_SQL: 4, FRESH_SQL: 4}
+
+
+class Collector:
+    """A pytest plugin: the node ids of the tests whose call failed. An error in a fixture is not a caught mutant, it is a broken harness."""
+
+    def __init__(self) -> None:
+        self.failed: list[str] = []
+        self.errors: list[str] = []
+
+    def pytest_runtest_logreport(self, report) -> None:
+        if report.failed and report.when == "call":
+            self.failed.append(report.nodeid)
+        elif report.failed:
+            self.errors.append(report.nodeid)
+
+
+def run_in_process(mutation: tuple, mini_dir: str | None) -> tuple[str, str, list[str], float]:
+    """Write the mutant into a private copy, point this process at it, run only the tests named for the guard, and put the process back.
+    One JVM serves every mutant of a worker: the Spark session is kept between them (LAKEHOUSE_KEEP_SPARK)."""
+    import pytest
+
+    rel, name, edits, selection, env_extra, fragments, _why = mutation
     t0 = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="lh-mut-", ignore_cleanup_errors=True) as tmp:
         root = Path(tmp)
@@ -153,26 +175,77 @@ def run_one(mutation: tuple, python: str) -> tuple[str, str, list[str], float]:
         mutated = text
         for old, new in edits:
             mutated = mutated.replace(old, new, 1)
-        assert mutated != text, f"{name}: the mutation changed nothing"
+        assert mutated != text, f"{name}: the mutation changes nothing"
         target.write_text(mutated, encoding="utf-8", newline="\n")
-        env = {**os.environ, "PYTHONPATH": str(root), **env_extra, "PYTHONDONTWRITEBYTECODE": "1"}
-        if (LAKE / ".hadoop" / "bin").is_dir() and "HADOOP_HOME" not in env:
-            env["HADOOP_HOME"] = str(LAKE / ".hadoop")  # Windows: winutils lives once, beside the real tree
+        saved_env = {k: os.environ.get(k) for k in (*env_extra, "LAKEHOUSE_MINI_DIR")}
+        os.environ.update(env_extra)
+        if mini_dir and rel in KEEPS_MINI:
+            os.environ["LAKEHOUSE_MINI_DIR"] = mini_dir
+        else:
+            os.environ.pop("LAKEHOUSE_MINI_DIR", None)
+        saved_modules = {m: sys.modules.pop(m) for m in [m for m in sys.modules if m == "lakehouse" or m.startswith("lakehouse.")]}
+        sys.path.insert(0, str(root))
+        collector = Collector()
+        here = os.getcwd()
+        os.chdir(root)  # as a pytest started inside the copy would be; the copy cannot be deleted while this process stands in it
         try:
-            # only the tests named for the guard run (-k takes substrings): the mutant must turn one of exactly those red, and a Spark start is the cost of each
-            r = subprocess.run([python, "-m", "pytest", *selection, "-k", " or ".join(fragments), "-q", "-p", "no:cacheprovider", "-rf", "--tb=no"], cwd=root, env=env,
-                               capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=PER_MUTANT_TIMEOUT_SECONDS)
-        except subprocess.TimeoutExpired:
-            return name, "hung", [], time.perf_counter() - t0
-    out = r.stdout + r.stderr
-    failed = re.findall(r"^FAILED (\S+)", out, re.M)
-    if r.returncode == 0:
-        return name, "survived", failed, time.perf_counter() - t0
+            code = pytest.main([*selection, "-k", " or ".join(fragments), "-q", "-p", "no:cacheprovider", "--tb=no"], plugins=[collector])
+        finally:
+            os.chdir(here)
+            sys.path.remove(str(root))
+            for m in [m for m in sys.modules if m == "lakehouse" or m.startswith("lakehouse.")]:
+                del sys.modules[m]
+            sys.modules.update(saved_modules)
+            for k, v in saved_env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+    failed = collector.failed
+    secs = time.perf_counter() - t0
+    if int(code) == 0:
+        return name, "survived", failed, secs
     if not failed:
-        return name, "error: " + out[-300:].replace("\n", " "), failed, time.perf_counter() - t0
+        return name, "error: pytest exit " + str(int(code)) + " " + "; ".join(collector.errors[:2]), failed, secs
     if any(frag in test for test in failed for frag in fragments):
-        return name, "caught", failed, time.perf_counter() - t0
-    return name, "wrong test", failed, time.perf_counter() - t0
+        return name, "caught", failed, secs
+    return name, "wrong test", failed, secs
+
+
+def worker(names: list[str]) -> int:
+    """Run the named guards one after the other in this process and print one RESULT line each."""
+    os.environ["LAKEHOUSE_KEEP_SPARK"] = "1"
+    todo = [m for m in MUTATIONS if m[1] in names]
+    from lakehouse.spark_session import build_spark
+
+    spark = build_spark("lakehouse-mutation", jdbc=True, shuffle_partitions=2)
+    mini_dir = None
+    keep = tempfile.mkdtemp(prefix="lh-mini-")
+    try:
+        if any(m[0] in KEEPS_MINI for m in todo):
+            from datetime import date
+
+            from lakehouse.tests.helpers import build_mini
+
+            build_mini(spark, Path(keep), date(2026, 11, 1))
+            mini_dir = keep
+        for m in todo:
+            name, verdict, failed, secs = run_in_process(m, mini_dir)
+            print("RESULT\t" + "\t".join([name, verdict, f"{secs:.0f}", str(len(failed)), ",".join(f.rsplit("::", 1)[-1] for f in failed[:3])]), flush=True)
+    finally:
+        shutil.rmtree(keep, ignore_errors=True)
+        spark.stop()
+    return 0
+
+
+def spread(todo: list[tuple], jobs: int) -> list[list[str]]:
+    """The guards over `jobs` workers, heaviest first onto the lightest worker."""
+    bins: list[tuple[int, list[str]]] = [(0, []) for _ in range(max(1, jobs))]
+    for m in sorted(todo, key=lambda m: -WEIGHT.get(m[0], 1)):
+        bins.sort(key=lambda b: b[0])
+        load, names = bins[0]
+        bins[0] = (load + WEIGHT.get(m[0], 1), names + [m[1]])
+    return [names for _, names in bins if names]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -180,13 +253,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check-targets", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--match")
-    ap.add_argument("--jobs", type=int, default=1)
+    ap.add_argument("--jobs", type=int, default=1, help="worker processes, each with its own Spark")
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--worker", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     problems = missing_targets()
     if problems:
         print("update this file before mutating:\n  " + "\n  ".join(problems))
         return 1
+    if a.worker:
+        return worker(a.worker.split("|"))
     if a.list:
         for _rel, name, _edits, _sel, _env, _frag, why in MUTATIONS:
             print(f"{name}: {why}")
@@ -196,15 +272,31 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     words = a.match.split(",") if a.match else None
     todo = [m for m in MUTATIONS if not words or any(w in m[1] for w in words)]
-    print(f"{len(todo)} mutants, {a.jobs} at a time; each runs only the tests that should see it", flush=True)
-    results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, a.jobs)) as pool:
-        futures = {pool.submit(run_one, m, a.python): m for m in todo}
-        for fut in concurrent.futures.as_completed(futures):
-            name, verdict, failed, secs = fut.result()
-            results.append((name, verdict))
-            mark = "[ok]  " if verdict == "caught" else "[FAIL]"
-            print(f"{mark} {name}: {verdict} ({secs:.0f}s, {len(failed)} failing test(s))" + ("" if verdict == "caught" else f" {failed[:3]}"), flush=True)
+    groups = spread(todo, a.jobs)
+    print(f"{len(todo)} mutants over {len(groups)} worker process(es); each runs only the tests named for it, in one Spark session per worker", flush=True)
+    env = {**os.environ, "PYTHONPATH": str(REPO), "PYTHONDONTWRITEBYTECODE": "1"}
+    results: list[tuple[str, str]] = []
+
+    def run_group(names: list[str]) -> None:
+        proc = subprocess.Popen([a.python, "-m", "lakehouse.tests.mutation_check", "--worker", "|".join(names)], cwd=REPO, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace")
+        assert proc.stdout is not None
+        seen = set()
+        for line in proc.stdout:
+            if line.startswith("RESULT\t"):
+                name, verdict, secs, n, failed = (line.rstrip("\n").split("\t") + ["", "", "", "", ""])[1:6]
+                seen.add(name)
+                results.append((name, verdict))
+                mark = "[ok]  " if verdict == "caught" else "[FAIL]"
+                print(f"{mark} {name}: {verdict} ({secs}s, {n} failing test(s))" + ("" if verdict == "caught" else f" {failed}"), flush=True)
+        proc.wait()
+        for name in names:
+            if name not in seen:
+                results.append((name, "worker died"))
+                print(f"[FAIL] {name}: worker died (exit {proc.returncode})", flush=True)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(groups)) as pool:
+        list(pool.map(run_group, groups))
     caught = sum(v == "caught" for _, v in results)
     print(f"\nmutants run {len(results)}: caught {caught}, not caught {len(results) - caught}")
     print("mutation control: " + ("PASS" if caught == len(results) else f"{len(results) - caught} UNTESTED GUARD(S)"))
