@@ -57,6 +57,9 @@ jobs:
           path: ~/.ivy2.5.2
           key: ivy-${{ hashFiles('lakehouse/requirements.txt', 'lakehouse/config.py') }}
       - run: pip install -r lakehouse/requirements.txt
+      # One Spark start first, alone: four test workers resolving the same jars into an empty Ivy cache at once corrupt it (the run of 2026-11-15 failed that way).
+      - name: Fetch the Spark jars once
+        run: python -c "from lakehouse.spark_session import build_spark; build_spark(jdbc=True).stop()"
       - name: Tests (every stage, the seeded property test, the JDBC read against the service Postgres)
         run: python -m pytest lakehouse/tests -q -p no:cacheprovider -n 4 --dist loadfile --durations=10
       - name: Mutation checks (each rule broken one at a time in a private copy)
