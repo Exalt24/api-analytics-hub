@@ -116,4 +116,10 @@ powerbi/             the Power BI report (docs/powerbi.md)
   export_data.py     invented figures through the hub's migrations and upsert function, read back out as CSV; --check needs no database
   check_model.py     opens a copy of the .pbix in Desktop and compares the measures with figures worked out from the CSV files; run_dax.ps1 is its query runner
 tests/               the test suite, the mutation harness and derived_guards.py (guards derived from the syntax tree)
+lakehouse/           PySpark and Delta Lake medallion pipeline over the hub's daily figures (docs/lakehouse.md, lakehouse/RUNBOOK.md)
+  bronze.py, silver.py, gold.py, quality.py   append only landing with quarantine, typed MERGE upserts, the SQL built model, the quality flags
+  sql/               one Spark SQL file per gold table (three dimensions, a date table, the fact, two reports)
+  pipeline.py, run.py, runlog.py, costs.py    the run, its command line, the run log table, the cost ranking
+  stand_in.py, rest_client.py                 stand-in Salesforce style REST server and the paged reader for it
+  tuning.py          the query tuning benchmark; tests/ holds the stage tests, the seeded property test and mutation_check.py
 ```

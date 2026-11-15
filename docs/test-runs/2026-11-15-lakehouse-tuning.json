@@ -1,0 +1,69 @@
+{
+  "machine": "AMD Ryzen 7 9800X3D (16 threads), 61 GB RAM, Windows 11, local disk",
+  "rows": 4000000,
+  "seed": 42,
+  "runs_per_version": 3,
+  "warm_up_runs_not_counted": 1,
+  "build_seconds_baseline_table": 11.6,
+  "spark": "4.1.1",
+  "versions": {
+    "A baseline": {
+      "layout": "200 small files, no order",
+      "files": 200,
+      "bytes": 303458620,
+      "runs": [
+        0.723,
+        0.651,
+        0.502
+      ],
+      "median": 0.651,
+      "files_read": 200,
+      "result_rows": 61,
+      "result_checksum": "cd8016a5ee61ca72"
+    },
+    "B partitioned": {
+      "layout": "partitioned by month",
+      "files": 216,
+      "bytes": 300648228,
+      "runs": [
+        0.278,
+        0.334,
+        0.272
+      ],
+      "median": 0.278,
+      "files_read": 9,
+      "result_rows": 61,
+      "result_checksum": "cd8016a5ee61ca72"
+    },
+    "C zorder": {
+      "layout": "partitioned by month, OPTIMIZE ZORDER BY tenant_id",
+      "optimize_seconds": 9.6,
+      "files": 62,
+      "bytes": 298482204,
+      "runs": [
+        0.33,
+        0.292,
+        0.281
+      ],
+      "median": 0.292,
+      "files_read": 1,
+      "result_rows": 61,
+      "result_checksum": "cd8016a5ee61ca72"
+    },
+    "D broadcast": {
+      "layout": "as C, BROADCAST(m) hint",
+      "files": 62,
+      "bytes": 298482204,
+      "runs": [
+        0.228,
+        0.262,
+        0.225
+      ],
+      "median": 0.228,
+      "files_read": 1,
+      "result_rows": 61,
+      "result_checksum": "cd8016a5ee61ca72"
+    }
+  },
+  "same_result_in_every_version": true
+}

@@ -109,6 +109,7 @@ def hash_rows(rows) -> str:
 
 
 def run_tuning(spark, work: Path, rows: int, runs: int = 3, seed: int = 42) -> dict:
+    work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=True)
     base, part, dim = (str(work / n) for n in ("a_baseline", "b_partitioned", "bench_dim_metric"))
     for p in (base, part, dim):

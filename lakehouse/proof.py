@@ -88,11 +88,11 @@ def main() -> int:
             renamed["value"] = renamed.pop("value_numeric")
             messy = [
                 row(), row(),                                                                        # the same bytes twice in one batch
-                row(value_numeric=shop["value_numeric"] + 5, synced_at="2026-11-09T03:00:00+00:00"),   # a newer revision
-                row(value_numeric=1, synced_at="2026-10-01T00:00:00+00:00"),                          # an older copy arriving late
+                row(value_numeric=shop["value_numeric"] + 5, synced_at="2026-11-02T01:00:00+00:00"),   # a newer revision
+                row(observed_on="2026-10-06", value_numeric=1, synced_at="2026-10-05T00:00:00+00:00"),  # an older copy of another day arriving late
                 row(observed_on="2026-10-03", value_numeric="12.5"),                                  # retyped
                 row(observed_on="2026-13-45"), row(observed_on="2026-10-04", metric_key=None), renamed, # bad date, missing key, renamed column
-                row(observed_on="2026-10-05", channel="web", synced_at="2026-11-09T04:00:00+00:00"),  # an added column
+                row(observed_on="2026-10-05", channel="web", synced_at="2026-11-02T02:00:00+00:00"),  # an added column
                 "not json {", "[1, 2, 3]",                                                           # unreadable
             ]
             b = land_records(lh, "bronze_pg_metric_snapshot", source_name="postgres", source_table="metric_snapshot", run_id="messy-1", records=messy)
@@ -117,7 +117,7 @@ def main() -> int:
             else:
                 import psycopg
                 with psycopg.connect("postgresql://analytics:analytics@" + a.jdbc_url.split("//", 1)[1].replace("jdbc:", "")) as conn:
-                    conn.execute("insert into metric_snapshot (tenant_id, connection_id, metric_key, observed_on, value_numeric, synced_at) values (%s, %s, 'orders', %s, 31, %s)",
+                    conn.execute("insert into metric_snapshot (tenant_id, connection_id, metric_key, observed_on, value_numeric, synced_at) values (%s, %s, 'orders', %s, 31, %s) on conflict (connection_id, metric_key, observed_on) do update set value_numeric = 31, synced_at = excluded.synced_at",
                                  (shop["tenant_id"], shop["connection_id"], new_day, f"{new_day + timedelta(days=1)}T03:00:00+00:00"))
                     conn.commit()
                 pg_after = pg
