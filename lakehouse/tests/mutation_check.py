@@ -1,3 +1,4 @@
+# LIFESPAN: permanent (the repo's own mutation check for the lakehouse, run by hand in a private copy)
 """Mutation control for the lakehouse: break each load-bearing rule one at a time and prove a test turns red.
 
 It follows tests/mutation_check_salesforce.py in the hub (a table of guards, each naming the test that must be among the failures, `--check-targets`, `--match`), with one
