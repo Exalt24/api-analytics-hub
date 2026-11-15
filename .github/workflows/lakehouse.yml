@@ -1,0 +1,63 @@
+name: Lakehouse
+
+# The PySpark and Delta Lake pipeline in lakehouse/. One Linux job, only when lakehouse/ (or this file) changes, never on a schedule; it starts a newer run of
+# the same branch by cancelling the old one. It runs the whole lakehouse test suite and then the mutation checks, which break each rule one at a time and
+# demand that a test turn red.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lakehouse/**"
+      - ".github/workflows/lakehouse.yml"
+  pull_request:
+    paths:
+      - "lakehouse/**"
+      - ".github/workflows/lakehouse.yml"
+
+concurrency:
+  group: lakehouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lakehouse:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    env:
+      # An unreachable Postgres fails the JDBC test here instead of skipping it.
+      LAKEHOUSE_REQUIRE_PG: "1"
+    # The source Postgres for the JDBC read: the image the hub's own CI and compose file use, on the port lakehouse/compose.yaml uses.
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: analytics
+          POSTGRES_PASSWORD: analytics
+        ports:
+          - 5543:5432
+        options: >-
+          --health-cmd "pg_isready -U analytics -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: lakehouse/requirements.txt
+      # Spark fetches the Delta Lake and PostgreSQL JDBC jars from Maven on its first start; keep them between runs.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ivy2.5.2
+          key: ivy-${{ hashFiles('lakehouse/requirements.txt', 'lakehouse/config.py') }}
+      - run: pip install -r lakehouse/requirements.txt
+      - name: Tests (every stage, the seeded property test, the JDBC read against the service Postgres)
+        run: python -m pytest lakehouse/tests -q -p no:cacheprovider -n 4 --dist loadfile --durations=10
+      - name: Mutation checks (each rule broken one at a time in a private copy)
+        run: python -m lakehouse.tests.mutation_check --jobs 2

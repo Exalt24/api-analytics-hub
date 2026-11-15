@@ -1,0 +1,134 @@
+python -m lakehouse.proof --source jdbc --jdbc-url jdbc:postgresql://127.0.0.1:5543/lakehouse_src
+Run 2026-11-15 on one machine (AMD Ryzen 7 9800X3D, 16 threads, 61 GB, Windows 11), Spark 4.1.1, Delta Lake 4.3.1, Postgres 17 (pgvector image) in Docker, the stand-in REST server in the same process. Sample figures are seeded (seed 7).
+
+sample: seed 7, 60 days to 2026-11-01, 3 tenants, 2520 daily figures, 144 leads; source jdbc; Spark 4.1.1
+
+== 1. first run
+status SUCCEEDED, exit code 0
+  SUCCEEDED ingest_pg_tenant                   read      3 written      3 quarantined   0   2.59s
+  SUCCEEDED ingest_pg_platform_connection      read     10 written     10 quarantined   0   1.18s
+  SUCCEEDED ingest_pg_metric                   read     41 written     41 quarantined   0   1.02s
+  SUCCEEDED ingest_pg_metric_snapshot          read   2520 written   2520 quarantined   0   1.15s
+  SUCCEEDED ingest_sf_lead                     read    144 written    144 quarantined   0   0.93s
+  SUCCEEDED silver_tenant                      read      3 written      3 quarantined   0   4.79s
+  SUCCEEDED silver_platform_connection         read     10 written     10 quarantined   0   3.45s
+  SUCCEEDED silver_metric                      read     41 written     41 quarantined   0   2.98s
+  SUCCEEDED silver_daily_figure                read   2520 written   2520 quarantined   0   3.70s
+  SUCCEEDED silver_lead                        read    144 written    144 quarantined   0   3.38s
+  SUCCEEDED gold_dim_tenant                    read      3 written      3 quarantined   0   0.89s
+  SUCCEEDED gold_dim_source                    read     10 written     10 quarantined   0   1.20s
+  SUCCEEDED gold_dim_metric                    read     41 written     41 quarantined   0   0.89s
+  SUCCEEDED gold_dim_date                      read     60 written     60 quarantined   0   1.32s
+  SUCCEEDED gold_fact_daily_figure             read   2614 written   2614 quarantined   0   1.61s
+  SUCCEEDED gold_rpt_daily_store_and_ad_spend  read    180 written    180 quarantined   0   1.43s
+  SUCCEEDED gold_rpt_data_freshness            read     10 written     10 quarantined   0   1.50s
+  SUCCEEDED quality_checks                     read     23 written     23 quarantined   0   8.08s
+quality flags: 23 PASS, 0 FAIL
+
+== 2. the same input again
+status SUCCEEDED
+table                                 delta version  rows   before -> after
+  bronze_pg_metric                     v0        41   v0 41   unchanged
+  bronze_pg_metric_snapshot            v0      2520   v0 2520   unchanged
+  bronze_pg_platform_connection        v0        10   v0 10   unchanged
+  bronze_pg_tenant                     v0         3   v0 3   unchanged
+  bronze_sf_lead                       v0       144   v0 144   unchanged
+  gold_dim_date                        v0        60   v0 60   unchanged
+  gold_dim_metric                      v0        41   v0 41   unchanged
+  gold_dim_source                      v0        10   v0 10   unchanged
+  gold_dim_tenant                      v0         3   v0 3   unchanged
+  gold_fact_daily_figure               v0      2614   v0 2614   unchanged
+  gold_rpt_daily_store_and_ad_spend    v0       180   v0 180   unchanged
+  gold_rpt_data_freshness              v0        10   v0 10   unchanged
+  silver_daily_figure                  v1      2520   v1 2520   unchanged
+  silver_lead                          v1       144   v1 144   unchanged
+  silver_metric                        v1        41   v1 41   unchanged
+  silver_platform_connection           v1        10   v1 10   unchanged
+  silver_tenant                        v1         3   v1 3   unchanged
+steps that wrote rows on the second run: none
+
+== 3. messy rows into bronze, then silver
+bronze: {'read': 11, 'landed': 8, 'skipped_known': 1, 'quarantined': 2, 'quarantine_rows_written': 2}  (read = landed + skipped_known + quarantined: True )
+silver: {'read': 8, 'inserted': 0, 'updated': 2, 'unchanged': 0, 'stale': 1, 'duplicate_in_batch': 1, 'quarantined': 4, 'late_arrival': 0, 'bronze_runs': 1}  (read = sum of the six outcomes: True )
+  bronze quarantine: JSON but not an object (list)
+  bronze quarantine: not valid JSON: Expecting value: line 1 column 1 (char 0)
+  silver quarantine: missing_required:metric_key
+  silver quarantine: missing_required:value_numeric; unexpected columns: value
+  silver quarantine: retyped:observed_on is not a date, got '2026-13-45'
+  silver quarantine: retyped:value_numeric is not a bigint, got '12.5'
+silver_daily_figure now has the column 'channel': True
+
+== 4. a failed step, then the repair
+status FAILED, failed step gold_fact_daily_figure, exit code 1
+  SUCCEEDED ingest_pg_tenant                   read      3 written      0 quarantined   0   0.30s
+  SUCCEEDED ingest_pg_platform_connection      read     10 written      0 quarantined   0   0.17s
+  SUCCEEDED ingest_pg_metric                   read     41 written      0 quarantined   0   0.16s
+  SUCCEEDED ingest_pg_metric_snapshot          read     99 written      1 quarantined   0   1.40s
+  SUCCEEDED ingest_sf_lead                     read      4 written      0 quarantined   0   0.23s
+  SUCCEEDED silver_tenant                      read      0 written      0 quarantined   0   0.32s
+  SUCCEEDED silver_platform_connection         read      0 written      0 quarantined   0   0.12s
+  SUCCEEDED silver_metric                      read      0 written      0 quarantined   0   0.12s
+  SUCCEEDED silver_daily_figure                read      1 written      1 quarantined   0   2.86s
+  SUCCEEDED silver_lead                        read      0 written      0 quarantined   0   0.27s
+  SUCCEEDED gold_dim_tenant                    read      3 written      0 quarantined   0   0.26s
+  SUCCEEDED gold_dim_source                    read     10 written      0 quarantined   0   0.26s
+  SUCCEEDED gold_dim_metric                    read     41 written      0 quarantined   0   0.31s
+  SUCCEEDED gold_dim_date                      read     61 written     61 quarantined   0   1.58s
+  FAILED    gold_fact_daily_figure             read      0 written      0 quarantined   0   0.00s  error: InjectedFailure: injected failure at step gold_fact_daily_figure
+  SKIPPED   gold_rpt_daily_store_and_ad_spend  read      0 written      0 quarantined   0   0.00s  error: skipped: step gold_fact_daily_figure failed
+  SKIPPED   gold_rpt_data_freshness            read      0 written      0 quarantined   0   0.00s  error: skipped: step gold_fact_daily_figure failed
+  SKIPPED   quality_checks                     read      0 written      0 quarantined   0   0.00s  error: skipped: step gold_fact_daily_figure failed
+  bronze_pg_metric_snapshot      rows 2528 -> 2529   version v1 -> v2
+  silver_daily_figure            rows 2520 -> 2521   version v2 -> v3
+  gold_dim_date                  rows 60 -> 61   version v0 -> v1
+  gold_fact_daily_figure         rows 2614 -> 2614   version v0 -> v0
+re-run: status SUCCEEDED
+  bronze_pg_metric_snapshot      rows 2529 -> 2529   version v2 -> v2
+  silver_daily_figure            rows 2521 -> 2521   version v3 -> v3
+  gold_fact_daily_figure         rows 2614 -> 2615   version v0 -> v1
+
+== 5. the cost ranking (all runs in this log)
++--------------------------+----+-------------+-----------+---------+------------+--------------------+
+|step                      |runs|total_seconds|avg_seconds|rows_read|rows_written|rows_read_per_second|
++--------------------------+----+-------------+-----------+---------+------------+--------------------+
+|quality_checks            |3   |20.78        |6.93       |69       |69          |3.3                 |
+|silver_daily_figure       |4   |6.91         |1.73       |2521     |2521        |364.8               |
+|silver_tenant             |4   |5.69         |1.42       |3        |3           |0.5                 |
+|gold_dim_date             |4   |4.88         |1.22       |242      |121         |49.6                |
+|gold_fact_daily_figure    |3   |4.65         |1.55       |7843     |5229        |1686.7              |
+|silver_lead               |4   |3.93         |0.98       |144      |144         |36.6                |
+|silver_platform_connection|4   |3.89         |0.97       |10       |10          |2.6                 |
+|gold_rpt_data_freshness   |3   |3.62         |1.21       |30       |20          |8.3                 |
++--------------------------+----+-------------+-----------+---------+------------+--------------------+
+
+
+== 6. python -m lakehouse.run --check on this warehouse
+  PASS  bronze_pg_metric_snapshot              not_null        failed 0 of 2529
+  PASS  bronze_pg_metric_snapshot              unique_key      failed 0 of 2529
+  PASS  silver_tenant                          not_null        failed 0 of 3
+  PASS  silver_tenant                          unique_key      failed 0 of 3
+  PASS  silver_platform_connection             not_null        failed 0 of 10
+  PASS  silver_platform_connection             unique_key      failed 0 of 10
+  PASS  silver_metric                          not_null        failed 0 of 41
+  PASS  silver_metric                          unique_key      failed 0 of 41
+  PASS  silver_daily_figure                    not_null        failed 0 of 2521
+  PASS  silver_daily_figure                    unique_key      failed 0 of 2521
+  PASS  silver_daily_figure                    accepted_range  failed 0 of 2521
+  PASS  silver_daily_figure                    known_metric    failed 0 of 2521
+  PASS  silver_daily_figure                    freshness       failed 0 of 9
+  PASS  silver_lead                            not_null        failed 0 of 144
+  PASS  silver_lead                            unique_key      failed 0 of 144
+  PASS  silver_lead                            lead_dates      failed 0 of 144
+  PASS  gold_fact_daily_figure                 not_null        failed 0 of 2615
+  PASS  gold_fact_daily_figure                 unique_key      failed 0 of 2615
+  PASS  gold_fact_daily_figure                 orphan_keys     failed 0 of 2615
+  PASS  gold_fact_daily_figure                 reconciliation  failed 0 of 16
+  PASS  gold_rpt_daily_store_and_ad_spend      unique_key      failed 0 of 181
+  PASS  gold_rpt_daily_store_and_ad_spend      not_null        failed 0 of 181
+  PASS  gold_rpt_data_freshness                freshness       failed 0 of 10
+check: every key table passes
+exit code 0
+gold tables: ['gold_dim_tenant', 'gold_dim_source', 'gold_dim_metric', 'gold_dim_date', 'gold_fact_daily_figure', 'gold_rpt_daily_store_and_ad_spend', 'gold_rpt_data_freshness']
+SUCCESS: The process with PID 36084 (child process of PID 64608) has been terminated.
+SUCCESS: The process with PID 64608 (child process of PID 13676) has been terminated.
+SUCCESS: The process with PID 13676 (child process of PID 34832) has been terminated.
