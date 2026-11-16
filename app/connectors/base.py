@@ -118,6 +118,8 @@ MONEY_METRICS = frozenset({
     "ad_conversion_value", "payments_total", "payments_refunded", "invoiced_amount", "invoice_open_balance", "work_order_revenue",
     # Added with migration 017: the Amount of the opportunities Salesforce says were won.
     "sf_won_amount",
+    # Added with migration 018: the billable value of the Harvest time entries (rounded hours x billable rate).
+    "harvest_billable_amount",
 })
 
 

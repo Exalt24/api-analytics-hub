@@ -23,6 +23,9 @@ app/
     shopmonkey.py    Shopmonkey v3 orders: work orders booked and invoiced per day
     salesforce.py    Salesforce REST SOQL: leads and opportunities per day, OAuth refresh token flow, Sforce-Limit-Info pacing, the lead rows for matching
     salesforce_fake.py   stand-in Salesforce server, written from Salesforce's pages
+    harvest.py       Harvest v2 time entries: daily hours, billable hours, entries and billable value, project budgets in hours and a budget status per project
+    msgraph.py       Microsoft Graph as the app itself (client credentials): a SharePoint list register and a Teams channel per day, and an Excel register read from the downloaded .xlsx
+    harvest_fake.py, msgraph_fake.py   stand-in servers, written from Harvest's and Microsoft's pages (docs/HARVEST_GRAPH_SOURCES.md)
     google_ads_fake.py, tiktok_fake.py, square_fake.py, quickbooks_fake.py, shopmonkey_fake.py   stand-in servers, written from each vendor's pages
     shopify_oauth.py install flow, offline tokens
     shopify_webhooks.py  HMAC verification over the raw body

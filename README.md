@@ -8,7 +8,7 @@
 
 Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard.
 
-There are eleven connectors. **Shopify Admin GraphQL** is verified against a real development store. Ten more (table below) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report, built by an n8n workflow for each tenant, puts the sources side by side.
+There are thirteen connectors. **Shopify Admin GraphQL** is verified against a real development store. Twelve more (table below) are built and tested against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report, built by an n8n workflow for each tenant, puts the sources side by side.
 
 | Source | Built and tested against |
 |---|---|
@@ -17,6 +17,7 @@ There are eleven connectors. **Shopify Admin GraphQL** is verified against a rea
 | Meta Ads | a stand-in server ([sources](docs/META_SOURCES.md)) |
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
 | Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey, Salesforce | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
+| Harvest (time, budgets), Microsoft Graph (SharePoint, Teams, Excel) | a stand-in server each ([how](docs/harvest-graph.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |
 
 The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app).

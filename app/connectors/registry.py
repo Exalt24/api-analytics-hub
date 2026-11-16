@@ -201,6 +201,8 @@ def _register_builtin() -> None:
     from .gsc import GSCConnector
     from .meta import MetaConnector
     from .gbp import GBPConnector
+    from .harvest import HarvestConnector
+    from .msgraph import MicrosoftGraphConnector
     from .quickbooks import QuickBooksConnector
     from .salesforce import SalesforceConnector
     from .shopify import ShopifyConnector
@@ -395,6 +397,54 @@ def _register_builtin() -> None:
                 "Leads and opportunities per day from SOQL queries on the REST API, paged by nextRecordsUrl: leads created and converted, opportunities created "
                 "and won, and the won amount. Refreshes its access token on a 401, once, behind a lock; stops before a call when fewer than 50 of the org's daily "
                 "calls are left (Sforce-Limit-Info); a 403 REQUEST_LIMIT_EXCEEDED is handed to the runner. Never run against a live org: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="harvest",
+            label="Harvest",
+            auth_kind=AuthKind.STATIC_TOKEN,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=HarvestConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("account_id", "Account id", secret=False, hint="the numeric Harvest account id, shown beside the token in Harvest ID"),
+                CredentialField("currency", "Currency", secret=False, hint="the ISO 4217 code of the account's projects: a connection sums one currency"),
+                CredentialField("contact", "Contact", secret=False, hint="an email address or web address, which Harvest asks every request to carry in its User-Agent"),
+                CredentialField("access_token", "Personal access token", hint="from the Developers section of Harvest ID; it reads what its user may read"),
+            ),
+            factory=HarvestConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Daily time tracked, billable time, entries logged and the billable amount from the v2 time entries, plus the projects' budgets in hours for a budget check. "
+                "Pages follow links.next as given and never leave the Harvest host; the connector counts its own requests and stops before the 101st in 15 seconds. A key that "
+                "may not read projects still gets the hour counts, without the amount. Never run against a live account: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="msgraph",
+            label="Microsoft 365 (SharePoint, Teams)",
+            # An app signing in as itself with a client secret (client credentials), the same server to server shape as a Google service account.
+            auth_kind=AuthKind.SERVICE_ACCOUNT,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=MicrosoftGraphConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("tenant_id", "Tenant id", secret=False, hint="the Microsoft Entra directory (tenant) id or its domain name"),
+                CredentialField("client_id", "Application (client) id", secret=False, hint="of the app registration that holds the application permissions"),
+                CredentialField("client_secret", "Client secret", hint="a secret of that app registration"),
+                CredentialField("site_id", "SharePoint site id", secret=False, hint="the Graph site id, host,site collection id,web id"),
+                CredentialField("list_id", "SharePoint list id", secret=False, hint="the list that holds the project register"),
+            ),
+            factory=MicrosoftGraphConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Daily rows created and modified in a SharePoint list (the register), and top level messages in one Teams channel when a team and channel are given. Signs in as the app "
+                "(client credentials, Sites.Read.All and ChannelMessage.Read.All) and renews the token before it expires and on a 401. Also reads an Excel register by downloading the "
+                "workbook with Files.Read.All, since the workbook endpoints do not take application permissions. Never run against a live tenant: none is held."
             ),
         )
     )
