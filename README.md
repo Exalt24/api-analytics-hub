@@ -97,7 +97,7 @@ reaper turns a silently dead worker into a visible failure.
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written from the vendors' public documentation and ran only against stand-in servers, never a live account. Salesforce adds OAuth refresh, SOQL paging and a lead matcher that gives a reason code and a record link per answer: [docs/salesforce.md](docs/salesforce.md). `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written from the vendors' public documentation and ran against stand-in servers that answer in each vendor's documented shape. Salesforce adds OAuth refresh, SOQL paging and a lead matcher that gives a reason code and a record link per answer: [docs/salesforce.md](docs/salesforce.md). `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 
