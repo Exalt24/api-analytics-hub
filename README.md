@@ -174,7 +174,7 @@ A Next.js proxy reads the Host header and rewrites a one label subdomain to an i
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 7,132 tests: 7,117 passed, 10 skipped, 5 known limits
+python -m pytest tests/ -q                # 8,319 tests, none failing; the skips and 5 known limits are marked
 python tests/mutation_check.py            # all 300 hand matched guards; edits source, so use a copy
 python tests/mutation_check_jobs.py       # the job pipeline's guards, run in a temporary copy
 python live_check.py                      # against the real store

@@ -204,8 +204,8 @@ MUTATIONS = [
      "service", "    if not EMAIL_RE.match(signer_email) or len(signer_email) > 254:", "    if len(signer_email) > 254:", ["cannot_be_stored_is_refused_and_leaves_nothing"], "the signer's address must look like one"),
     # -- who may do what
     ("roles: a viewer may create requests",
-     "auth", '    Role.VIEWER: frozenset({"read:kpis", "read:runs", "read:report", "read:esign", "sign:esign"}),',
-     '    Role.VIEWER: frozenset({"read:kpis", "read:runs", "read:report", "read:esign", "sign:esign", "write:esign"}),', ["creating_needs_a_key_and_an_operator_or_admin"], "only a firm user creates a request"),
+     "auth", '    Role.VIEWER: frozenset({"read:kpis", "read:runs", "read:report", "read:esign", "sign:esign", "read:jobs"}),',
+     '    Role.VIEWER: frozenset({"read:kpis", "read:runs", "read:report", "read:esign", "sign:esign", "read:jobs", "write:esign"}),', ["creating_needs_a_key_and_an_operator_or_admin"], "only a firm user creates a request"),
     ("status: a missing request is not 404",
      "routes", "RequestNotFound: 404,", "RequestNotFound: 403,", ["another_tenants_key_gets_the_same_404"], "a missing request is a 404, like someone else's"),
     ("status: an expired request is not 410",

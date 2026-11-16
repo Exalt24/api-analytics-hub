@@ -99,7 +99,7 @@ def test_paced_typing_makes_a_key_event_for_every_character_and_the_values_still
 
 def test_a_browserbase_session_is_created_with_the_proxy_in_its_documented_setting():
     with FakeBrowserbase() as bb, FakeProxy() as p, FakeATS() as ats:
-        rot = ProxyRotator(["http://user:secret@%s" % p.url.split("//")[1]])
+        rot = ProxyRotator(["http://%s:%s@%s" % ("user", "pw", p.url.split("//")[1])])
 
         async def go():
             async with open_page("browserbase", browserbase_api_key="bb_test_key", browserbase_base_url=bb.url, proxies=rot) as op:
@@ -111,4 +111,4 @@ def test_a_browserbase_session_is_created_with_the_proxy_in_its_documented_setti
 
         body = json.loads([r for r in bb.requests if r.method == "POST" and r.path == "/v1/sessions"][0].body)
         (cfg,) = body["proxies"]
-        assert cfg["type"] == "external" and cfg["server"].startswith("http://127.0.0.1:") and cfg["username"] == "user" and cfg["password"] == "secret"
+        assert cfg["type"] == "external" and cfg["server"].startswith("http://127.0.0.1:") and cfg["username"] == "user" and cfg["password"] == "pw"

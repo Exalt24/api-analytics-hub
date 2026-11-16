@@ -208,7 +208,7 @@ def test_a_page_whose_form_cannot_be_read_is_never_submitted_blind():
     assert out.state == "failed" and "no form fields" in out.detail and ats.submissions == []
 
 
-GROQ = pathlib.Path(os.environ.get("JOBS_GROQ_KEY_FILE", r"C:\Projects\Professional\Operations\.secrets\groq_test_key.txt"))
+GROQ = pathlib.Path(os.environ.get("JOBS_GROQ_KEY_FILE", "no-groq-key-file-set"))
 
 
 @pytest.mark.skipif(not GROQ.exists(), reason="the live Stagehand run needs a Groq key file (JOBS_GROQ_KEY_FILE)")
