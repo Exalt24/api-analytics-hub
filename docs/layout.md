@@ -103,6 +103,16 @@ app/esign/           e-signature slice: a signing request, a signature record an
   consent.py         the versioned consent text and the typed-name rule
   certificate.py     the completion certificate as JSON and text, and the offline check a third party can run
 app/api/esign.py     the routes under /api/esign: who may create, open, sign, decline and verify, and the status of each refusal
+app/jobs/            the job pipeline: vendor postings in, one row per job, a tailored application, a form filler that asks when it is not sure (docs/job-pipeline.md)
+  dedupe.py, archive.py, store.py, embed.py, pipeline.py   the Redis sliding window, raw JSON to S3 or R2, the Postgres upserts, OpenAI embeddings into Qdrant through LangChain, ingest_batch()
+  tailor.py, render.py, llm.py, tech_lexicon.py            the resume and cover letter loop (ATS score, grounding), DOCX and PDF, the structured-output model call
+  formfill.py, browser.py, hitl.py, worker.py, notion.py   the confidence mapper with Stagehand as a fallback, Playwright from local Chromium or Browserbase, the review queue and resume, the RabbitMQ worker, the Notion board
+  fake_vendors.py, fake_openai.py, fake_ats.py, fake_browserbase.py, fake_notion.py   the stand-in servers the tests and the n8n run use, written from each service's pages (docs/job-vendors.md)
+app/api/jobs.py      the routes under /api/jobs: ingest, list and search, apply, the review queue, answer, send to manual review
+migrations/019_job_pipeline.sql   postings, ingest runs, the applicant's facts, tailored documents, application runs and review tasks: forced row level security, a token only while waiting
+n8n/job_ingest.workflow.json, job_apply.workflow.json, build_job_workflow.py, verify_job_pipeline_in_docker.py   the hourly pull and the apply-with-review workflows, their generator and the run in a real n8n
+n8n/jobs/            normalize.js (the vendor mappers and ATS detection), pull.js (nine vendor pulls), pull_cli.js, and their node tests
+scripts/job_pipeline_live_check.py   the parts run against a real service: Upstash Redis, OpenAI embeddings, a chat model
 migrations/016_esign.sql   the three tables: forced row level security, append only, a frozen request, one signature for each request
 web/lib/esign.ts, web/app/portal/[slug]/sign/   the portal page where the client reads, signs or declines, and the portal route that serves the document
 web/                 Next.js dashboard

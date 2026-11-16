@@ -45,3 +45,26 @@ None was built or run and no account is held. The call that this workflow makes,
 ## The real run
 
 `python n8n/verify_in_docker.py --summary out.txt` needs Docker, the `n8nio/n8n:2.44.6` image (the tag the saved runs used), the compose Postgres and the repository's Python environment. It makes a scratch database with invented tenants, starts the API and a stand-in Slack webhook on the loopback address, runs the workflow in seven throwaway containers, reads the node outputs from `n8n execute` and checks them against the database and the Slack stand-in, then removes everything it started.
+
+---
+
+# Job pipeline
+
+Two more workflows live here, built by `build_job_workflow.py` from the tested JavaScript in `n8n/jobs/`, and proven by `verify_job_pipeline_in_docker.py` (the saved run is in [docs/test-runs](../docs/test-runs)). How the whole pipeline fits together is in [docs/job-pipeline.md](../docs/job-pipeline.md), the vendor pages they follow in [docs/job-vendors.md](../docs/job-vendors.md).
+
+| File | What it is |
+|---|---|
+| `job_ingest.workflow.json` | every hour (and Run now): pull ten vendors, normalise, send each batch to the hub; two Webhook triggers take pushes (Bright Data's `endpoint` delivery, and any delivery vendor such as Grepsr) |
+| `job_apply.workflow.json` | a Webhook starts an application run on the hub with this execution's resume URL, a Wait node holds until the hub calls it, then the final state is read and reported |
+| `jobs/normalize.js`, `jobs/pull.js` | the vendor pulls and the normaliser, one file each, inlined into the Code nodes by the build script; `node --test n8n/jobs/normalize.test.js` and `tests/test_jobs_vendors_js.py` run them on their own |
+
+| Variable | Meaning |
+|---|---|
+| `HUB_BASE_URL`, `HUB_API_KEY` | the hub and an operator key (the key decides the tenant) |
+| `JOB_VENDORS_JSON` | the pulls: `[{"vendor": "theirstack", "cfg": {"baseUrl": "https://api.theirstack.com", "apiKey": "...", "titles": ["Data Engineer"], "windowDays": 1}}, ...]`; each vendor's own `cfg` keys are at the top of its function in `jobs/pull.js` |
+| `GREPSR_MAP_JSON` | for the delivery webhook: `{"title": "position", "company_name": "org"}`, the customer's own column names |
+| `APPLY_REPORT_URL` | optional: where the apply workflow reports its outcome |
+| `WEBHOOK_URL` | n8n's public address, so the hub can call the Wait node's resume URL |
+
+The Code nodes need n8n's task runner (on by default) and `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. A vendor that fails (a wrong key, a refusal) goes down its own error path; the other vendors still ingest, and the execution ends as an error that names it.
+

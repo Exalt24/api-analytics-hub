@@ -102,7 +102,9 @@ async def run_summary(conn: asyncpg.Connection, vendor: str, batch_id: str) -> d
 
 async def mark_embedded(conn: asyncpg.Connection, ids: list[str]) -> None:
     if ids:
-        await conn.execute("update job_posting set embedded_at = now() where id = any($1::uuid[])", ids)
+        # the rows are locked in fingerprint order, the order the upserts take them (pipeline._store), so two batches that share jobs queue instead of deadlocking
+        await conn.execute(
+            "update job_posting set embedded_at = now() where id in (select id from job_posting where id = any($1::uuid[]) order by fingerprint for update)", ids)
 
 
 def dumps(o: Any) -> str:

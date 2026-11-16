@@ -73,11 +73,25 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 const iso = (v) => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
+// An address is split with a pattern, never with `new URL`: n8n's Code node runs in a sandbox where URL is not defined, a try/catch around it made that a silent null,
+// and the dedupe keys of the same job from two vendors stopped matching only inside n8n (found by the n8n run, 32 keys for 30 jobs).
+const splitUrl = (v) => {
+  const m = typeof v === 'string' ? v.trim().match(/^(?:https?:)?\/\/([^\/?#:]+)(?::\d+)?([^?#]*)/i) : null;
+  return m ? { host: m[1].replace(/^www\./i, '').toLowerCase(), path: m[2] || '' } : null;
+};
 const domainOf = (v) => {
   if (!v) return null;
-  try { return new URL(/^https?:\/\//i.test(v) ? v : 'https://' + v).hostname.replace(/^www\./, '').toLowerCase(); } catch (e) { return null; }
+  const u = splitUrl(/^(https?:)?\/\//i.test(v) ? v : 'https://' + v);
+  return u ? u.host : null;
 };
-const stripHtml = (s) => text(typeof s === 'string' ? s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&') : s);
+const BOARDS = /(^|\.)(linkedin|indeed|glassdoor|ziprecruiter|monster|dice|wellfound|simplyhired|jooble|adzuna|careerbuilder|talent|jobstreet|seek|bayt|naukri|google)\.[a-z.]+$/i;
+// host and path of an address, lower case, no www, no trailing slash, no query or fragment; null for a job board, which does not identify the employer's own posting
+const ownAddress = (v) => {
+  const u = splitUrl(v);
+  if (!u || BOARDS.test(u.host)) return null;
+  return u.host + u.path.replace(/\/+$/, '').toLowerCase();
+};
+const stripHtml =(s) => text(typeof s === 'string' ? s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&') : s);
 
 // The shape every vendor is mapped onto. `dedupe_key` is the part the hub hashes: the ATS's own id when there is one (so the same
 // job from two vendors lands on one key), otherwise a stable company, a title with the noise taken out, and a place.
@@ -89,9 +103,13 @@ function canonical(vendor, id, f) {
   const companyDomain = f.company_domain ? domainOf(f.company_domain) : null;
   const location = text(f.location);
   const norm = (s) => (s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
-  const who = companyDomain || norm(company);
-  const keyParts = ats.ats_job_id ? [ats.ats, ats.org || who, ats.ats_job_id] : [who, norm(title), norm(location)];
+  // the company NAME, not the domain: every vendor sends a name, but only some send a site, and a key that used the site when it was there would split one job in two
+  const who = norm(company).replace(/ (inc|llc|ltd|limited|corp|corporation|co|gmbh|plc|the)$/g, '').trim() || companyDomain || '';
   const applyUrl = first(f.apply_url, f.url);
+  // Key by, in order: the ATS's own job id; the employer's own posting address (vendors disagree on how to write a place, never on where the posting lives);
+  // and last the company, the title and the place. A job board or aggregator address says nothing about the employer's posting, so it is skipped.
+  const own = ownAddress(applyUrl);
+  const keyParts = ats.ats_job_id ? [ats.ats, ats.org || who, ats.ats_job_id] : (own ? ['url', who, own] : [who, norm(title), norm(location)]);
   return {
     vendor,
     vendor_job_id: id === null || id === undefined ? null : String(id),
@@ -176,6 +194,13 @@ const MAPPERS = {
     posted_at: first(r.postedAt, r.datePosted, r.postingDate, r.publishedAt), description: first(r.description, r.descriptionText, r.jobDescription),
     salary_min: r.salaryMin, salary_max: r.salaryMax, salary_currency: r.salaryCurrency, employment_type: first(r.employmentType, r.jobType),
   }),
+  // GET /api/v2/jobs/search, Techmap (through RapidAPI): `result` array; the posting also rides in `jsonLD` (schema.org JobPosting) with the full description.
+  techmap: (r) => canonical('techmap', first(path(r, 'jsonLD.identifier'), r.id), {
+    title: first(r.title, r.occupation), company_name: r.company, location: [r.city, r.countryCode && String(r.countryCode).toUpperCase()].filter(Boolean).join(', '),
+    remote: Array.isArray(r.workPlace) ? r.workPlace.some((w) => /remote/i.test(w)) : null, url: first(path(r, 'jsonLD.sameAs'), path(r, 'jsonLD.url')),
+    apply_url: first(r.externalApplyUrl, path(r, 'jsonLD.url')), posted_at: first(r.dateCreated, path(r, 'jsonLD.datePosted')), description: path(r, 'jsonLD.description'),
+    salary_min: r.minSalary, salary_max: r.maxSalary, salary_currency: path(r, 'jsonLD.salaryCurrency'), employment_type: first(r.workType, r.contractType), technologies: r.skills,
+  }),
   // GET /api/jobs/, JobDataAPI (Authorization: Api-Key). `published` is a date, `application_url` the employer's link.
   jobdataapi: (r) => canonical('jobdataapi', first(r.id, r.ext_id), {
     title: r.title, company_name: path(r, 'company.name'), company_domain: path(r, 'company.website_url'), location: r.location,
@@ -222,6 +247,7 @@ const ENVELOPES = {
   brightdata: (b) => (Array.isArray(b) ? b : []),
   apify: (b) => (Array.isArray(b) ? b : []),
   jobdataapi: (b) => b.results || [],
+  techmap: (b) => b.result || [],
   predictleads: (b) => b.data || [],
 };
 

@@ -1,0 +1,7 @@
+{
+  "name": "job-pipeline-n8n-js",
+  "private": true,
+  "description": "The JavaScript the job pipeline's n8n Code nodes carry, with its tests. puppeteer-core is only for puppeteer_inventory.js, which runs the same form inventory as the Python filler.",
+  "scripts": { "test": "node --test normalize.test.js" },
+  "devDependencies": { "puppeteer-core": "25.17.0" }
+}

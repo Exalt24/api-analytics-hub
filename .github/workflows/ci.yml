@@ -31,6 +31,30 @@ jobs:
         image: stripe/stripe-mock:v0.206.0
         ports:
           - 12111:12111
+      # The backing services of the job pipeline (docs/job-pipeline.md), on the ports tests/jobs_fixtures.py defaults to. SeaweedFS is started by a step below
+      # because it needs a config file mounted.
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6381:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+      qdrant:
+        image: qdrant/qdrant:v1.18.0
+        ports:
+          - 6343:6333
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5683:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
@@ -44,12 +68,27 @@ jobs:
           curl --silent --output /dev/null --fail --retry 15 --retry-connrefused --retry-delay 1 -H "Authorization: Bearer sk_test_123" http://127.0.0.1:12111/v1/payment_intents/pi_1
       # Chromium for the price watch scraper tests (tests/test_price_watch_scraper.py, test_price_watch_loop.py). Without it those tests skip.
       - run: python -m playwright install --with-deps chromium
+      # SeaweedFS as the S3 compatible store for the job pipeline's raw JSON archive: one made-up identity in web/tests/s3/seaweedfs-s3.json, not AWS and not R2.
+      - name: Start the S3 stand-in
+        run: |
+          docker run -d --name jobs-s3 -p 8333:8333 -v "$PWD/web/tests/s3/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" chrislusf/seaweedfs:4.53 server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333
+          for i in $(seq 1 40); do code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8333/ || true); [ "$code" = "403" ] && break; sleep 1; done
+          echo "S3 stand-in answered $code"
       - run: python -m pytest tests -q
       # The same tests again, named, with PRICE_WATCH_REQUIRE_BROWSER set so a missing Chromium FAILS here instead of skipping, and the skip reasons printed.
       - name: Price watch (scraper, matching, report, queue, sync against fake vendors)
         env:
           PRICE_WATCH_REQUIRE_BROWSER: "1"
         run: python -m pytest tests/test_price_watch_scraper.py tests/test_price_watch_matching.py tests/test_price_watch_report.py tests/test_price_watch_adapters.py tests/test_price_watch_db.py tests/test_price_watch_sync_db.py tests/test_price_watch_loop.py -q -rs
+      # The job pipeline (dedupe window, ingest, tailoring, form filler, review queue, API, n8n JavaScript), named so a missing service FAILS here instead of skipping:
+      # JOBS_REQUIRE_SERVICES makes tests/jobs_fixtures.py raise at collection when Postgres, Redis, Qdrant, RabbitMQ or S3 is not reachable.
+      - name: Job pipeline (against Redis, Qdrant, RabbitMQ, Postgres and an S3 stand-in)
+        env:
+          JOBS_REQUIRE_SERVICES: "1"
+        run: |
+          (cd n8n/jobs && npm install --no-audit --no-fund)
+          node --test n8n/jobs/normalize.test.js
+          python -m pytest tests/test_jobs_*.py -q -rs
       # The billing module (signature, proration, provider client, ledger, wallet, payments, webhook receiver, reports, the seeded simulation and the command line), named so a skipped
       # database suite shows in the log. BILLING_REQUIRE_DB makes an unreachable Postgres FAIL here instead of skipping, and -rs prints any skip reason.
       # STRIPE_MOCK_REQUIRE makes a stripe-mock that did not start FAIL the collection of the SDK suites instead of skipping their stripe-mock tests.

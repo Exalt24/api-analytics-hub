@@ -1,0 +1,900 @@
+{
+  "id": "hubJobIngest0001",
+  "name": "Job ingest",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Job ingest\nEvery hour: pull each vendor in `JOB_VENDORS_JSON`, normalise, and send the batch to the hub, which archives the raw JSON, dedupes in Redis, upserts into Postgres and embeds into Qdrant. A rerun in the same hour is the hub's replay. Two webhooks take pushes.\n**Needs** `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` and the variables in n8n/README.md.",
+        "height": 200,
+        "width": 620,
+        "color": 4
+      },
+      "id": "010e3b1a-5c7d-4e2f-9a10-00006a6f6270",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "020e3b1a-5c7d-4e2f-9a10-00006a6f6271",
+      "name": "Schedule, every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -420,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "030e3b1a-5c7d-4e2f-9a10-00006a6f6272",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-hub_url",
+              "name": "hub_url",
+              "type": "string",
+              "value": "={{ ($env.HUB_BASE_URL || '').replace(/\\/+$/, '') }}"
+            },
+            {
+              "id": "a-hub_key",
+              "name": "hub_key",
+              "type": "string",
+              "value": "={{ $env.HUB_API_KEY }}"
+            },
+            {
+              "id": "a-vendors",
+              "name": "vendors",
+              "type": "array",
+              "value": "={{ JSON.parse($env.JOB_VENDORS_JSON) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "040e3b1a-5c7d-4e2f-9a10-00006a6f6273",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "vendors",
+        "include": "allOtherFields",
+        "options": {
+          "destinationFieldName": "v"
+        }
+      },
+      "id": "050e3b1a-5c7d-4e2f-9a10-00006a6f6274",
+      "name": "One item per vendor",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        100,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-vendor",
+              "name": "vendor",
+              "type": "string",
+              "value": "={{ $json.v.vendor }}"
+            },
+            {
+              "id": "a-cfg",
+              "name": "cfg",
+              "type": "object",
+              "value": "={{ $json.v.cfg }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "060e3b1a-5c7d-4e2f-9a10-00006a6f6275",
+      "name": "Vendor and settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        340,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Inlined from n8n/jobs/normalize.js and n8n/jobs/pull.js by build_job_workflow.py. Edit those files, not this node.\n// LIFESPAN: permanent\n// Job normalisation and ATS detection for the job pipeline. One pure file, two homes: the n8n Code node in\n// job_pipeline.workflow.json carries a copy of it (build_job_workflow.py inlines this file, so they cannot drift), and\n// `node --test n8n/jobs/normalize.test.js` runs it on its own. It does no I/O and takes no clock, so the same record\n// gives the same answer on every run.\n//\n// Field names come from each vendor's own documentation page (docs/job-vendors.md names the page for each). Where a\n// vendor's output depends on the scraper or actor behind it (Apify, Bright Data's other datasets) the mapper reads a\n// list of documented aliases, and a record it cannot read a title or a link from is returned with `valid: false`\n// instead of being guessed at.\n\nconst ATS_URL_RULES = [\n  ['greenhouse', /(?:boards|job-boards|boards-api)\\.(?:eu\\.)?greenhouse\\.io\\/(?:v1\\/boards\\/)?([^/?#]+)\\/jobs\\/(\\d+)/i],\n  ['greenhouse', /[?&]gh_jid=(\\d+)/i],\n  ['lever', /jobs\\.(?:eu\\.)?lever\\.co\\/([^/?#]+)\\/([0-9a-f-]{36})/i],\n  ['workday', /([a-z0-9-]+)\\.wd\\d+\\.myworkday(?:jobs|site)\\.com\\/(?:[a-z]{2}-[A-Z]{2}\\/)?[^?#]*?_((?:JR|R|REQ)[-_]?\\d+[A-Za-z0-9-]*)/i],\n  ['workday', /([a-z0-9-]+)\\.wd\\d+\\.myworkday(?:jobs|site)\\.com\\//i],\n  ['ashby', /jobs\\.ashbyhq\\.com\\/([^/?#]+)\\/([0-9a-f-]{36})/i],\n  ['smartrecruiters', /(?:jobs|careers)\\.smartrecruiters\\.com\\/([^/?#]+)\\/(\\d+)/i],\n  ['workable', /apply\\.workable\\.com\\/([^/?#]+)\\/j\\/([A-Z0-9]+)/i],\n  ['icims', /([a-z0-9-]+)\\.icims\\.com\\/jobs\\/(\\d+)/i],\n  ['bamboohr', /([a-z0-9-]+)\\.bamboohr\\.com\\/(?:careers|jobs\\/view\\.php\\?id=)\\/?(\\d+)/i],\n  ['jobvite', /jobs\\.jobvite\\.com\\/([^/?#]+)\\/job\\/([A-Za-z0-9]+)/i],\n  ['taleo', /([a-z0-9-]+)\\.taleo\\.net\\/.*?[?&]job=([A-Za-z0-9]+)/i],\n  ['recruitee', /([a-z0-9-]+)\\.recruitee\\.com\\/o\\/([a-z0-9-]+)/i],\n  ['teamtailor', /([a-z0-9-]+)\\.teamtailor\\.com\\/jobs\\/(\\d+)/i],\n  ['breezy', /([a-z0-9-]+)\\.breezy\\.hr\\/p\\/([0-9a-f]+)/i],\n  ['personio', /([a-z0-9-]+)\\.jobs\\.personio\\.(?:de|com)\\/job\\/(\\d+)/i],\n  ['successfactors', /career\\d*\\.successfactors\\.(?:com|eu)\\/.*?[?&]jobId=(\\d+)/i],\n  ['oracle_cloud', /([a-z0-9-]+)\\.fa\\.[a-z0-9-]+\\.oraclecloud\\.com\\/hcmUI\\/CandidateExperience\\/[^/]+\\/sites\\/[^/]+\\/job\\/(\\d+)/i],\n];\n\n// What a rendered application page gives away when the link itself does not (a company's own careers page that embeds the form).\nconst ATS_HTML_MARKERS = [\n  ['greenhouse', /id=[\"']grnhse_app[\"']|boards\\.greenhouse\\.io\\/embed|job-boards\\.greenhouse\\.io/i],\n  ['lever', /lever-jobs-embed|jobs\\.lever\\.co|class=[\"'][^\"']*lever-application/i],\n  ['workday', /myworkdayjobs\\.com|data-automation-id=[\"']jobPostingPage[\"']|wd-application/i],\n  ['ashby', /ashbyhq\\.com|ashby_embed|data-ashby/i],\n  ['smartrecruiters', /smartrecruiters\\.com|data-qa=[\"']sr-/i],\n  ['workable', /workable\\.com|data-ui=[\"']application-form[\"']/i],\n  ['icims', /icims\\.com|iCIMS_/i],\n  ['bamboohr', /bamboohr\\.com\\/careers|BambooHR/i],\n];\n\nfunction detectAts(url, html) {\n  const out = { ats: null, org: null, ats_job_id: null, via: null };\n  const u = typeof url === 'string' ? url : '';\n  for (const [name, re] of ATS_URL_RULES) {\n    const m = u.match(re);\n    if (m) {\n      out.ats = name;\n      out.via = 'url';\n      // a rule with two groups is (organisation, job id); a one group rule is the job id (gh_jid) or the organisation (workday)\n      if (m.length >= 3) { out.org = m[1]; out.ats_job_id = m[2]; }\n      else if (re.source.includes('gh_jid')) out.ats_job_id = m[1];\n      else out.org = m[1];\n      return out;\n    }\n  }\n  if (typeof html === 'string' && html) {\n    for (const [name, re] of ATS_HTML_MARKERS) {\n      if (re.test(html)) { out.ats = name; out.via = 'page'; return out; }\n    }\n  }\n  return out;\n}\n\nconst first = (...vals) => { for (const v of vals) if (v !== undefined && v !== null && v !== '') return v; return null; };\nconst text = (v) => ((v === null || v === undefined) ? null : (String(v).replace(/\\s+/g, ' ').trim() || null));\nconst num = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/[^0-9.\\-]/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\nconst iso = (v) => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };\n// An address is split with a pattern, never with `new URL`: n8n's Code node runs in a sandbox where URL is not defined, a try/catch around it made that a silent null,\n// and the dedupe keys of the same job from two vendors stopped matching only inside n8n (found by the n8n run, 32 keys for 30 jobs).\nconst splitUrl = (v) => {\n  const m = typeof v === 'string' ? v.trim().match(/^(?:https?:)?\\/\\/([^\\/?#:]+)(?::\\d+)?([^?#]*)/i) : null;\n  return m ? { host: m[1].replace(/^www\\./i, '').toLowerCase(), path: m[2] || '' } : null;\n};\nconst domainOf = (v) => {\n  if (!v) return null;\n  const u = splitUrl(/^(https?:)?\\/\\//i.test(v) ? v : 'https://' + v);\n  return u ? u.host : null;\n};\nconst BOARDS = /(^|\\.)(linkedin|indeed|glassdoor|ziprecruiter|monster|dice|wellfound|simplyhired|jooble|adzuna|careerbuilder|talent|jobstreet|seek|bayt|naukri|google)\\.[a-z.]+$/i;\n// host and path of an address, lower case, no www, no trailing slash, no query or fragment; null for a job board, which does not identify the employer's own posting\nconst ownAddress = (v) => {\n  const u = splitUrl(v);\n  if (!u || BOARDS.test(u.host)) return null;\n  return u.host + u.path.replace(/\\/+$/, '').toLowerCase();\n};\nconst stripHtml =(s) => text(typeof s === 'string' ? s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&') : s);\n\n// The shape every vendor is mapped onto. `dedupe_key` is the part the hub hashes: the ATS's own id when there is one (so the same\n// job from two vendors lands on one key), otherwise a stable company, a title with the noise taken out, and a place.\nfunction canonical(vendor, id, f) {\n  let ats = detectAts(first(f.apply_url, f.url));\n  if (!ats.ats) ats = detectAts(f.url);\n  const title = text(f.title);\n  const company = text(f.company_name);\n  const companyDomain = f.company_domain ? domainOf(f.company_domain) : null;\n  const location = text(f.location);\n  const norm = (s) => (s || '').toLowerCase().replace(/\\(.*?\\)|\\[.*?\\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();\n  // the company NAME, not the domain: every vendor sends a name, but only some send a site, and a key that used the site when it was there would split one job in two\n  const who = norm(company).replace(/ (inc|llc|ltd|limited|corp|corporation|co|gmbh|plc|the)$/g, '').trim() || companyDomain || '';\n  const applyUrl = first(f.apply_url, f.url);\n  // Key by, in order: the ATS's own job id; the employer's own posting address (vendors disagree on how to write a place, never on where the posting lives);\n  // and last the company, the title and the place. A job board or aggregator address says nothing about the employer's posting, so it is skipped.\n  const own = ownAddress(applyUrl);\n  const keyParts = ats.ats_job_id ? [ats.ats, ats.org || who, ats.ats_job_id] : (own ? ['url', who, own] : [who, norm(title), norm(location)]);\n  return {\n    vendor,\n    vendor_job_id: id === null || id === undefined ? null : String(id),\n    title,\n    company_name: company,\n    company_domain: companyDomain,\n    location,\n    remote: f.remote === undefined ? null : f.remote,\n    url: text(f.url),\n    apply_url: text(applyUrl),\n    ats: ats.ats,\n    ats_org: ats.org,\n    ats_job_id: ats.ats_job_id,\n    posted_at: iso(f.posted_at),\n    description: stripHtml(f.description),\n    salary_min: num(f.salary_min),\n    salary_max: num(f.salary_max),\n    salary_currency: text(f.salary_currency),\n    salary_period: text(f.salary_period),\n    employment_type: text(Array.isArray(f.employment_type) ? f.employment_type[0] : f.employment_type),\n    technologies: Array.isArray(f.technologies) ? f.technologies.map(String).slice(0, 40) : [],\n    dedupe_key: keyParts.join('|'),\n    valid: Boolean(title && (applyUrl || company)),\n  };\n}\n\nconst path = (o, p) => p.split('.').reduce((a, k) => (a === null || a === undefined ? undefined : a[k]), o);\n\nconst MAPPERS = {\n  // POST /v1/jobs/search, TheirStack. `final_url` is the ATS link when TheirStack found one, `url` the board it saw it on.\n  theirstack: (r) => canonical('theirstack', r.id, {\n    title: r.job_title, company_name: r.company, company_domain: first(r.company_domain, path(r, 'company_object.domain')),\n    location: first(r.location, r.short_location), remote: r.remote, url: first(r.url, r.source_url), apply_url: r.final_url,\n    posted_at: r.date_posted, description: r.description, salary_min: r.min_annual_salary_usd, salary_max: r.max_annual_salary_usd,\n    salary_currency: r.salary_currency, salary_period: 'year', employment_type: r.employment_statuses, technologies: r.technology_slugs,\n  }),\n  // POST /v2/jobs/search, Hirebase (x-api-key). `application_link` is the employer's own page.\n  hirebase: (r) => canonical('hirebase', first(r._id, r.platform_job_id), {\n    title: r.job_title, company_name: r.company_name, company_domain: null, location: r.location_raw,\n    remote: r.location_type ? /remote/i.test(r.location_type) : null, url: first(r.job_board_link, r.application_link), apply_url: r.application_link,\n    posted_at: first(r.date_posted, r.first_ingested), description: r.description,\n    salary_min: path(r, 'salary_range.min'), salary_max: path(r, 'salary_range.max'),\n    salary_currency: path(r, 'salary_range.currency'), salary_period: path(r, 'salary_range.period'),\n    employment_type: r.job_type, technologies: r.technologies,\n  }),\n  // POST /job/search, Crustdata (fields chosen with `fields`, so the dotted paths are the request's own).\n  crustdata: (r) => canonical('crustdata', r.crustdata_job_id, {\n    title: path(r, 'job_details.title'), company_name: path(r, 'company.basic_info.name'),\n    company_domain: path(r, 'company.basic_info.primary_domain'),\n    location: path(r, 'location.raw'), url: path(r, 'job_details.url'),\n    remote: path(r, 'job_details.workplace_type') ? /remote/i.test(path(r, 'job_details.workplace_type')) : null,\n    posted_at: path(r, 'metadata.date_added'), description: path(r, 'job_details.description'),\n  }),\n  // POST /cdapi/v2/job_multi_source/search/es_dsl gives ids; GET .../collect/{id} gives this record. `job_sources[].url` are the boards.\n  coresignal: (r) => canonical('coresignal', first(r.job_id, r.id), {\n    title: r.title, company_name: r.company_name, company_domain: first(r.company_domain, r.company_url), location: r.location,\n    remote: typeof r.accepts_remote === 'boolean' ? r.accepts_remote : null,\n    url: first(r.external_url, path(r, 'job_sources.0.url')), apply_url: r.external_url,\n    posted_at: first(r.date_posted, r.created_at), description: r.description,\n    salary_min: path(r, 'salary.0.amount_min'), salary_max: path(r, 'salary.0.amount_max'),\n    salary_currency: path(r, 'salary.0.currency'), employment_type: r.employment_type,\n  }),\n  // GET /api/v1/jobs/search then /api/v1/jobs/job/details, LinkdAPI (X-linkdapi-apikey).\n  linkdapi: (r) => canonical('linkdapi', first(r.jobId, r.id), {\n    title: r.title, company_name: path(r, 'company.name'), company_domain: null, location: r.location,\n    url: first(r.url, r.jobId ? 'https://www.linkedin.com/jobs/view/' + r.jobId : null), apply_url: r.applyUrl,\n    posted_at: r.postedAt, description: r.description,\n  }),\n  // Scraper API dataset gd_lpfll7v5hcqtkxl6l (LinkedIn job listings), output fields from the scraper's own schema page.\n  brightdata: (r) => canonical('brightdata', first(r.job_posting_id, r.url), {\n    title: r.job_title, company_name: r.company_name, location: r.job_location, url: r.url, apply_url: r.apply_link,\n    posted_at: first(r.job_posted_date, r.job_posted_time), description: first(r.job_summary, r.job_description_formatted),\n    salary_min: path(r, 'base_salary.min_amount'), salary_max: path(r, 'base_salary.max_amount'),\n    salary_currency: path(r, 'base_salary.currency'), salary_period: path(r, 'base_salary.payment_period'),\n    employment_type: r.job_employment_type,\n  }),\n  // Apify actors: the dataset items belong to the actor, so the mapper reads the names the common job actors use.\n  apify: (r) => canonical('apify', first(r.id, r.jobId, r.url, r.link), {\n    title: first(r.title, r.positionName, r.jobTitle, r.name), company_name: first(r.companyName, r.company, r.employer),\n    company_domain: first(r.companyWebsite, r.companyUrl), location: first(r.location, r.jobLocation),\n    url: first(r.url, r.jobUrl, r.link), apply_url: first(r.applyUrl, r.externalApplyLink, r.applyLink),\n    posted_at: first(r.postedAt, r.datePosted, r.postingDate, r.publishedAt), description: first(r.description, r.descriptionText, r.jobDescription),\n    salary_min: r.salaryMin, salary_max: r.salaryMax, salary_currency: r.salaryCurrency, employment_type: first(r.employmentType, r.jobType),\n  }),\n  // GET /api/v2/jobs/search, Techmap (through RapidAPI): `result` array; the posting also rides in `jsonLD` (schema.org JobPosting) with the full description.\n  techmap: (r) => canonical('techmap', first(path(r, 'jsonLD.identifier'), r.id), {\n    title: first(r.title, r.occupation), company_name: r.company, location: [r.city, r.countryCode && String(r.countryCode).toUpperCase()].filter(Boolean).join(', '),\n    remote: Array.isArray(r.workPlace) ? r.workPlace.some((w) => /remote/i.test(w)) : null, url: first(path(r, 'jsonLD.sameAs'), path(r, 'jsonLD.url')),\n    apply_url: first(r.externalApplyUrl, path(r, 'jsonLD.url')), posted_at: first(r.dateCreated, path(r, 'jsonLD.datePosted')), description: path(r, 'jsonLD.description'),\n    salary_min: r.minSalary, salary_max: r.maxSalary, salary_currency: path(r, 'jsonLD.salaryCurrency'), employment_type: first(r.workType, r.contractType), technologies: r.skills,\n  }),\n  // GET /api/jobs/, JobDataAPI (Authorization: Api-Key). `published` is a date, `application_url` the employer's link.\n  jobdataapi: (r) => canonical('jobdataapi', first(r.id, r.ext_id), {\n    title: r.title, company_name: path(r, 'company.name'), company_domain: path(r, 'company.website_url'), location: r.location,\n    remote: r.has_remote, url: r.application_url, apply_url: r.application_url, posted_at: r.published, description: r.description,\n    salary_min: r.salary_min, salary_max: r.salary_max, salary_currency: r.salary_currency, employment_type: r.types,\n  }),\n  // GET /api/v3/companies/{domain}/job_openings, PredictLeads (JSON:API: `data[].attributes`, `included` holds the company).\n  predictleads: (r, included) => {\n    const a = r.attributes || {};\n    const rel = path(r, 'relationships.company.data');\n    const co = rel && (included || []).find((i) => i.type === 'company' && i.id === rel.id);\n    return canonical('predictleads', r.id, {\n      title: a.title, company_name: co && path(co, 'attributes.company_name'), company_domain: co && path(co, 'attributes.domain'),\n      location: a.location, url: a.url, apply_url: a.url, posted_at: first(a.posted_at, a.first_seen_at), description: a.description,\n      salary_min: path(a, 'salary_data.salary_low'), salary_max: path(a, 'salary_data.salary_high'),\n      salary_currency: path(a, 'salary_data.salary_currency'), salary_period: path(a, 'salary_data.salary_time_unit'),\n      employment_type: a.contract_types,\n    });\n  },\n};\n\n// Files and webhooks from a delivery vendor (Grepsr runs, Techmap data feed files): the column names are the customer's own, so the\n// mapping is data. `map` is {canonicalField: sourceField}; a missing entry falls back to the common names.\nfunction mapDelivered(vendor, r, map) {\n  const m = map || {};\n  const get = (k, ...alts) => first(...[m[k], ...alts].filter(Boolean).map((n) => r[n]));\n  return canonical(vendor, get('id', 'id', 'job_id', 'url'), {\n    title: get('title', 'title', 'job_title', 'position'), company_name: get('company_name', 'company', 'company_name', 'employer'),\n    company_domain: get('company_domain', 'company_domain', 'company_website'), location: get('location', 'location', 'job_location'),\n    url: get('url', 'url', 'link', 'job_url'), apply_url: get('apply_url', 'apply_url', 'apply_link'),\n    posted_at: get('posted_at', 'posted_at', 'date_posted', 'published'),\n    description: get('description', 'description', 'job_description'), salary_min: get('salary_min', 'salary_min'), salary_max: get('salary_max', 'salary_max'),\n    salary_currency: get('salary_currency', 'salary_currency', 'currency'), employment_type: get('employment_type', 'employment_type', 'job_type'),\n  });\n}\n\n// Pull the list of records out of each vendor's response envelope.\nconst ENVELOPES = {\n  theirstack: (b) => b.data || [],\n  hirebase: (b) => b.jobs || [],\n  crustdata: (b) => b.job_listings || [],\n  coresignal: (b) => (Array.isArray(b) ? b : [b]),\n  linkdapi: (b) => (b.data && b.data.jobs) || [],\n  brightdata: (b) => (Array.isArray(b) ? b : []),\n  apify: (b) => (Array.isArray(b) ? b : []),\n  jobdataapi: (b) => b.results || [],\n  techmap: (b) => b.result || [],\n  predictleads: (b) => b.data || [],\n};\n\nfunction normalizeBatch(vendor, body, opts) {\n  const o = opts || {};\n  let records;\n  if (ENVELOPES[vendor]) records = ENVELOPES[vendor](body || {});\n  else records = Array.isArray(body) ? body : ((body && body.items) || []);\n  const jobs = records.map((rec) => {\n    if (MAPPERS[vendor]) return MAPPERS[vendor](rec, body && body.included);\n    return mapDelivered(vendor, rec, o.map);\n  });\n  return { vendor, received: records.length, jobs: jobs.filter((j) => j.valid), invalid: jobs.filter((j) => !j.valid).length };\n}\n\n\n// LIFESPAN: permanent\n// One pull per vendor: the request shape, the paging and the answer, from each vendor's own documentation page (docs/job-vendors.md names the page\n// for each). Like normalize.js it is one pure-ish file with two homes: the n8n Code node carries a copy (build_job_workflow.py inlines it), and\n// `node --test n8n/jobs/pull.test.js` runs it on its own. It never reads the environment or the clock: the caller hands in `cfg` (base URL, keys,\n// the window), `http` (n8n's this.helpers.httpRequest, or a fetch wrapper) and `sleep`, so the same code runs in n8n, in a test and in a script.\n//\n// `http(opts)` takes {method, url, headers, qs, body} and returns {status, headers, body} (headers lower-cased, body parsed). It must not throw on a\n// non-2xx answer; `call` below decides what an answer means, retries a 429 once the vendor's own Retry-After has passed, and raises on the rest.\n\nconst MAX_RETRIES = 3;\n\nasync function call(http, sleep, opts) {\n  let last;\n  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {\n    const res = await http(opts);\n    if (res.status >= 200 && res.status < 300) return res;\n    last = res;\n    if (res.status === 429 || res.status >= 500) {\n      const wait = Number(res.headers && res.headers['retry-after']);\n      await sleep(Number.isFinite(wait) && wait > 0 ? wait * 1000 : 250 * 2 ** attempt);\n      continue;\n    }\n    break;\n  }\n  const detail = typeof last.body === 'string' ? last.body : JSON.stringify(last.body || '');\n  throw new Error(`${opts.method || 'GET'} ${opts.url} answered ${last.status}: ${detail.slice(0, 200)}`);\n}\n\nconst trim = (u) => String(u || '').replace(/\\/+$/, '');\n\n// ------------------------------------------------------------------ pulls: each returns the body normalize.js reads for that vendor\n\nasync function theirstack(cfg, http, sleep) {\n  // POST /v1/jobs/search, Bearer auth, `limit` and `page`. A filter on how recently it was posted is mandatory (the page says so).\n  const data = [];\n  for (let page = 0; page < (cfg.maxPages || 10); page++) {\n    const r = await call(http, sleep, { method: 'POST', url: trim(cfg.baseUrl) + '/v1/jobs/search', headers: { Authorization: 'Bearer ' + cfg.apiKey },\n      body: { posted_at_max_age_days: cfg.windowDays || 1, job_title_or: cfg.titles, limit: cfg.pageSize || 25, page } });\n    const rows = (r.body && r.body.data) || [];\n    data.push(...rows);\n    if (rows.length < (cfg.pageSize || 25)) break;\n  }\n  return { data };\n}\n\nasync function hirebase(cfg, http, sleep) {\n  // POST /v2/jobs/search, x-api-key header, `page` from 1 and `limit` up to 100; `ingested_after` is the poll filter that does not return old jobs.\n  const jobs = [];\n  for (let page = 1; page <= (cfg.maxPages || 10); page++) {\n    const r = await call(http, sleep, { method: 'POST', url: trim(cfg.baseUrl) + '/v2/jobs/search', headers: { 'x-api-key': cfg.apiKey, 'Content-Type': 'application/json' },\n      body: { job_titles: cfg.titles, ingested_after: cfg.since, page, limit: cfg.pageSize || 100 } });\n    const rows = (r.body && r.body.jobs) || [];\n    jobs.push(...rows);\n    if (rows.length < (cfg.pageSize || 100)) break;\n  }\n  return { jobs };\n}\n\nasync function crustdata(cfg, http, sleep) {\n  // POST /job/search, Bearer auth and the x-api-version header, an opaque `cursor` answered as `next_cursor` (null at the end).\n  const job_listings = [];\n  let cursor;\n  for (let i = 0; i < (cfg.maxPages || 10); i++) {\n    const r = await call(http, sleep, { method: 'POST', url: trim(cfg.baseUrl) + '/job/search', headers: { Authorization: 'Bearer ' + cfg.apiKey, 'x-api-version': '2025-11-01' },\n      body: { filters: { field: 'metadata.date_added', type: '>=', value: cfg.since }, fields: ['crustdata_job_id', 'job_details.title', 'job_details.url', 'company.basic_info.name',\n        'location.raw', 'metadata.date_added'], sorts: [{ field: 'metadata.date_added', order: 'desc' }], limit: cfg.pageSize || 100, ...(cursor ? { cursor } : {}) } });\n    job_listings.push(...((r.body && r.body.job_listings) || []));\n    cursor = r.body && r.body.next_cursor;\n    if (!cursor) break;\n  }\n  return { job_listings };\n}\n\nasync function coresignal(cfg, http, sleep) {\n  // POST /cdapi/v2/job_multi_source/search/es_dsl answers job ids and the header x-next-page-after; GET .../collect/{id} answers each record. apikey header.\n  const out = [];\n  let after;\n  for (let i = 0; i < (cfg.maxPages || 5) && out.length < (cfg.maxJobs || 200); i++) {\n    const r = await call(http, sleep, { method: 'POST', url: trim(cfg.baseUrl) + '/cdapi/v2/job_multi_source/search/es_dsl', headers: { apikey: cfg.apiKey, accept: 'application/json' },\n      qs: after ? { after } : undefined, body: { query: { bool: { must: [{ match: { title: cfg.titles && cfg.titles[0] } }, { term: { application_active: 1 } }] } }, sort: ['id'] } });\n    const ids = Array.isArray(r.body) ? r.body : [];\n    for (const id of ids.slice(0, (cfg.maxJobs || 200) - out.length)) {\n      const rec = await call(http, sleep, { method: 'GET', url: trim(cfg.baseUrl) + '/cdapi/v2/job_multi_source/collect/' + id, headers: { apikey: cfg.apiKey, accept: 'application/json' } });\n      out.push(rec.body);\n    }\n    after = r.headers && r.headers['x-next-page-after'];\n    if (!after || ids.length === 0) break;\n  }\n  return out;\n}\n\nasync function jobdataapi(cfg, http, sleep) {\n  // GET /api/jobs/ with `Authorization: Api-Key`, `page_size` and `max_age` in days; the answer carries the full `next` address until the last page.\n  const results = [];\n  let url = trim(cfg.baseUrl) + '/api/jobs/';\n  let qs = { max_age: cfg.windowDays || 1, page_size: cfg.pageSize || 200, title: cfg.titles && cfg.titles[0] };\n  for (let i = 0; i < (cfg.maxPages || 10) && url; i++) {\n    const r = await call(http, sleep, { method: 'GET', url, headers: { Authorization: 'Api-Key ' + cfg.apiKey }, qs });\n    results.push(...((r.body && r.body.results) || []));\n    url = r.body && r.body.next;\n    qs = undefined;\n  }\n  return { results };\n}\n\nasync function linkdapi(cfg, http, sleep) {\n  // GET /api/v1/jobs/search with `keyword`, `start` stepping by 25, header X-linkdapi-apikey.\n  const jobs = [];\n  for (let start = 0, i = 0; i < (cfg.maxPages || 5); start += 25, i++) {\n    const r = await call(http, sleep, { method: 'GET', url: trim(cfg.baseUrl) + '/api/v1/jobs/search', headers: { 'X-linkdapi-apikey': cfg.apiKey },\n      qs: { keyword: cfg.titles && cfg.titles[0], timePosted: '24h', start } });\n    const rows = (r.body && r.body.data && r.body.data.jobs) || [];\n    jobs.push(...rows);\n    if (rows.length < 25) break;\n  }\n  return { data: { jobs } };\n}\n\nasync function techmap(cfg, http, sleep) {\n  // GET /api/v2/jobs/search on the RapidAPI host: headers X-RapidAPI-Key and X-RapidAPI-Host, query filters (title, countryCode, dateCreated), and for a complete stable\n  // paging `cursor=true` on the first request, then `cursor=<nextCursor>` until nextCursor is missing (the pagination page). `result` holds the postings.\n  const result = [];\n  let cursor = 'true';\n  for (let i = 0; i < (cfg.maxPages || 10) && cursor; i++) {\n    const r = await call(http, sleep, { method: 'GET', url: trim(cfg.baseUrl) + '/api/v2/jobs/search',\n      headers: { 'X-RapidAPI-Key': cfg.apiKey, 'X-RapidAPI-Host': cfg.host || 'daily-international-job-postings.p.rapidapi.com' },\n      qs: { title: cfg.titles && cfg.titles[0], dateCreated: cfg.dateCreated, countryCode: cfg.countryCode, workPlace: cfg.workPlace, cursor } });\n    result.push(...((r.body && r.body.result) || []));\n    cursor = r.body && r.body.nextCursor;\n  }\n  return { result };\n}\n\nasync function predictleads(cfg, http, sleep) {\n  // GET /api/v3/companies/{domain}/job_openings, headers X-Api-Key and X-Api-Token, JSON:API: `data`, `included`, `links.next`.\n  const data = [];\n  const included = [];\n  for (const domain of cfg.domains || []) {\n    let url = trim(cfg.baseUrl) + '/api/v3/companies/' + encodeURIComponent(domain) + '/job_openings';\n    let qs = { limit: cfg.pageSize || 100, with_job_title_only: true };\n    for (let i = 0; i < (cfg.maxPages || 5) && url; i++) {\n      const r = await call(http, sleep, { method: 'GET', url, headers: { 'X-Api-Key': cfg.apiKey, 'X-Api-Token': cfg.apiToken }, qs });\n      data.push(...((r.body && r.body.data) || []));\n      included.push(...((r.body && r.body.included) || []));\n      url = r.body && r.body.links && r.body.links.next;\n      qs = undefined;\n    }\n  }\n  return { data, included };\n}\n\nasync function brightdata(cfg, http, sleep) {\n  // Scraper API, asynchronous: POST /datasets/v3/trigger answers a snapshot_id, GET /datasets/v3/progress/{id} answers a status until it is `ready`\n  // (and a status of failed or canceled is an error), GET /datasets/v3/snapshot/{id}?format=json answers the records.\n  const auth = { Authorization: 'Bearer ' + cfg.apiKey };\n  const t = await call(http, sleep, { method: 'POST', url: trim(cfg.baseUrl) + '/datasets/v3/trigger', headers: auth,\n    qs: { dataset_id: cfg.datasetId || 'gd_lpfll7v5hcqtkxl6l', include_errors: 'true', type: 'discover_new', discover_by: 'keyword' },\n    body: { input: [{ keyword: cfg.titles && cfg.titles[0], location: cfg.location || 'Remote', time_range: 'Past 24 hours' }] } });\n  const id = t.body && t.body.snapshot_id;\n  if (!id) throw new Error('Bright Data answered no snapshot_id');\n  for (let i = 0; i < (cfg.maxPolls || 40); i++) {\n    const p = await call(http, sleep, { method: 'GET', url: trim(cfg.baseUrl) + '/datasets/v3/progress/' + id, headers: auth });\n    const status = p.body && p.body.status;\n    if (status === 'ready') {\n      const s = await call(http, sleep, { method: 'GET', url: trim(cfg.baseUrl) + '/datasets/v3/snapshot/' + id, headers: auth, qs: { format: 'json' } });\n      return Array.isArray(s.body) ? s.body : [];\n    }\n    if (status === 'failed' || status === 'canceled') throw new Error('Bright Data snapshot ' + id + ' ' + status);\n    await sleep(cfg.pollMs || 1000);\n  }\n  throw new Error('Bright Data snapshot ' + id + ' was not ready in time');\n}\n\nasync function apify(cfg, http, sleep) {\n  // POST /v2/acts/{actorId}/run-sync-get-dataset-items runs the actor and answers its dataset items in one call (Bearer auth). The input is the actor's own.\n  const r = await call(http, sleep, { method: 'POST', url: trim(cfg.baseUrl) + '/v2/acts/' + encodeURIComponent(cfg.actorId) + '/run-sync-get-dataset-items',\n    headers: { Authorization: 'Bearer ' + cfg.apiKey }, body: cfg.actorInput || { queries: cfg.titles, maxItems: cfg.pageSize || 100 } });\n  return Array.isArray(r.body) ? r.body : [];\n}\n\nconst PULLERS = { theirstack, hirebase, crustdata, coresignal, jobdataapi, linkdapi, predictleads, techmap, brightdata, apify };\n\nasync function pullVendor(vendor, cfg, http, sleep) {\n  if (!PULLERS[vendor]) throw new Error('no pull is written for ' + vendor + ' (a delivery vendor pushes to a webhook instead)');\n  const body = await PULLERS[vendor](cfg, http, sleep || ((ms) => new Promise((r) => setTimeout(r, ms))));\n  return body;\n}\n\n\n\nconst http = async (o) => {\n  const res = await this.helpers.httpRequest({ method: o.method || 'GET', url: o.url, headers: o.headers, qs: o.qs, body: o.body, json: true,\n    returnFullResponse: true, ignoreHttpStatusErrors: true });\n  const headers = {};\n  for (const [k, v] of Object.entries(res.headers || {})) headers[k.toLowerCase()] = Array.isArray(v) ? v[0] : v;\n  return { status: res.statusCode, headers, body: res.body };\n};\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst hour = new Date().toISOString().slice(0, 13).replace(/[-T:]/g, '');\nconst out = [];\nfor (const item of $input.all()) {\n  const { vendor, cfg } = item.json;\n  try {\n    const body = await pullVendor(vendor, cfg, http, sleep);\n    const n = normalizeBatch(vendor, body);\n    out.push({ json: { vendor, batch_id: vendor + '-' + hour, raw: body, jobs: n.jobs, invalid: n.invalid + (n.received - n.jobs.length - n.invalid), received: n.received } });\n  } catch (e) {\n    out.push({ json: { vendor, error: String(e.message || e) } });\n  }\n}\nreturn out;\n"
+      },
+      "id": "070e3b1a-5c7d-4e2f-9a10-00006a6f6276",
+      "name": "Pull and normalise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-pull-failed",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "080e3b1a-5c7d-4e2f-9a10-00006a6f6277",
+      "name": "Pull failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        820,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.hub_url }}/api/jobs/ingest/{{ $json.vendor }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Settings').first().json.hub_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ batch_id: $json.batch_id, raw: $json.raw, jobs: $json.jobs, invalid: $json.invalid, trigger: 'schedule' }) }}"
+      },
+      "id": "090e3b1a-5c7d-4e2f-9a10-00006a6f6278",
+      "name": "Send the batch to the hub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        160
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-vendor",
+              "name": "vendor",
+              "type": "string",
+              "value": "={{ $('Pull failed?').item.json.vendor }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "ingested"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'new ' + $json.new_jobs + ', duplicates ' + $json.duplicates + ', embedded ' + $json.embedded + ', status ' + $json.status + ($json.replayed ? ', replay' : '') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "100e3b1a-5c7d-4e2f-9a10-00006a6f6279",
+      "name": "Result: ingested",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1340,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-vendor",
+              "name": "vendor",
+              "type": "string",
+              "value": "={{ $('Pull failed?').item.json.vendor }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "failed"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'the hub refused the batch: ' + JSON.stringify($json.error || $json).slice(0, 200) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "110e3b1a-5c7d-4e2f-9a10-00006a6f627a",
+      "name": "Result: hub refused",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1340,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-vendor",
+              "name": "vendor",
+              "type": "string",
+              "value": "={{ $json.vendor }}"
+            },
+            {
+              "id": "a-status",
+              "name": "status",
+              "type": "string",
+              "value": "failed"
+            },
+            {
+              "id": "a-detail",
+              "name": "detail",
+              "type": "string",
+              "value": "={{ 'the pull failed: ' + $json.error }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "120e3b1a-5c7d-4e2f-9a10-00006a6f627b",
+      "name": "Result: pull failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1080,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "130e3b1a-5c7d-4e2f-9a10-00006a6f627c",
+      "name": "All results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1600,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "results",
+        "options": {}
+      },
+      "id": "140e3b1a-5c7d-4e2f-9a10-00006a6f627d",
+      "name": "Summary",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-any-failed",
+              "leftValue": "={{ $json.results.filter(r => r.status === 'failed').length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "150e3b1a-5c7d-4e2f-9a10-00006a6f627e",
+      "name": "Any failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ 'Job ingest: ' + $json.results.filter(r => r.status === 'failed').map(r => r.vendor + ' (' + r.detail + ')').join('; ') }}"
+      },
+      "id": "160e3b1a-5c7d-4e2f-9a10-00006a6f627f",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-summary",
+              "name": "summary",
+              "type": "string",
+              "value": "={{ $json.results.map(r => r.vendor + ': ' + r.detail).join(' | ') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "170e3b1a-5c7d-4e2f-9a10-00006a6f6280",
+      "name": "All done",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jobs-push/brightdata",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "180e3b1a-5c7d-4e2f-9a10-00006a6f6281",
+      "name": "Webhook: brightdata",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        520
+      ],
+      "webhookId": "job-push-brightdata"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-vendor",
+              "name": "vendor",
+              "type": "string",
+              "value": "brightdata"
+            },
+            {
+              "id": "a-body",
+              "name": "body",
+              "type": "array",
+              "value": "={{ $json.body }}"
+            },
+            {
+              "id": "a-headers",
+              "name": "headers",
+              "type": "object",
+              "value": "={{ $json.headers }}"
+            },
+            {
+              "id": "a-map",
+              "name": "map",
+              "type": "object",
+              "value": "={{ {} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "190e3b1a-5c7d-4e2f-9a10-00006a6f6282",
+      "name": "Delivery: brightdata",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Inlined from n8n/jobs/normalize.js by build_job_workflow.py.\n// LIFESPAN: permanent\n// Job normalisation and ATS detection for the job pipeline. One pure file, two homes: the n8n Code node in\n// job_pipeline.workflow.json carries a copy of it (build_job_workflow.py inlines this file, so they cannot drift), and\n// `node --test n8n/jobs/normalize.test.js` runs it on its own. It does no I/O and takes no clock, so the same record\n// gives the same answer on every run.\n//\n// Field names come from each vendor's own documentation page (docs/job-vendors.md names the page for each). Where a\n// vendor's output depends on the scraper or actor behind it (Apify, Bright Data's other datasets) the mapper reads a\n// list of documented aliases, and a record it cannot read a title or a link from is returned with `valid: false`\n// instead of being guessed at.\n\nconst ATS_URL_RULES = [\n  ['greenhouse', /(?:boards|job-boards|boards-api)\\.(?:eu\\.)?greenhouse\\.io\\/(?:v1\\/boards\\/)?([^/?#]+)\\/jobs\\/(\\d+)/i],\n  ['greenhouse', /[?&]gh_jid=(\\d+)/i],\n  ['lever', /jobs\\.(?:eu\\.)?lever\\.co\\/([^/?#]+)\\/([0-9a-f-]{36})/i],\n  ['workday', /([a-z0-9-]+)\\.wd\\d+\\.myworkday(?:jobs|site)\\.com\\/(?:[a-z]{2}-[A-Z]{2}\\/)?[^?#]*?_((?:JR|R|REQ)[-_]?\\d+[A-Za-z0-9-]*)/i],\n  ['workday', /([a-z0-9-]+)\\.wd\\d+\\.myworkday(?:jobs|site)\\.com\\//i],\n  ['ashby', /jobs\\.ashbyhq\\.com\\/([^/?#]+)\\/([0-9a-f-]{36})/i],\n  ['smartrecruiters', /(?:jobs|careers)\\.smartrecruiters\\.com\\/([^/?#]+)\\/(\\d+)/i],\n  ['workable', /apply\\.workable\\.com\\/([^/?#]+)\\/j\\/([A-Z0-9]+)/i],\n  ['icims', /([a-z0-9-]+)\\.icims\\.com\\/jobs\\/(\\d+)/i],\n  ['bamboohr', /([a-z0-9-]+)\\.bamboohr\\.com\\/(?:careers|jobs\\/view\\.php\\?id=)\\/?(\\d+)/i],\n  ['jobvite', /jobs\\.jobvite\\.com\\/([^/?#]+)\\/job\\/([A-Za-z0-9]+)/i],\n  ['taleo', /([a-z0-9-]+)\\.taleo\\.net\\/.*?[?&]job=([A-Za-z0-9]+)/i],\n  ['recruitee', /([a-z0-9-]+)\\.recruitee\\.com\\/o\\/([a-z0-9-]+)/i],\n  ['teamtailor', /([a-z0-9-]+)\\.teamtailor\\.com\\/jobs\\/(\\d+)/i],\n  ['breezy', /([a-z0-9-]+)\\.breezy\\.hr\\/p\\/([0-9a-f]+)/i],\n  ['personio', /([a-z0-9-]+)\\.jobs\\.personio\\.(?:de|com)\\/job\\/(\\d+)/i],\n  ['successfactors', /career\\d*\\.successfactors\\.(?:com|eu)\\/.*?[?&]jobId=(\\d+)/i],\n  ['oracle_cloud', /([a-z0-9-]+)\\.fa\\.[a-z0-9-]+\\.oraclecloud\\.com\\/hcmUI\\/CandidateExperience\\/[^/]+\\/sites\\/[^/]+\\/job\\/(\\d+)/i],\n];\n\n// What a rendered application page gives away when the link itself does not (a company's own careers page that embeds the form).\nconst ATS_HTML_MARKERS = [\n  ['greenhouse', /id=[\"']grnhse_app[\"']|boards\\.greenhouse\\.io\\/embed|job-boards\\.greenhouse\\.io/i],\n  ['lever', /lever-jobs-embed|jobs\\.lever\\.co|class=[\"'][^\"']*lever-application/i],\n  ['workday', /myworkdayjobs\\.com|data-automation-id=[\"']jobPostingPage[\"']|wd-application/i],\n  ['ashby', /ashbyhq\\.com|ashby_embed|data-ashby/i],\n  ['smartrecruiters', /smartrecruiters\\.com|data-qa=[\"']sr-/i],\n  ['workable', /workable\\.com|data-ui=[\"']application-form[\"']/i],\n  ['icims', /icims\\.com|iCIMS_/i],\n  ['bamboohr', /bamboohr\\.com\\/careers|BambooHR/i],\n];\n\nfunction detectAts(url, html) {\n  const out = { ats: null, org: null, ats_job_id: null, via: null };\n  const u = typeof url === 'string' ? url : '';\n  for (const [name, re] of ATS_URL_RULES) {\n    const m = u.match(re);\n    if (m) {\n      out.ats = name;\n      out.via = 'url';\n      // a rule with two groups is (organisation, job id); a one group rule is the job id (gh_jid) or the organisation (workday)\n      if (m.length >= 3) { out.org = m[1]; out.ats_job_id = m[2]; }\n      else if (re.source.includes('gh_jid')) out.ats_job_id = m[1];\n      else out.org = m[1];\n      return out;\n    }\n  }\n  if (typeof html === 'string' && html) {\n    for (const [name, re] of ATS_HTML_MARKERS) {\n      if (re.test(html)) { out.ats = name; out.via = 'page'; return out; }\n    }\n  }\n  return out;\n}\n\nconst first = (...vals) => { for (const v of vals) if (v !== undefined && v !== null && v !== '') return v; return null; };\nconst text = (v) => ((v === null || v === undefined) ? null : (String(v).replace(/\\s+/g, ' ').trim() || null));\nconst num = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/[^0-9.\\-]/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\nconst iso = (v) => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };\n// An address is split with a pattern, never with `new URL`: n8n's Code node runs in a sandbox where URL is not defined, a try/catch around it made that a silent null,\n// and the dedupe keys of the same job from two vendors stopped matching only inside n8n (found by the n8n run, 32 keys for 30 jobs).\nconst splitUrl = (v) => {\n  const m = typeof v === 'string' ? v.trim().match(/^(?:https?:)?\\/\\/([^\\/?#:]+)(?::\\d+)?([^?#]*)/i) : null;\n  return m ? { host: m[1].replace(/^www\\./i, '').toLowerCase(), path: m[2] || '' } : null;\n};\nconst domainOf = (v) => {\n  if (!v) return null;\n  const u = splitUrl(/^(https?:)?\\/\\//i.test(v) ? v : 'https://' + v);\n  return u ? u.host : null;\n};\nconst BOARDS = /(^|\\.)(linkedin|indeed|glassdoor|ziprecruiter|monster|dice|wellfound|simplyhired|jooble|adzuna|careerbuilder|talent|jobstreet|seek|bayt|naukri|google)\\.[a-z.]+$/i;\n// host and path of an address, lower case, no www, no trailing slash, no query or fragment; null for a job board, which does not identify the employer's own posting\nconst ownAddress = (v) => {\n  const u = splitUrl(v);\n  if (!u || BOARDS.test(u.host)) return null;\n  return u.host + u.path.replace(/\\/+$/, '').toLowerCase();\n};\nconst stripHtml =(s) => text(typeof s === 'string' ? s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&') : s);\n\n// The shape every vendor is mapped onto. `dedupe_key` is the part the hub hashes: the ATS's own id when there is one (so the same\n// job from two vendors lands on one key), otherwise a stable company, a title with the noise taken out, and a place.\nfunction canonical(vendor, id, f) {\n  let ats = detectAts(first(f.apply_url, f.url));\n  if (!ats.ats) ats = detectAts(f.url);\n  const title = text(f.title);\n  const company = text(f.company_name);\n  const companyDomain = f.company_domain ? domainOf(f.company_domain) : null;\n  const location = text(f.location);\n  const norm = (s) => (s || '').toLowerCase().replace(/\\(.*?\\)|\\[.*?\\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();\n  // the company NAME, not the domain: every vendor sends a name, but only some send a site, and a key that used the site when it was there would split one job in two\n  const who = norm(company).replace(/ (inc|llc|ltd|limited|corp|corporation|co|gmbh|plc|the)$/g, '').trim() || companyDomain || '';\n  const applyUrl = first(f.apply_url, f.url);\n  // Key by, in order: the ATS's own job id; the employer's own posting address (vendors disagree on how to write a place, never on where the posting lives);\n  // and last the company, the title and the place. A job board or aggregator address says nothing about the employer's posting, so it is skipped.\n  const own = ownAddress(applyUrl);\n  const keyParts = ats.ats_job_id ? [ats.ats, ats.org || who, ats.ats_job_id] : (own ? ['url', who, own] : [who, norm(title), norm(location)]);\n  return {\n    vendor,\n    vendor_job_id: id === null || id === undefined ? null : String(id),\n    title,\n    company_name: company,\n    company_domain: companyDomain,\n    location,\n    remote: f.remote === undefined ? null : f.remote,\n    url: text(f.url),\n    apply_url: text(applyUrl),\n    ats: ats.ats,\n    ats_org: ats.org,\n    ats_job_id: ats.ats_job_id,\n    posted_at: iso(f.posted_at),\n    description: stripHtml(f.description),\n    salary_min: num(f.salary_min),\n    salary_max: num(f.salary_max),\n    salary_currency: text(f.salary_currency),\n    salary_period: text(f.salary_period),\n    employment_type: text(Array.isArray(f.employment_type) ? f.employment_type[0] : f.employment_type),\n    technologies: Array.isArray(f.technologies) ? f.technologies.map(String).slice(0, 40) : [],\n    dedupe_key: keyParts.join('|'),\n    valid: Boolean(title && (applyUrl || company)),\n  };\n}\n\nconst path = (o, p) => p.split('.').reduce((a, k) => (a === null || a === undefined ? undefined : a[k]), o);\n\nconst MAPPERS = {\n  // POST /v1/jobs/search, TheirStack. `final_url` is the ATS link when TheirStack found one, `url` the board it saw it on.\n  theirstack: (r) => canonical('theirstack', r.id, {\n    title: r.job_title, company_name: r.company, company_domain: first(r.company_domain, path(r, 'company_object.domain')),\n    location: first(r.location, r.short_location), remote: r.remote, url: first(r.url, r.source_url), apply_url: r.final_url,\n    posted_at: r.date_posted, description: r.description, salary_min: r.min_annual_salary_usd, salary_max: r.max_annual_salary_usd,\n    salary_currency: r.salary_currency, salary_period: 'year', employment_type: r.employment_statuses, technologies: r.technology_slugs,\n  }),\n  // POST /v2/jobs/search, Hirebase (x-api-key). `application_link` is the employer's own page.\n  hirebase: (r) => canonical('hirebase', first(r._id, r.platform_job_id), {\n    title: r.job_title, company_name: r.company_name, company_domain: null, location: r.location_raw,\n    remote: r.location_type ? /remote/i.test(r.location_type) : null, url: first(r.job_board_link, r.application_link), apply_url: r.application_link,\n    posted_at: first(r.date_posted, r.first_ingested), description: r.description,\n    salary_min: path(r, 'salary_range.min'), salary_max: path(r, 'salary_range.max'),\n    salary_currency: path(r, 'salary_range.currency'), salary_period: path(r, 'salary_range.period'),\n    employment_type: r.job_type, technologies: r.technologies,\n  }),\n  // POST /job/search, Crustdata (fields chosen with `fields`, so the dotted paths are the request's own).\n  crustdata: (r) => canonical('crustdata', r.crustdata_job_id, {\n    title: path(r, 'job_details.title'), company_name: path(r, 'company.basic_info.name'),\n    company_domain: path(r, 'company.basic_info.primary_domain'),\n    location: path(r, 'location.raw'), url: path(r, 'job_details.url'),\n    remote: path(r, 'job_details.workplace_type') ? /remote/i.test(path(r, 'job_details.workplace_type')) : null,\n    posted_at: path(r, 'metadata.date_added'), description: path(r, 'job_details.description'),\n  }),\n  // POST /cdapi/v2/job_multi_source/search/es_dsl gives ids; GET .../collect/{id} gives this record. `job_sources[].url` are the boards.\n  coresignal: (r) => canonical('coresignal', first(r.job_id, r.id), {\n    title: r.title, company_name: r.company_name, company_domain: first(r.company_domain, r.company_url), location: r.location,\n    remote: typeof r.accepts_remote === 'boolean' ? r.accepts_remote : null,\n    url: first(r.external_url, path(r, 'job_sources.0.url')), apply_url: r.external_url,\n    posted_at: first(r.date_posted, r.created_at), description: r.description,\n    salary_min: path(r, 'salary.0.amount_min'), salary_max: path(r, 'salary.0.amount_max'),\n    salary_currency: path(r, 'salary.0.currency'), employment_type: r.employment_type,\n  }),\n  // GET /api/v1/jobs/search then /api/v1/jobs/job/details, LinkdAPI (X-linkdapi-apikey).\n  linkdapi: (r) => canonical('linkdapi', first(r.jobId, r.id), {\n    title: r.title, company_name: path(r, 'company.name'), company_domain: null, location: r.location,\n    url: first(r.url, r.jobId ? 'https://www.linkedin.com/jobs/view/' + r.jobId : null), apply_url: r.applyUrl,\n    posted_at: r.postedAt, description: r.description,\n  }),\n  // Scraper API dataset gd_lpfll7v5hcqtkxl6l (LinkedIn job listings), output fields from the scraper's own schema page.\n  brightdata: (r) => canonical('brightdata', first(r.job_posting_id, r.url), {\n    title: r.job_title, company_name: r.company_name, location: r.job_location, url: r.url, apply_url: r.apply_link,\n    posted_at: first(r.job_posted_date, r.job_posted_time), description: first(r.job_summary, r.job_description_formatted),\n    salary_min: path(r, 'base_salary.min_amount'), salary_max: path(r, 'base_salary.max_amount'),\n    salary_currency: path(r, 'base_salary.currency'), salary_period: path(r, 'base_salary.payment_period'),\n    employment_type: r.job_employment_type,\n  }),\n  // Apify actors: the dataset items belong to the actor, so the mapper reads the names the common job actors use.\n  apify: (r) => canonical('apify', first(r.id, r.jobId, r.url, r.link), {\n    title: first(r.title, r.positionName, r.jobTitle, r.name), company_name: first(r.companyName, r.company, r.employer),\n    company_domain: first(r.companyWebsite, r.companyUrl), location: first(r.location, r.jobLocation),\n    url: first(r.url, r.jobUrl, r.link), apply_url: first(r.applyUrl, r.externalApplyLink, r.applyLink),\n    posted_at: first(r.postedAt, r.datePosted, r.postingDate, r.publishedAt), description: first(r.description, r.descriptionText, r.jobDescription),\n    salary_min: r.salaryMin, salary_max: r.salaryMax, salary_currency: r.salaryCurrency, employment_type: first(r.employmentType, r.jobType),\n  }),\n  // GET /api/v2/jobs/search, Techmap (through RapidAPI): `result` array; the posting also rides in `jsonLD` (schema.org JobPosting) with the full description.\n  techmap: (r) => canonical('techmap', first(path(r, 'jsonLD.identifier'), r.id), {\n    title: first(r.title, r.occupation), company_name: r.company, location: [r.city, r.countryCode && String(r.countryCode).toUpperCase()].filter(Boolean).join(', '),\n    remote: Array.isArray(r.workPlace) ? r.workPlace.some((w) => /remote/i.test(w)) : null, url: first(path(r, 'jsonLD.sameAs'), path(r, 'jsonLD.url')),\n    apply_url: first(r.externalApplyUrl, path(r, 'jsonLD.url')), posted_at: first(r.dateCreated, path(r, 'jsonLD.datePosted')), description: path(r, 'jsonLD.description'),\n    salary_min: r.minSalary, salary_max: r.maxSalary, salary_currency: path(r, 'jsonLD.salaryCurrency'), employment_type: first(r.workType, r.contractType), technologies: r.skills,\n  }),\n  // GET /api/jobs/, JobDataAPI (Authorization: Api-Key). `published` is a date, `application_url` the employer's link.\n  jobdataapi: (r) => canonical('jobdataapi', first(r.id, r.ext_id), {\n    title: r.title, company_name: path(r, 'company.name'), company_domain: path(r, 'company.website_url'), location: r.location,\n    remote: r.has_remote, url: r.application_url, apply_url: r.application_url, posted_at: r.published, description: r.description,\n    salary_min: r.salary_min, salary_max: r.salary_max, salary_currency: r.salary_currency, employment_type: r.types,\n  }),\n  // GET /api/v3/companies/{domain}/job_openings, PredictLeads (JSON:API: `data[].attributes`, `included` holds the company).\n  predictleads: (r, included) => {\n    const a = r.attributes || {};\n    const rel = path(r, 'relationships.company.data');\n    const co = rel && (included || []).find((i) => i.type === 'company' && i.id === rel.id);\n    return canonical('predictleads', r.id, {\n      title: a.title, company_name: co && path(co, 'attributes.company_name'), company_domain: co && path(co, 'attributes.domain'),\n      location: a.location, url: a.url, apply_url: a.url, posted_at: first(a.posted_at, a.first_seen_at), description: a.description,\n      salary_min: path(a, 'salary_data.salary_low'), salary_max: path(a, 'salary_data.salary_high'),\n      salary_currency: path(a, 'salary_data.salary_currency'), salary_period: path(a, 'salary_data.salary_time_unit'),\n      employment_type: a.contract_types,\n    });\n  },\n};\n\n// Files and webhooks from a delivery vendor (Grepsr runs, Techmap data feed files): the column names are the customer's own, so the\n// mapping is data. `map` is {canonicalField: sourceField}; a missing entry falls back to the common names.\nfunction mapDelivered(vendor, r, map) {\n  const m = map || {};\n  const get = (k, ...alts) => first(...[m[k], ...alts].filter(Boolean).map((n) => r[n]));\n  return canonical(vendor, get('id', 'id', 'job_id', 'url'), {\n    title: get('title', 'title', 'job_title', 'position'), company_name: get('company_name', 'company', 'company_name', 'employer'),\n    company_domain: get('company_domain', 'company_domain', 'company_website'), location: get('location', 'location', 'job_location'),\n    url: get('url', 'url', 'link', 'job_url'), apply_url: get('apply_url', 'apply_url', 'apply_link'),\n    posted_at: get('posted_at', 'posted_at', 'date_posted', 'published'),\n    description: get('description', 'description', 'job_description'), salary_min: get('salary_min', 'salary_min'), salary_max: get('salary_max', 'salary_max'),\n    salary_currency: get('salary_currency', 'salary_currency', 'currency'), employment_type: get('employment_type', 'employment_type', 'job_type'),\n  });\n}\n\n// Pull the list of records out of each vendor's response envelope.\nconst ENVELOPES = {\n  theirstack: (b) => b.data || [],\n  hirebase: (b) => b.jobs || [],\n  crustdata: (b) => b.job_listings || [],\n  coresignal: (b) => (Array.isArray(b) ? b : [b]),\n  linkdapi: (b) => (b.data && b.data.jobs) || [],\n  brightdata: (b) => (Array.isArray(b) ? b : []),\n  apify: (b) => (Array.isArray(b) ? b : []),\n  jobdataapi: (b) => b.results || [],\n  techmap: (b) => b.result || [],\n  predictleads: (b) => b.data || [],\n};\n\nfunction normalizeBatch(vendor, body, opts) {\n  const o = opts || {};\n  let records;\n  if (ENVELOPES[vendor]) records = ENVELOPES[vendor](body || {});\n  else records = Array.isArray(body) ? body : ((body && body.items) || []);\n  const jobs = records.map((rec) => {\n    if (MAPPERS[vendor]) return MAPPERS[vendor](rec, body && body.included);\n    return mapDelivered(vendor, rec, o.map);\n  });\n  return { vendor, received: records.length, jobs: jobs.filter((j) => j.valid), invalid: jobs.filter((j) => !j.valid).length };\n}\n\n\n\nconst input = $input.first().json;\nconst vendor = input.vendor;\nlet payload = input.body;\nif (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (e) { payload = []; } }\nif (!Array.isArray(payload) && payload && Array.isArray(payload.items)) payload = payload.items;\nconst map = input.map || undefined;\nconst n = normalizeBatch(vendor, payload, { map });\nconst batch = (input.headers && (input.headers['dca-collection-id'] || input.headers['x-batch-id'])) || (vendor + '-push-' + new Date().toISOString().slice(0, 16).replace(/[-T:]/g, ''));\nreturn [{ json: { vendor, batch_id: String(batch), raw: payload, jobs: n.jobs, invalid: n.invalid, received: n.received } }];\n"
+      },
+      "id": "200e3b1a-5c7d-4e2f-9a10-00006a6f6283",
+      "name": "Normalise: brightdata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.HUB_BASE_URL || '').replace(/\\/+$/, '') }}/api/jobs/ingest/{{ $json.vendor }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.HUB_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ batch_id: $json.batch_id, raw: $json.raw, jobs: $json.jobs, invalid: $json.invalid, trigger: 'webhook' }) }}"
+      },
+      "id": "210e3b1a-5c7d-4e2f-9a10-00006a6f6284",
+      "name": "Ingest: brightdata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        520
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jobs-push/grepsr",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "220e3b1a-5c7d-4e2f-9a10-00006a6f6285",
+      "name": "Webhook: grepsr",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        780
+      ],
+      "webhookId": "job-push-grepsr"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-vendor",
+              "name": "vendor",
+              "type": "string",
+              "value": "grepsr"
+            },
+            {
+              "id": "a-body",
+              "name": "body",
+              "type": "object",
+              "value": "={{ $json.body }}"
+            },
+            {
+              "id": "a-headers",
+              "name": "headers",
+              "type": "object",
+              "value": "={{ $json.headers }}"
+            },
+            {
+              "id": "a-map",
+              "name": "map",
+              "type": "object",
+              "value": "={{ $env.GREPSR_MAP_JSON ? JSON.parse($env.GREPSR_MAP_JSON) : {} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "230e3b1a-5c7d-4e2f-9a10-00006a6f6286",
+      "name": "Delivery: grepsr",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Inlined from n8n/jobs/normalize.js by build_job_workflow.py.\n// LIFESPAN: permanent\n// Job normalisation and ATS detection for the job pipeline. One pure file, two homes: the n8n Code node in\n// job_pipeline.workflow.json carries a copy of it (build_job_workflow.py inlines this file, so they cannot drift), and\n// `node --test n8n/jobs/normalize.test.js` runs it on its own. It does no I/O and takes no clock, so the same record\n// gives the same answer on every run.\n//\n// Field names come from each vendor's own documentation page (docs/job-vendors.md names the page for each). Where a\n// vendor's output depends on the scraper or actor behind it (Apify, Bright Data's other datasets) the mapper reads a\n// list of documented aliases, and a record it cannot read a title or a link from is returned with `valid: false`\n// instead of being guessed at.\n\nconst ATS_URL_RULES = [\n  ['greenhouse', /(?:boards|job-boards|boards-api)\\.(?:eu\\.)?greenhouse\\.io\\/(?:v1\\/boards\\/)?([^/?#]+)\\/jobs\\/(\\d+)/i],\n  ['greenhouse', /[?&]gh_jid=(\\d+)/i],\n  ['lever', /jobs\\.(?:eu\\.)?lever\\.co\\/([^/?#]+)\\/([0-9a-f-]{36})/i],\n  ['workday', /([a-z0-9-]+)\\.wd\\d+\\.myworkday(?:jobs|site)\\.com\\/(?:[a-z]{2}-[A-Z]{2}\\/)?[^?#]*?_((?:JR|R|REQ)[-_]?\\d+[A-Za-z0-9-]*)/i],\n  ['workday', /([a-z0-9-]+)\\.wd\\d+\\.myworkday(?:jobs|site)\\.com\\//i],\n  ['ashby', /jobs\\.ashbyhq\\.com\\/([^/?#]+)\\/([0-9a-f-]{36})/i],\n  ['smartrecruiters', /(?:jobs|careers)\\.smartrecruiters\\.com\\/([^/?#]+)\\/(\\d+)/i],\n  ['workable', /apply\\.workable\\.com\\/([^/?#]+)\\/j\\/([A-Z0-9]+)/i],\n  ['icims', /([a-z0-9-]+)\\.icims\\.com\\/jobs\\/(\\d+)/i],\n  ['bamboohr', /([a-z0-9-]+)\\.bamboohr\\.com\\/(?:careers|jobs\\/view\\.php\\?id=)\\/?(\\d+)/i],\n  ['jobvite', /jobs\\.jobvite\\.com\\/([^/?#]+)\\/job\\/([A-Za-z0-9]+)/i],\n  ['taleo', /([a-z0-9-]+)\\.taleo\\.net\\/.*?[?&]job=([A-Za-z0-9]+)/i],\n  ['recruitee', /([a-z0-9-]+)\\.recruitee\\.com\\/o\\/([a-z0-9-]+)/i],\n  ['teamtailor', /([a-z0-9-]+)\\.teamtailor\\.com\\/jobs\\/(\\d+)/i],\n  ['breezy', /([a-z0-9-]+)\\.breezy\\.hr\\/p\\/([0-9a-f]+)/i],\n  ['personio', /([a-z0-9-]+)\\.jobs\\.personio\\.(?:de|com)\\/job\\/(\\d+)/i],\n  ['successfactors', /career\\d*\\.successfactors\\.(?:com|eu)\\/.*?[?&]jobId=(\\d+)/i],\n  ['oracle_cloud', /([a-z0-9-]+)\\.fa\\.[a-z0-9-]+\\.oraclecloud\\.com\\/hcmUI\\/CandidateExperience\\/[^/]+\\/sites\\/[^/]+\\/job\\/(\\d+)/i],\n];\n\n// What a rendered application page gives away when the link itself does not (a company's own careers page that embeds the form).\nconst ATS_HTML_MARKERS = [\n  ['greenhouse', /id=[\"']grnhse_app[\"']|boards\\.greenhouse\\.io\\/embed|job-boards\\.greenhouse\\.io/i],\n  ['lever', /lever-jobs-embed|jobs\\.lever\\.co|class=[\"'][^\"']*lever-application/i],\n  ['workday', /myworkdayjobs\\.com|data-automation-id=[\"']jobPostingPage[\"']|wd-application/i],\n  ['ashby', /ashbyhq\\.com|ashby_embed|data-ashby/i],\n  ['smartrecruiters', /smartrecruiters\\.com|data-qa=[\"']sr-/i],\n  ['workable', /workable\\.com|data-ui=[\"']application-form[\"']/i],\n  ['icims', /icims\\.com|iCIMS_/i],\n  ['bamboohr', /bamboohr\\.com\\/careers|BambooHR/i],\n];\n\nfunction detectAts(url, html) {\n  const out = { ats: null, org: null, ats_job_id: null, via: null };\n  const u = typeof url === 'string' ? url : '';\n  for (const [name, re] of ATS_URL_RULES) {\n    const m = u.match(re);\n    if (m) {\n      out.ats = name;\n      out.via = 'url';\n      // a rule with two groups is (organisation, job id); a one group rule is the job id (gh_jid) or the organisation (workday)\n      if (m.length >= 3) { out.org = m[1]; out.ats_job_id = m[2]; }\n      else if (re.source.includes('gh_jid')) out.ats_job_id = m[1];\n      else out.org = m[1];\n      return out;\n    }\n  }\n  if (typeof html === 'string' && html) {\n    for (const [name, re] of ATS_HTML_MARKERS) {\n      if (re.test(html)) { out.ats = name; out.via = 'page'; return out; }\n    }\n  }\n  return out;\n}\n\nconst first = (...vals) => { for (const v of vals) if (v !== undefined && v !== null && v !== '') return v; return null; };\nconst text = (v) => ((v === null || v === undefined) ? null : (String(v).replace(/\\s+/g, ' ').trim() || null));\nconst num = (v) => {\n  if (v === null || v === undefined || v === '') return null;\n  const n = Number(String(v).replace(/[^0-9.\\-]/g, ''));\n  return Number.isFinite(n) ? n : null;\n};\nconst iso = (v) => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };\n// An address is split with a pattern, never with `new URL`: n8n's Code node runs in a sandbox where URL is not defined, a try/catch around it made that a silent null,\n// and the dedupe keys of the same job from two vendors stopped matching only inside n8n (found by the n8n run, 32 keys for 30 jobs).\nconst splitUrl = (v) => {\n  const m = typeof v === 'string' ? v.trim().match(/^(?:https?:)?\\/\\/([^\\/?#:]+)(?::\\d+)?([^?#]*)/i) : null;\n  return m ? { host: m[1].replace(/^www\\./i, '').toLowerCase(), path: m[2] || '' } : null;\n};\nconst domainOf = (v) => {\n  if (!v) return null;\n  const u = splitUrl(/^(https?:)?\\/\\//i.test(v) ? v : 'https://' + v);\n  return u ? u.host : null;\n};\nconst BOARDS = /(^|\\.)(linkedin|indeed|glassdoor|ziprecruiter|monster|dice|wellfound|simplyhired|jooble|adzuna|careerbuilder|talent|jobstreet|seek|bayt|naukri|google)\\.[a-z.]+$/i;\n// host and path of an address, lower case, no www, no trailing slash, no query or fragment; null for a job board, which does not identify the employer's own posting\nconst ownAddress = (v) => {\n  const u = splitUrl(v);\n  if (!u || BOARDS.test(u.host)) return null;\n  return u.host + u.path.replace(/\\/+$/, '').toLowerCase();\n};\nconst stripHtml =(s) => text(typeof s === 'string' ? s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&') : s);\n\n// The shape every vendor is mapped onto. `dedupe_key` is the part the hub hashes: the ATS's own id when there is one (so the same\n// job from two vendors lands on one key), otherwise a stable company, a title with the noise taken out, and a place.\nfunction canonical(vendor, id, f) {\n  let ats = detectAts(first(f.apply_url, f.url));\n  if (!ats.ats) ats = detectAts(f.url);\n  const title = text(f.title);\n  const company = text(f.company_name);\n  const companyDomain = f.company_domain ? domainOf(f.company_domain) : null;\n  const location = text(f.location);\n  const norm = (s) => (s || '').toLowerCase().replace(/\\(.*?\\)|\\[.*?\\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();\n  // the company NAME, not the domain: every vendor sends a name, but only some send a site, and a key that used the site when it was there would split one job in two\n  const who = norm(company).replace(/ (inc|llc|ltd|limited|corp|corporation|co|gmbh|plc|the)$/g, '').trim() || companyDomain || '';\n  const applyUrl = first(f.apply_url, f.url);\n  // Key by, in order: the ATS's own job id; the employer's own posting address (vendors disagree on how to write a place, never on where the posting lives);\n  // and last the company, the title and the place. A job board or aggregator address says nothing about the employer's posting, so it is skipped.\n  const own = ownAddress(applyUrl);\n  const keyParts = ats.ats_job_id ? [ats.ats, ats.org || who, ats.ats_job_id] : (own ? ['url', who, own] : [who, norm(title), norm(location)]);\n  return {\n    vendor,\n    vendor_job_id: id === null || id === undefined ? null : String(id),\n    title,\n    company_name: company,\n    company_domain: companyDomain,\n    location,\n    remote: f.remote === undefined ? null : f.remote,\n    url: text(f.url),\n    apply_url: text(applyUrl),\n    ats: ats.ats,\n    ats_org: ats.org,\n    ats_job_id: ats.ats_job_id,\n    posted_at: iso(f.posted_at),\n    description: stripHtml(f.description),\n    salary_min: num(f.salary_min),\n    salary_max: num(f.salary_max),\n    salary_currency: text(f.salary_currency),\n    salary_period: text(f.salary_period),\n    employment_type: text(Array.isArray(f.employment_type) ? f.employment_type[0] : f.employment_type),\n    technologies: Array.isArray(f.technologies) ? f.technologies.map(String).slice(0, 40) : [],\n    dedupe_key: keyParts.join('|'),\n    valid: Boolean(title && (applyUrl || company)),\n  };\n}\n\nconst path = (o, p) => p.split('.').reduce((a, k) => (a === null || a === undefined ? undefined : a[k]), o);\n\nconst MAPPERS = {\n  // POST /v1/jobs/search, TheirStack. `final_url` is the ATS link when TheirStack found one, `url` the board it saw it on.\n  theirstack: (r) => canonical('theirstack', r.id, {\n    title: r.job_title, company_name: r.company, company_domain: first(r.company_domain, path(r, 'company_object.domain')),\n    location: first(r.location, r.short_location), remote: r.remote, url: first(r.url, r.source_url), apply_url: r.final_url,\n    posted_at: r.date_posted, description: r.description, salary_min: r.min_annual_salary_usd, salary_max: r.max_annual_salary_usd,\n    salary_currency: r.salary_currency, salary_period: 'year', employment_type: r.employment_statuses, technologies: r.technology_slugs,\n  }),\n  // POST /v2/jobs/search, Hirebase (x-api-key). `application_link` is the employer's own page.\n  hirebase: (r) => canonical('hirebase', first(r._id, r.platform_job_id), {\n    title: r.job_title, company_name: r.company_name, company_domain: null, location: r.location_raw,\n    remote: r.location_type ? /remote/i.test(r.location_type) : null, url: first(r.job_board_link, r.application_link), apply_url: r.application_link,\n    posted_at: first(r.date_posted, r.first_ingested), description: r.description,\n    salary_min: path(r, 'salary_range.min'), salary_max: path(r, 'salary_range.max'),\n    salary_currency: path(r, 'salary_range.currency'), salary_period: path(r, 'salary_range.period'),\n    employment_type: r.job_type, technologies: r.technologies,\n  }),\n  // POST /job/search, Crustdata (fields chosen with `fields`, so the dotted paths are the request's own).\n  crustdata: (r) => canonical('crustdata', r.crustdata_job_id, {\n    title: path(r, 'job_details.title'), company_name: path(r, 'company.basic_info.name'),\n    company_domain: path(r, 'company.basic_info.primary_domain'),\n    location: path(r, 'location.raw'), url: path(r, 'job_details.url'),\n    remote: path(r, 'job_details.workplace_type') ? /remote/i.test(path(r, 'job_details.workplace_type')) : null,\n    posted_at: path(r, 'metadata.date_added'), description: path(r, 'job_details.description'),\n  }),\n  // POST /cdapi/v2/job_multi_source/search/es_dsl gives ids; GET .../collect/{id} gives this record. `job_sources[].url` are the boards.\n  coresignal: (r) => canonical('coresignal', first(r.job_id, r.id), {\n    title: r.title, company_name: r.company_name, company_domain: first(r.company_domain, r.company_url), location: r.location,\n    remote: typeof r.accepts_remote === 'boolean' ? r.accepts_remote : null,\n    url: first(r.external_url, path(r, 'job_sources.0.url')), apply_url: r.external_url,\n    posted_at: first(r.date_posted, r.created_at), description: r.description,\n    salary_min: path(r, 'salary.0.amount_min'), salary_max: path(r, 'salary.0.amount_max'),\n    salary_currency: path(r, 'salary.0.currency'), employment_type: r.employment_type,\n  }),\n  // GET /api/v1/jobs/search then /api/v1/jobs/job/details, LinkdAPI (X-linkdapi-apikey).\n  linkdapi: (r) => canonical('linkdapi', first(r.jobId, r.id), {\n    title: r.title, company_name: path(r, 'company.name'), company_domain: null, location: r.location,\n    url: first(r.url, r.jobId ? 'https://www.linkedin.com/jobs/view/' + r.jobId : null), apply_url: r.applyUrl,\n    posted_at: r.postedAt, description: r.description,\n  }),\n  // Scraper API dataset gd_lpfll7v5hcqtkxl6l (LinkedIn job listings), output fields from the scraper's own schema page.\n  brightdata: (r) => canonical('brightdata', first(r.job_posting_id, r.url), {\n    title: r.job_title, company_name: r.company_name, location: r.job_location, url: r.url, apply_url: r.apply_link,\n    posted_at: first(r.job_posted_date, r.job_posted_time), description: first(r.job_summary, r.job_description_formatted),\n    salary_min: path(r, 'base_salary.min_amount'), salary_max: path(r, 'base_salary.max_amount'),\n    salary_currency: path(r, 'base_salary.currency'), salary_period: path(r, 'base_salary.payment_period'),\n    employment_type: r.job_employment_type,\n  }),\n  // Apify actors: the dataset items belong to the actor, so the mapper reads the names the common job actors use.\n  apify: (r) => canonical('apify', first(r.id, r.jobId, r.url, r.link), {\n    title: first(r.title, r.positionName, r.jobTitle, r.name), company_name: first(r.companyName, r.company, r.employer),\n    company_domain: first(r.companyWebsite, r.companyUrl), location: first(r.location, r.jobLocation),\n    url: first(r.url, r.jobUrl, r.link), apply_url: first(r.applyUrl, r.externalApplyLink, r.applyLink),\n    posted_at: first(r.postedAt, r.datePosted, r.postingDate, r.publishedAt), description: first(r.description, r.descriptionText, r.jobDescription),\n    salary_min: r.salaryMin, salary_max: r.salaryMax, salary_currency: r.salaryCurrency, employment_type: first(r.employmentType, r.jobType),\n  }),\n  // GET /api/v2/jobs/search, Techmap (through RapidAPI): `result` array; the posting also rides in `jsonLD` (schema.org JobPosting) with the full description.\n  techmap: (r) => canonical('techmap', first(path(r, 'jsonLD.identifier'), r.id), {\n    title: first(r.title, r.occupation), company_name: r.company, location: [r.city, r.countryCode && String(r.countryCode).toUpperCase()].filter(Boolean).join(', '),\n    remote: Array.isArray(r.workPlace) ? r.workPlace.some((w) => /remote/i.test(w)) : null, url: first(path(r, 'jsonLD.sameAs'), path(r, 'jsonLD.url')),\n    apply_url: first(r.externalApplyUrl, path(r, 'jsonLD.url')), posted_at: first(r.dateCreated, path(r, 'jsonLD.datePosted')), description: path(r, 'jsonLD.description'),\n    salary_min: r.minSalary, salary_max: r.maxSalary, salary_currency: path(r, 'jsonLD.salaryCurrency'), employment_type: first(r.workType, r.contractType), technologies: r.skills,\n  }),\n  // GET /api/jobs/, JobDataAPI (Authorization: Api-Key). `published` is a date, `application_url` the employer's link.\n  jobdataapi: (r) => canonical('jobdataapi', first(r.id, r.ext_id), {\n    title: r.title, company_name: path(r, 'company.name'), company_domain: path(r, 'company.website_url'), location: r.location,\n    remote: r.has_remote, url: r.application_url, apply_url: r.application_url, posted_at: r.published, description: r.description,\n    salary_min: r.salary_min, salary_max: r.salary_max, salary_currency: r.salary_currency, employment_type: r.types,\n  }),\n  // GET /api/v3/companies/{domain}/job_openings, PredictLeads (JSON:API: `data[].attributes`, `included` holds the company).\n  predictleads: (r, included) => {\n    const a = r.attributes || {};\n    const rel = path(r, 'relationships.company.data');\n    const co = rel && (included || []).find((i) => i.type === 'company' && i.id === rel.id);\n    return canonical('predictleads', r.id, {\n      title: a.title, company_name: co && path(co, 'attributes.company_name'), company_domain: co && path(co, 'attributes.domain'),\n      location: a.location, url: a.url, apply_url: a.url, posted_at: first(a.posted_at, a.first_seen_at), description: a.description,\n      salary_min: path(a, 'salary_data.salary_low'), salary_max: path(a, 'salary_data.salary_high'),\n      salary_currency: path(a, 'salary_data.salary_currency'), salary_period: path(a, 'salary_data.salary_time_unit'),\n      employment_type: a.contract_types,\n    });\n  },\n};\n\n// Files and webhooks from a delivery vendor (Grepsr runs, Techmap data feed files): the column names are the customer's own, so the\n// mapping is data. `map` is {canonicalField: sourceField}; a missing entry falls back to the common names.\nfunction mapDelivered(vendor, r, map) {\n  const m = map || {};\n  const get = (k, ...alts) => first(...[m[k], ...alts].filter(Boolean).map((n) => r[n]));\n  return canonical(vendor, get('id', 'id', 'job_id', 'url'), {\n    title: get('title', 'title', 'job_title', 'position'), company_name: get('company_name', 'company', 'company_name', 'employer'),\n    company_domain: get('company_domain', 'company_domain', 'company_website'), location: get('location', 'location', 'job_location'),\n    url: get('url', 'url', 'link', 'job_url'), apply_url: get('apply_url', 'apply_url', 'apply_link'),\n    posted_at: get('posted_at', 'posted_at', 'date_posted', 'published'),\n    description: get('description', 'description', 'job_description'), salary_min: get('salary_min', 'salary_min'), salary_max: get('salary_max', 'salary_max'),\n    salary_currency: get('salary_currency', 'salary_currency', 'currency'), employment_type: get('employment_type', 'employment_type', 'job_type'),\n  });\n}\n\n// Pull the list of records out of each vendor's response envelope.\nconst ENVELOPES = {\n  theirstack: (b) => b.data || [],\n  hirebase: (b) => b.jobs || [],\n  crustdata: (b) => b.job_listings || [],\n  coresignal: (b) => (Array.isArray(b) ? b : [b]),\n  linkdapi: (b) => (b.data && b.data.jobs) || [],\n  brightdata: (b) => (Array.isArray(b) ? b : []),\n  apify: (b) => (Array.isArray(b) ? b : []),\n  jobdataapi: (b) => b.results || [],\n  techmap: (b) => b.result || [],\n  predictleads: (b) => b.data || [],\n};\n\nfunction normalizeBatch(vendor, body, opts) {\n  const o = opts || {};\n  let records;\n  if (ENVELOPES[vendor]) records = ENVELOPES[vendor](body || {});\n  else records = Array.isArray(body) ? body : ((body && body.items) || []);\n  const jobs = records.map((rec) => {\n    if (MAPPERS[vendor]) return MAPPERS[vendor](rec, body && body.included);\n    return mapDelivered(vendor, rec, o.map);\n  });\n  return { vendor, received: records.length, jobs: jobs.filter((j) => j.valid), invalid: jobs.filter((j) => !j.valid).length };\n}\n\n\n\nconst input = $input.first().json;\nconst vendor = input.vendor;\nlet payload = input.body;\nif (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (e) { payload = []; } }\nif (!Array.isArray(payload) && payload && Array.isArray(payload.items)) payload = payload.items;\nconst map = input.map || undefined;\nconst n = normalizeBatch(vendor, payload, { map });\nconst batch = (input.headers && (input.headers['dca-collection-id'] || input.headers['x-batch-id'])) || (vendor + '-push-' + new Date().toISOString().slice(0, 16).replace(/[-T:]/g, ''));\nreturn [{ json: { vendor, batch_id: String(batch), raw: payload, jobs: n.jobs, invalid: n.invalid, received: n.received } }];\n"
+      },
+      "id": "240e3b1a-5c7d-4e2f-9a10-00006a6f6287",
+      "name": "Normalise: grepsr",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.HUB_BASE_URL || '').replace(/\\/+$/, '') }}/api/jobs/ingest/{{ $json.vendor }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.HUB_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ batch_id: $json.batch_id, raw: $json.raw, jobs: $json.jobs, invalid: $json.invalid, trigger: 'webhook' }) }}"
+      },
+      "id": "250e3b1a-5c7d-4e2f-9a10-00006a6f6288",
+      "name": "Ingest: grepsr",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        780
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "connections": {
+    "Schedule, every hour": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "One item per vendor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One item per vendor": {
+      "main": [
+        [
+          {
+            "node": "Vendor and settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vendor and settings": {
+      "main": [
+        [
+          {
+            "node": "Pull and normalise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pull and normalise": {
+      "main": [
+        [
+          {
+            "node": "Pull failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pull failed?": {
+      "main": [
+        [
+          {
+            "node": "Result: pull failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send the batch to the hub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send the batch to the hub": {
+      "main": [
+        [
+          {
+            "node": "Result: ingested",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Result: hub refused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result: pull failed": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result: ingested": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Result: hub refused": {
+      "main": [
+        [
+          {
+            "node": "All results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "All results": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "Any failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any failed?": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: brightdata": {
+      "main": [
+        [
+          {
+            "node": "Delivery: brightdata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery: brightdata": {
+      "main": [
+        [
+          {
+            "node": "Normalise: brightdata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise: brightdata": {
+      "main": [
+        [
+          {
+            "node": "Ingest: brightdata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: grepsr": {
+      "main": [
+        [
+          {
+            "node": "Delivery: grepsr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery: grepsr": {
+      "main": [
+        [
+          {
+            "node": "Normalise: grepsr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise: grepsr": {
+      "main": [
+        [
+          {
+            "node": "Ingest: grepsr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

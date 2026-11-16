@@ -12,9 +12,9 @@
 --                        (profile) or corrected it in the review queue (correction), and a later correction replaces an earlier one.
 --   tailored_document    a resume or cover letter produced for one job: the final ATS match score, how many rounds it took, whether the
 --                        grounding check passed and where the file is stored.
---   application_run      one attempt to apply. A state machine (queued, filling, waiting_review, submitted, failed, manual) whose
+--   application_run      one attempt to apply. A state machine (queued, filling, waiting_review, filled, submitted, failed, manual) whose
 --                        waiting_review state holds a resume token, so a pause survives a restart and a second resume is refused.
---   review_task          one field the filler was not sure enough about (confidence under the threshold) or a submission that failed. A
+--   review_task          (with the id of its Notion page when a board is set) one field the filler was not sure enough about (confidence under the threshold) or a submission that failed. A
 --                        person answers it; the answer is written to applicant_fact and the run is resumed.
 --
 -- Row level security is on and forced on every table, with the same policy as every other tenant table. Safe to run twice.
@@ -91,13 +91,15 @@ create table if not exists tailored_document (
     tenant_id     uuid        not null references tenant (id) on delete cascade,
     job_id        uuid        not null references job_posting (id) on delete cascade,
     kind          text        not null check (kind in ('resume', 'cover_letter')),
-    score         integer     not null check (score between 0 and 100),
+    -- only a resume is scored (the match score is a measure of a resume against a job); a cover letter is grounded and stored, with no score
+    score         integer     check (score between 0 and 100),
     rounds        integer     not null check (rounds >= 1),
     grounded      boolean     not null,
     reached_threshold boolean not null,
     object_key    text,
     created_at    timestamptz not null default now(),
-    unique (tenant_id, job_id, kind)
+    unique (tenant_id, job_id, kind),
+    constraint only_a_resume_is_scored check ((kind = 'resume') = (score is not null))
 );
 
 create table if not exists application_run (
@@ -106,7 +108,7 @@ create table if not exists application_run (
     job_id        uuid        references job_posting (id) on delete set null,
     apply_url     text        not null check (apply_url ~ '^https?://'),
     state         text        not null default 'queued'
-                  check (state in ('queued', 'filling', 'waiting_review', 'submitted', 'failed', 'manual')),
+                  check (state in ('queued', 'filling', 'waiting_review', 'filled', 'submitted', 'failed', 'manual')),
     resume_token  text        unique,
     resume_url    text,
     filled        integer     not null default 0 check (filled >= 0),
@@ -131,6 +133,7 @@ create table if not exists review_task (
     status           text        not null default 'pending' check (status in ('pending', 'resolved', 'manual')),
     answer           text,
     resolved_by      text,
+    notion_page_id   text,
     created_at       timestamptz not null default now(),
     resolved_at      timestamptz,
     constraint resolved_has_an_answer check (status <> 'resolved' or answer is not null)

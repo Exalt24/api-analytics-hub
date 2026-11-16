@@ -73,12 +73,20 @@ test('the same job from Hirebase gives the same dedupe key as from TheirStack', 
   assert.strictEqual(hb.jobs[0].remote, true);
 });
 
-test('without an ATS id the key is company, title and place, with brackets and case taken out', () => {
+test('without an ATS id the key is the employer own posting address, and company, title and place only when there is none', () => {
   const a = normalizeBatch('jobdataapi', { results: [{ id: 1, title: 'Backend Engineer (Remote)', company: { name: 'Acme Inc', website_url: 'https://www.acme.com' },
-    location: 'Berlin', has_remote: true, application_url: 'https://acme.com/careers/1', published: '2026-11-01' }] });
-  const b = normalizeBatch('apify', [{ id: 'x', positionName: 'Backend  engineer', companyName: 'Acme Inc', companyWebsite: 'acme.com', location: 'berlin', url: 'https://acme.com/careers/9' }]);
-  assert.strictEqual(a.jobs[0].dedupe_key, 'acme.com|backend engineer|berlin');
-  assert.strictEqual(b.jobs[0].dedupe_key, a.jobs[0].dedupe_key);
+    location: 'Berlin, Germany', has_remote: true, application_url: 'https://acme.com/careers/1/?utm_source=x#top', published: '2026-11-01' }] });
+  const b = normalizeBatch('apify', [{ id: 'x', positionName: 'Backend engineer', companyName: 'ACME', companyWebsite: 'acme.com', location: 'berlin', url: 'https://www.acme.com/careers/1' }]);
+  assert.strictEqual(a.jobs[0].dedupe_key, 'url|acme|acme.com/careers/1');
+  assert.strictEqual(b.jobs[0].dedupe_key, a.jobs[0].dedupe_key, 'another vendor, another way of writing the place and the title, the same posting');
+  // a job board address identifies nothing of the employer's own posting: the key falls back to company, title and place
+  const c = normalizeBatch('apify', [{ id: 'y', positionName: 'Backend  engineer', companyName: 'Acme Inc', location: 'berlin', url: 'https://www.linkedin.com/jobs/view/123' }]);
+  const d = normalizeBatch('apify', [{ id: 'z', positionName: 'Backend Engineer (Remote)', companyName: 'Acme', location: 'Berlin', url: 'https://www.indeed.com/viewjob?jk=9' }]);
+  assert.strictEqual(c.jobs[0].dedupe_key, 'acme|backend engineer|berlin');
+  assert.strictEqual(d.jobs[0].dedupe_key, c.jobs[0].dedupe_key);
+  // the same title in two cities is two jobs when nothing else tells them apart
+  const e = normalizeBatch('apify', [{ id: 'w', positionName: 'Backend Engineer', companyName: 'Acme', location: 'Manila', url: 'https://www.linkedin.com/jobs/view/124' }]);
+  assert.notStrictEqual(e.jobs[0].dedupe_key, c.jobs[0].dedupe_key);
 });
 
 test('Crustdata, CoreSignal, LinkdAPI, Bright Data and PredictLeads map their documented shapes', () => {
@@ -125,9 +133,30 @@ test('a record with no title or no link and no company is counted invalid and le
   assert.strictEqual(out.jobs.length, 1);
 });
 
+test('a record with a link and a company but no title is invalid', () => {
+  const out = normalizeBatch('hirebase', { jobs: [{ _id: '3', job_title: '', company_name: 'Acme', application_link: 'https://acme.com/careers/3' }] });
+  assert.strictEqual(out.jobs.length, 0);
+  assert.strictEqual(out.invalid, 1);
+});
+
 test('hostile text in a record stays text: no markup survives and nothing throws on odd input', () => {
   const out = normalizeBatch('apify', [{ title: 'T', companyName: 'C', url: 'https://a.com/x', description: '<img src=x onerror=alert(1)>hello &amp; bye', postedAt: 'not a date' }, null === 1 ? 1 : {}]);
   assert.strictEqual(out.jobs[0].description, 'hello & bye');
   assert.strictEqual(out.jobs[0].posted_at, null);
   assert.strictEqual(out.invalid, 1);
+});
+
+test('the normaliser gives the same answers in a sandbox with no URL global, which is where n8n runs it', () => {
+  const vm = require('node:vm');
+  const fs = require('node:fs');
+  const ctx = { module: { exports: {} } };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname, 'normalize.js'), 'utf8'), ctx);
+  assert.strictEqual(vm.runInContext('typeof URL', ctx), 'undefined', 'the sandbox must not have URL');
+  const rec = [{ id: 'x', positionName: 'Backend engineer', companyName: 'ACME', companyWebsite: 'https://www.acme.com/', location: 'berlin', url: 'https://www.acme.com/careers/1/?utm=1' }];
+  const inside = JSON.parse(JSON.stringify(ctx.module.exports.normalizeBatch('apify', rec)));
+  const outside = JSON.parse(JSON.stringify(normalizeBatch('apify', rec)));
+  assert.deepStrictEqual(inside, outside);
+  assert.strictEqual(inside.jobs[0].dedupe_key, 'url|acme|acme.com/careers/1');
+  assert.strictEqual(inside.jobs[0].company_domain, 'acme.com');
 });

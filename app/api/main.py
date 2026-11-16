@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 from app.api.auth import Authenticator, Principal, requires
 from app.api.esign import router as esign_router
+from app.api.jobs import build_jobs_runtime, close_jobs_runtime, router as jobs_router
 from app.api.reports import router as reports_router
 from app.db import Database, fetch_kpis, latest_runs
 from app.health import read_gauges
@@ -74,9 +75,11 @@ async def lifespan(app: FastAPI):
     app.state.worker_db = worker_db
     app.state.metrics = Metrics()
     app.state.authenticator = Authenticator(db)
+    app.state.jobs = await build_jobs_runtime(db)
     try:
         yield
     finally:
+        await close_jobs_runtime(app.state.jobs)
         await worker_db.close()
         await db.close()
 
@@ -84,6 +87,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="api-analytics-hub", version="0.1.0", lifespan=lifespan)
 app.include_router(reports_router)
 app.include_router(esign_router)
+app.include_router(jobs_router)
 
 # Locked to the configured dashboard origin. A wildcard with credentials is
 # rejected by browsers anyway, and a wildcard without them still lets any page on

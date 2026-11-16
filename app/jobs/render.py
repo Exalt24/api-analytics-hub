@@ -80,7 +80,6 @@ def to_pdf(text: str) -> bytes:
 
 
 def pdf_text(data: bytes) -> str:
-    import fitz  # PyMuPDF
+    from pypdf import PdfReader
 
-    with fitz.open(stream=data, filetype="pdf") as d:
-        return "\n".join(page.get_text() for page in d)
+    return "\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages)

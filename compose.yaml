@@ -48,7 +48,7 @@ services:
 
   qdrant:
     profiles: ["jobs"]
-    image: qdrant/qdrant:v1.15.5
+    image: qdrant/qdrant:v1.18.0
     ports:
       - "127.0.0.1:6343:6333"
     healthcheck:

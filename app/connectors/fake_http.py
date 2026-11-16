@@ -95,7 +95,7 @@ class FakeHTTP:
                 self.end_headers()
                 self.wfile.write(data)
 
-            do_GET = do_POST = _serve  # noqa: N815 - the names http.server looks for
+            do_GET = do_POST = do_PATCH = _serve  # noqa: N815 - the names http.server looks for
 
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self._server.daemon_threads = True

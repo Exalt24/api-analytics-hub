@@ -1,0 +1,26 @@
+# Job data vendors: what each page said, and what the stand-ins invent
+
+Read on 2026-11-17 in a browser-grade fetch. `n8n/jobs/pull.js` and `n8n/jobs/normalize.js` follow these pages, and `app/jobs/fake_vendors.py` answers in these shapes. None of it was run against a vendor's live service (no vendor key is held), so the claim is "built from the documentation and tested against stand-ins that answer in the documented shape", never "works against the real API".
+
+| Vendor | Page read | Request the pull sends | Paging and envelope it follows |
+|---|---|---|---|
+| TheirStack | docs.theirstack.com, Search Jobs (`POST /v1/jobs/search`) | `Authorization: Bearer`, body with `posted_at_max_age_days` (the page says one of the posted or company filters is mandatory), `limit`, `page` | `data` array, `metadata`; a short page ends it; the record has `job_title`, `company`, `final_url` (the ATS link), `date_posted`, `min_annual_salary_usd` |
+| Hirebase | hirebase.org/docs, Search Jobs (`POST /v2/jobs/search`) | `x-api-key`, body `job_titles`, `ingested_after` (the page's poll filter that does not return old jobs), `page` from 1, `limit` up to 100 (more is 422) | `jobs` array; `application_link` is the employer's page; `salary_range`; `_id` |
+| Crustdata | docs.crustdata.com, Job Postings Search (`POST /job/search`) | `Authorization: Bearer` and `x-api-version: 2025-11-01` (the page says the header is required), `filters`, `fields`, `sorts`, `limit` | `job_listings`, `next_cursor` (null at the end); dotted paths such as `job_details.title` |
+| Coresignal | docs.coresignal.com, Jobs API (search `es_dsl`, collect) | `apikey` header; the search answers job ids and the `x-next-page-after` header, `?after=` takes the next page; `GET .../collect/{id}` answers the record | ids then records; `job_sources[].url`, `external_url`, `company_url` |
+| JobDataAPI | jobdataapi.com, Jobs API endpoint documentation (`GET /api/jobs/`) | `Authorization: Api-Key`, `max_age` in days, `page_size` up to 4000 | `count`, `next` (a full address), `results`; `application_url`, `published` |
+| LinkdAPI | linkdapi.com/llms.txt (`GET /api/v1/jobs/search`) | `X-linkdapi-apikey`, `keyword`, `timePosted`, `start` stepping by 25 | `data.jobs`; `jobId`, `title`, `company.name` |
+| PredictLeads | docs.predictleads.com v3 (`GET /api/v3/companies/{domain}/job_openings`) | both `X-Api-Key` and `X-Api-Token` | JSON:API: `data[].attributes`, `included` (the company), `links.next`; `salary_data`, `first_seen_at` |
+| Techmap | api.techmap.io, Job Postings API, Quickstart, Pagination and limits, Field reference (`GET /api/v2/jobs/search` on RapidAPI) | `X-RapidAPI-Key` and `X-RapidAPI-Host`, filters such as `title`, `countryCode`, `dateCreated`, and `cursor=true` on the first request | `result`, `nextCursor` (missing at the end), `totalCount`; the posting also rides in `jsonLD` with the full description; 1 to 10 requests a second by plan |
+| Bright Data | docs.brightdata.com, Scraper API asynchronous requests and delivery pages | `POST /datasets/v3/trigger` (a dataset id, `type=discover_new`, `discover_by`) answers a `snapshot_id`; `GET /datasets/v3/progress/{id}` until `ready` (`failed` and `canceled` are errors); `GET /datasets/v3/snapshot/{id}?format=json`. The push form is the `endpoint` parameter, which POSTs the records with a `dca-collection-id` header | LinkedIn job listings dataset `gd_lpfll7v5hcqtkxl6l`: `job_posting_id`, `job_title`, `apply_link`, `base_salary` |
+| Apify | docs.apify.com, API v2 (`POST /v2/acts/{actor}/run-sync-get-dataset-items`) | Bearer token; the input is the actor's own | the dataset items; their names belong to the actor, so the mapper reads the common aliases (`positionName`, `companyName`, `url`, `applyUrl`) |
+| Grepsr (and any delivery vendor, Techmap's daily JSON Lines feed too) | no public API reference for Grepsr was found (docs.grepsr.com did not answer, and its help pages describe delivering files), so this is the generic delivery path | nothing is pulled: they deliver | the Webhook node takes a delivery, and `normalize.js` maps its columns through a mapping the customer supplies (`GREPSR_MAP_JSON`), because the column names are the customer's own |
+
+## What the stand-ins invent
+
+Written down so nobody reads a stand-in's behaviour as a vendor's: the cursor values, the snapshot ids, how many progress polls come back `running` before `ready` (a setting), the wording of every error body past the status code, which jobs each vendor returns (the slices overlap on purpose so the dedupe has something to do), and the 429 timing. The 401 for a wrong key and the 422 for a missing mandatory filter follow the pages. Throttling is tested as a 429 with a `Retry-After` header, which Bright Data's and Harvest's pages describe; TheirStack, Hirebase and Crustdata publish rate limits as figures (Crustdata: 30 requests a minute), and `call()` in `pull.js` waits out a 429 on any of them.
+
+## What is not claimed
+
+- No vendor was called for real. The first real call is a key and one `n8n execute`.
+- ATS detection is by link and by page marker (`normalize.js` `ATS_URL_RULES`, `ATS_HTML_MARKERS`) and it is as good as the link: a job that links only to a vendor's own redirect shows no ATS until the page is read.

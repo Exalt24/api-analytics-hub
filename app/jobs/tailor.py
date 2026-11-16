@@ -126,16 +126,19 @@ def entity_tokens(text: str) -> set[str]:
     out: set[str] = set()
     for line in text.splitlines():
         line = line.strip().lstrip("-*•").strip()
+        # "Python-based" is two words, each judged on its own: the plain one is nothing, the technology must be one of the applicant's
+        line = re.sub(r"(?<=[A-Za-z0-9])[-/](?=[A-Za-z0-9])", " ", line)
         sentence_start = True
         for raw in TOKEN.finditer(line):
             tok = raw.group(0).rstrip(".-/")
             if not tok:
                 continue
             low = tok.lower()
-            ends_sentence = line[raw.end():raw.end() + 1] in (".", "!", "?") and not re.match(r"[A-Za-z0-9]", line[raw.end() + 1:raw.end() + 2] or " ")
+            ends_sentence = raw.group(0).endswith((".", "!", "?")) or line[raw.end():raw.end() + 1] in ("!", "?")
             is_entity = (low in TERMS or any(c.isdigit() for c in tok) or any(c.isupper() for c in tok[1:]) or (tok.isupper() and len(tok) >= 2)
                          or (tok[0].isupper() and not sentence_start))
-            if is_entity and tok.upper() not in ALLOWED and low not in MONTHS and low not in STOP:
+            numeric_only = not any(c.isalpha() for c in tok)
+            if is_entity and not numeric_only and tok.upper() not in ALLOWED and low not in MONTHS and low not in STOP:
                 out.add(low)
             sentence_start = ends_sentence
     return out
@@ -262,8 +265,9 @@ def tailor(profile: Profile, job: dict[str, Any], llm: LLM | None, *, threshold:
     best = {"doc": base, "text": base_text, "letter": "", "score": ats_score(base_text, job)}
     history = [Round(0, best["score"], True, [], score_breakdown(base_text, job)["missing"])]
     used_model = False
-    if llm is None or best["score"] >= threshold:
+    if llm is None:
         return TailorResult(best["text"], "", best["score"], 1, True, best["score"] >= threshold, unsupported, ceiling, history, False)
+    # With a model the loop runs at least once even when the facts alone already pass: the cover letter only the model writes is still wanted.
 
     feedback = ""
     target = min(threshold, ceiling)
@@ -286,8 +290,10 @@ def tailor(profile: Profile, job: dict[str, Any], llm: LLM | None, *, threshold:
                         "Do not mention them again." % ", ".join(sorted(set(bad))))
             continue
         if bd["score"] > best["score"] or not best["letter"]:
-            best = {"doc": doc, "text": text, "letter": doc["cover_letter"], "score": bd["score"]}
-        if bd["score"] >= target:
+            keep_text = bd["score"] >= best["score"]
+            best = {"doc": doc if keep_text else best["doc"], "text": text if keep_text else best["text"], "letter": doc["cover_letter"],
+                    "score": bd["score"] if keep_text else best["score"]}
+        if best["score"] >= target and best["letter"]:
             break
         addressable = [t for t in bd["missing"] if t in vocabulary(profile.facts_text())]
         if not addressable:

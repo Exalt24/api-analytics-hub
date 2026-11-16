@@ -1,0 +1,85 @@
+== 1. the hourly pull, all ten vendors (n8n execute)
+status success, finished True
+  Schedule, every hour           outputs (items) 1
+  Settings                       outputs (items) 1
+  One item per vendor            outputs (items) 10
+  Vendor and settings            outputs (items) 10
+  Pull and normalise             outputs (items) 10
+  Pull failed?                   outputs (items) 0+10
+  Send the batch to the hub      outputs (items) 10+0
+  Result: ingested               outputs (items) 10
+  All results                    outputs (items) 10
+  Summary                        outputs (items) 1
+  Any failed?                    outputs (items) 0+1
+  All done                       outputs (items) 1
+    theirstack | ingested | new 1, duplicates 13, embedded 1, status ok
+    hirebase | ingested | new 0, duplicates 14, embedded 0, status ok
+    crustdata | ingested | new 0, duplicates 12, embedded 0, status ok
+    coresignal | ingested | new 8, duplicates 0, embedded 8, status ok
+    jobdataapi | ingested | new 0, duplicates 12, embedded 0, status ok
+    linkdapi | ingested | new 10, duplicates 0, embedded 10, status ok
+    techmap | ingested | new 2, duplicates 6, embedded 2, status ok
+    predictleads | ingested | new 8, duplicates 0, embedded 8, status ok
+    brightdata | ingested | new 0, duplicates 6, embedded 0, status ok
+    apify | ingested | new 1, duplicates 6, embedded 1, status ok
+  ingest runs (vendor received new duplicates embedded): apify 7 1 6 1; brightdata 6 0 6 0; coresignal 8 8 0 8; crustdata 12 0 12 0; hirebase 14 0 14 0; jobdataapi 12 0 12 0; linkdapi 10 10 0 10; predictleads 8 8 0 8; techmap 8 2 6 2; theirstack 14 1 13 1
+== 2. the same hour again
+status success, finished True
+  Schedule, every hour           outputs (items) 1
+  Settings                       outputs (items) 1
+  One item per vendor            outputs (items) 10
+  Vendor and settings            outputs (items) 10
+  Pull and normalise             outputs (items) 10
+  Pull failed?                   outputs (items) 0+10
+  Send the batch to the hub      outputs (items) 10+0
+  Result: ingested               outputs (items) 10
+  All results                    outputs (items) 10
+  Summary                        outputs (items) 1
+  Any failed?                    outputs (items) 0+1
+  All done                       outputs (items) 1
+    theirstack | ingested | new 1, duplicates 13, embedded 1, status ok, replay
+    hirebase | ingested | new 0, duplicates 14, embedded 0, status ok, replay
+    crustdata | ingested | new 0, duplicates 12, embedded 0, status ok, replay
+    coresignal | ingested | new 8, duplicates 0, embedded 8, status ok, replay
+    jobdataapi | ingested | new 0, duplicates 12, embedded 0, status ok, replay
+    linkdapi | ingested | new 10, duplicates 0, embedded 10, status ok, replay
+    techmap | ingested | new 2, duplicates 6, embedded 2, status ok, replay
+    predictleads | ingested | new 8, duplicates 0, embedded 8, status ok, replay
+    brightdata | ingested | new 0, duplicates 6, embedded 0, status ok, replay
+    apify | ingested | new 1, duplicates 6, embedded 1, status ok, replay
+== 3. theirstack with a wrong key
+status error, finished None
+  Schedule, every hour           outputs (items) 1
+  Settings                       outputs (items) 1
+  One item per vendor            outputs (items) 10
+  Vendor and settings            outputs (items) 10
+  Pull and normalise             outputs (items) 10
+  Pull failed?                   outputs (items) 1+9
+  Result: pull failed            outputs (items) 1
+  Send the batch to the hub      outputs (items) 9+0
+  Result: ingested               outputs (items) 9
+  All results                    outputs (items) 10
+  Summary                        outputs (items) 1
+  Any failed?                    outputs (items) 1+0
+  Stop and Error                 outputs (items) 
+    hirebase | ingested | new 0, duplicates 14, embedded 0, status ok, replay
+    crustdata | ingested | new 0, duplicates 12, embedded 0, status ok, replay
+    coresignal | ingested | new 8, duplicates 0, embedded 8, status ok, replay
+    jobdataapi | ingested | new 0, duplicates 12, embedded 0, status ok, replay
+    linkdapi | ingested | new 10, duplicates 0, embedded 10, status ok, replay
+    techmap | ingested | new 2, duplicates 6, embedded 2, status ok, replay
+    predictleads | ingested | new 8, duplicates 0, embedded 8, status ok, replay
+    brightdata | ingested | new 0, duplicates 6, embedded 0, status ok, replay
+    apify | ingested | new 1, duplicates 6, embedded 1, status ok, replay
+    theirstack | failed | the pull failed: POST http://host.docker.internal:64306/v1/jobs/search answered 401: {"error":"invalid token","message":"invalid token"}
+  execution error: Job ingest: theirstack (the pull failed: POST http://host.docker.internal:64306/v1/jobs/search answered 401: {"error":"invalid token","message":"invalid token"})
+== 4. a Bright Data style push to the webhook
+  run row (new, duplicates, received, trigger): (3, 2, 5, 'webhook')
+== 5. apply with a review
+  review question: Why do you want to work here? *
+  the workflow reported: {'run_id': 'd243ca80-1a99-410b-ab0d-a9be2132af0f', 'outcome': 'submitted'}
+  the application system received q_why: I like pipelines other people depend on.
+  second apply (/gh/jobs/1, every answer stored): hub state filling
+  outcomes reported by the workflow: ['submitted', 'submitted', 'submitted']
+
+checks passed: 32, failed: 0

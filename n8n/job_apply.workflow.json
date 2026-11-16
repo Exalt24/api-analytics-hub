@@ -1,0 +1,401 @@
+{
+  "id": "hubJobApply00001",
+  "name": "Job apply with review",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Apply with review\nPOST `{apply_url, job_id}` to this workflow's webhook. The hub starts the run and this execution waits at the Wait node until the hub calls its resume URL (the run reached submitted, failed or manual review). The Wait holds no browser: the run state lives in the hub.",
+        "height": 160,
+        "width": 620,
+        "color": 4
+      },
+      "id": "010e3b1a-5c7d-4e2f-9a10-00006a6f6270",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jobs-apply",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "020e3b1a-5c7d-4e2f-9a10-00006a6f6271",
+      "name": "Webhook: apply",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        0
+      ],
+      "webhookId": "job-apply-start"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.HUB_BASE_URL || '').replace(/\\/+$/, '') }}/api/jobs/apply",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.HUB_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ apply_url: $json.body.apply_url, job_id: $json.body.job_id || null, resume_url: $execution.resumeUrl }) }}"
+      },
+      "id": "030e3b1a-5c7d-4e2f-9a10-00006a6f6272",
+      "name": "Start the run on the hub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "httpMethod": "POST",
+        "options": {}
+      },
+      "id": "040e3b1a-5c7d-4e2f-9a10-00006a6f6273",
+      "name": "Wait for the run to finish",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        120,
+        0
+      ],
+      "webhookId": "job-apply-resume"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ ($env.HUB_BASE_URL || '').replace(/\\/+$/, '') }}/api/jobs/runs/{{ $('Start the run on the hub').item.json.run_id }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.HUB_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "050e3b1a-5c7d-4e2f-9a10-00006a6f6274",
+      "name": "Read the run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        380,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-submitted",
+              "leftValue": "={{ $json.state }}",
+              "rightValue": "submitted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "060e3b1a-5c7d-4e2f-9a10-00006a6f6275",
+      "name": "Run submitted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-run_id",
+              "name": "run_id",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "id": "a-outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "submitted"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "070e3b1a-5c7d-4e2f-9a10-00006a6f6276",
+      "name": "Done: submitted",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-manual",
+              "leftValue": "={{ $json.state }}",
+              "rightValue": "manual",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "080e3b1a-5c7d-4e2f-9a10-00006a6f6277",
+      "name": "Manual review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        900,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-run_id",
+              "name": "run_id",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "id": "a-outcome",
+              "name": "outcome",
+              "type": "string",
+              "value": "manual"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "090e3b1a-5c7d-4e2f-9a10-00006a6f6278",
+      "name": "Done: manual review",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1160,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ 'The application run ended as ' + $json.state + ': ' + ($json.detail || 'no detail') }}"
+      },
+      "id": "100e3b1a-5c7d-4e2f-9a10-00006a6f6279",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APPLY_REPORT_URL || ($env.HUB_BASE_URL || '') + '/health' }}",
+        "options": {
+          "timeout": 120000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ run_id: $json.run_id, outcome: $json.outcome }) }}"
+      },
+      "id": "110e3b1a-5c7d-4e2f-9a10-00006a6f627a",
+      "name": "Report the outcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1420,
+        -20
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Webhook: apply": {
+      "main": [
+        [
+          {
+            "node": "Start the run on the hub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start the run on the hub": {
+      "main": [
+        [
+          {
+            "node": "Wait for the run to finish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Wait for the run to finish": {
+      "main": [
+        [
+          {
+            "node": "Read the run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the run": {
+      "main": [
+        [
+          {
+            "node": "Run submitted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run submitted?": {
+      "main": [
+        [
+          {
+            "node": "Done: submitted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Manual review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual review?": {
+      "main": [
+        [
+          {
+            "node": "Done: manual review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Done: submitted": {
+      "main": [
+        [
+          {
+            "node": "Report the outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Done: manual review": {
+      "main": [
+        [
+          {
+            "node": "Report the outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

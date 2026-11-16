@@ -1,0 +1,35 @@
+== 1. Upstash Redis: the sliding window dedupe
+  free database over TLS, Redis server 8.4.0
+  first call [a, b, a]        -> [False, False, True]   (the repeat inside one call counts as seen)
+  50 s later [a, c]           -> [True, False]
+  140 s, a seen at 50 s       -> [True]   (the window slid: 90 s since its last sighting)
+  160 s, b first seen at 0 s  -> [False]   (160 s since its only sighting, expired)
+  another tenant [a]          -> [False]   (windows are per tenant)
+  every answer matched the rule: True
+  the database was deleted: True
+
+== 2. Embeddings through LangChain into Qdrant
+  model openai/text-embedding-3-small through https://openrouter.ai/api/v1: 4 vectors of width 1536 stored
+  query 'someone to build data pipelines in Python and SQL'  -> Data Engineer (score 0.629)
+     right job first: True
+  query 'react developer for a component library'            -> Frontend Engineer (score 0.478)
+     right job first: True
+  query 'night shift clinical work'                          -> Registered Nurse (score 0.615)
+     right job first: True
+  another tenant sees: 0 results
+
+== 3. Tailoring with a real chat model
+  model openai/gpt-4o-mini through https://openrouter.ai/api/v1
+  a job the facts cover: score 94 (ceiling 100), 2 rounds, grounded True, reached 90: True, model used: True, 6 s
+     round 0: score 94, grounded True
+     round 1: score 94, grounded True
+     unsupported terms kept out: none
+     leaked an unsupported term into the document: False
+     the cover letter has 97 words and 0 ungrounded tokens
+  a job that asks for Kubernetes, dbt and Kafka: score 49 (ceiling 55), 3 rounds, grounded True, reached 90: False, model used: True, 11 s
+     round 0: score 49, grounded True
+     round 1: score 49, grounded False, rejected for: python-based
+     round 2: score 49, grounded True
+     unsupported terms kept out: ['dbt', 'kafka', 'kubernetes']
+     leaked an unsupported term into the document: False
+     the cover letter has 94 words and 0 ungrounded tokens

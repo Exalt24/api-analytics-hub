@@ -45,3 +45,5 @@ lakehouse/results/tmp/
 lakehouse/spark-warehouse/
 lakehouse/metastore_db/
 derby.log
+
+n8n/jobs/node_modules/
