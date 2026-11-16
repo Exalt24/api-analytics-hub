@@ -253,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check-targets", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--match")
-    ap.add_argument("--jobs", type=int, default=1, help="worker processes, each with its own Spark")
+    ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) // 2), help="worker processes, each with its own Spark (default: half the cores)")
     ap.add_argument("--python", default=sys.executable)
     ap.add_argument("--worker", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
