@@ -1,3 +1,4 @@
+# LIFESPAN: permanent
 """Shared setup for the job pipeline suites: the services they need, a fresh schema, tenants, and the applicant and job used everywhere.
 
 The services come from `docker compose --profile jobs --profile s3 up -d --wait` (Postgres 5433, Redis 6381, Qdrant 6343, RabbitMQ 5683, SeaweedFS
