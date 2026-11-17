@@ -10,6 +10,7 @@ created one session and released it.
 from __future__ import annotations
 
 import json
+import os
 import socket
 import subprocess
 import time
@@ -44,8 +45,11 @@ class FakeBrowserbase(FakeHTTP):
 
     def _start_browser(self, sid: str) -> str:
         port = _port()
+        # A CI runner (Ubuntu 24.04) refuses Chromium's sandbox for an unprivileged user, so the stand-in's own throwaway Chromium never opens its DevTools port there. The flag is added only
+        # when CI is set: this browser is a local test double on an empty profile that only loads about:blank and the stand-in forms, never a real site.
+        sandbox = ["--no-sandbox"] if os.environ.get("CI") else []
         self._procs[sid] = subprocess.Popen(
-            [_chromium_path(), "--headless=new", "--remote-debugging-port=%d" % port, "--user-data-dir=%s" % (self._profile_root / sid), "--no-first-run", "about:blank"],
+            [_chromium_path(), "--headless=new", "--remote-debugging-port=%d" % port, "--user-data-dir=%s" % (self._profile_root / sid), "--no-first-run"] + sandbox + ["about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(100):
             try:
