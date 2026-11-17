@@ -71,13 +71,19 @@ jobs:
       # SeaweedFS as the S3 compatible store for the job pipeline's raw JSON archive: one made-up identity in web/tests/s3/seaweedfs-s3.json, not AWS and not R2.
       - name: Start the S3 stand-in
         run: |
-          docker run -d --name jobs-s3 -p 8333:8333 -v "$PWD/web/tests/s3/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" chrislusf/seaweedfs:4.53 server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333
+          docker run -d --name jobs-s3 -p 8333:8333 -v "$PWD/web/tests/s3/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" chrislusf/seaweedfs:4.53 server -dir=/data -master.volumeSizeLimitMB=64 -volume.max=0 -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333
           for i in $(seq 1 40); do code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8333/ || true); [ "$code" = "403" ] && break; sleep 1; done
           echo "S3 stand-in answered $code"
       # The gateway answers 403 before the store can place an object (the first writes returned InternalError and failed four archive tests), so wait for a real write.
       - name: Wait until the S3 stand-in accepts a write
         run: python tests/s3_warmup.py
       - run: python -m pytest tests -q
+      # When the suite fails, print what the S3 stand-in logged and how much disk the runner has: an S3 InternalError is otherwise a bare "please try again".
+      - name: S3 stand-in diagnostics (only after a failure)
+        if: failure()
+        run: |
+          docker logs jobs-s3 --tail 60 || true
+          df -h /
       # The same tests again, named, with PRICE_WATCH_REQUIRE_BROWSER set so a missing Chromium FAILS here instead of skipping, and the skip reasons printed.
       - name: Price watch (scraper, matching, report, queue, sync against fake vendors)
         env:

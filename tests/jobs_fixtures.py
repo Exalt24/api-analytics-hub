@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import os
 import socket
+import time
 import uuid
 from pathlib import Path
 
@@ -73,6 +74,18 @@ def make_bucket(name: str):
         s3.create_bucket(Bucket=name)
     except Exception:
         pass
+    # SeaweedFS places a new bucket's first object on a volume it grows on demand, and until that exists PutObject answers InternalError ("please try again"). Five archive tests that wrote
+    # straight after creating their bucket failed that way on the CI runner (run 43992555245). A probe write, retried for up to 30 s, makes the bucket ready before any test writes to it; if it
+    # never succeeds the test's own write reports the real error. The probe key sits outside every prefix a test lists.
+    deadline = time.time() + 30
+    while True:
+        try:
+            s3.put_object(Bucket=name, Key=".ready", Body=b"1")
+            break
+        except Exception:
+            if time.time() > deadline:
+                break
+            time.sleep(0.5)
     return s3
 
 

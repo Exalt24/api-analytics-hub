@@ -22,7 +22,7 @@ services:
   s3:
     profiles: ["s3"]
     image: chrislusf/seaweedfs:4.53
-    command: server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333
+    command: server -dir=/data -master.volumeSizeLimitMB=64 -volume.max=0 -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333
     ports:
       - "127.0.0.1:8333:8333"
     volumes:
