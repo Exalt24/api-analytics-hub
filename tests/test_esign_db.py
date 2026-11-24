@@ -498,7 +498,7 @@ def test_a_malformed_request_id_is_the_same_refusal(world):
 def test_the_owner_tenant_gets_the_same_calls_through(world):
     async def go(db):
         view = await make_request(db, world.a)
-        return await service.view_request(db, world.a, view["id"], actor="k", role="viewer"), await service.verify(db, world.a, view["id"], actor="k")
+        return await service.view_request(db, world.a, view["id"], actor="k", role="viewer", now=T0 + timedelta(hours=1)), await service.verify(db, world.a, view["id"], actor="k")
     opened, report = with_db(go)
     assert opened["status"] == "pending" and report.ok
 
