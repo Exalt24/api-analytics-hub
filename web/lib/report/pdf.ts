@@ -71,7 +71,7 @@ export async function buildPdf(data: ReportData, summary?: ReportSummary): Promi
     if (summary.source === "template" && summary.fallbackReason) {
       paragraph(`AI summary not used: ${summary.fallbackReason}`);
     }
-    draw(summary.headline, bold);
+    paragraph(summary.headline, bold);
     for (const h of summary.highlights) paragraph(`- ${h}`);
   } else {
     draw("No summary requested.", text);

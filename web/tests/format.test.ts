@@ -109,6 +109,15 @@ describe("the three formats hold the same data", () => {
     }
   });
 
+  it("pdf: a long summary headline wraps onto several lines instead of running off the page", async () => {
+    const headline = "October 2026 recorded total gross sales of 24192.00 USD, net sales of 23967.00 USD, 536 orders, and refunds totaling 225.00 USD across the month for this client";
+    const pdf = await readPdf(await buildPdf(data, { source: "ai", headline, highlights: [] }));
+    const parts = pdf.lines.filter((l) => /October 2026 recorded|net sales of|refunds totaling|across the month/.test(l));
+    expect(parts.length).toBeGreaterThan(1);
+    expect(Math.max(...parts.map((l) => l.length))).toBeLessThan(headline.length);
+    expect(pdf.lines.join(" ")).toContain("across the month for this client");
+  });
+
   it("pdf: a long report runs onto more pages and keeps its last row", async () => {
     const rows: DailyRow[] = [];
     for (let d = 1; d <= 28; d += 1) {
