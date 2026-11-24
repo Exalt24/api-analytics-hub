@@ -12,7 +12,7 @@ from typing import Sequence
 
 import asyncpg
 
-from . import alerts, model, orders
+from . import alerts, model, orders, workbook
 from .model import PlanParams, PlanRow, Promo, VariantInput
 from .reader import OrderLine, VariantStock
 
@@ -214,3 +214,31 @@ async def plan_lines(conn: asyncpg.Connection, as_of: date | None = None) -> lis
     return await conn.fetch(
         """select l.*, r.as_of from inventory_plan_line l join inventory_plan_run r on r.id = l.run_id where r.as_of = $1
             order by l.needs_reorder desc, l.cover_days nulls last, l.product_title, l.variant_title""", as_of)
+
+
+async def workbook_inputs(conn: asyncpg.Connection, as_of: date | None = None, *, service_level: float | None = None, review_days: int | None = None,
+                          promo_factor: float | None = None, promo_from: date | None = None, promo_to: date | None = None) -> workbook.WorkbookInputs:
+    """What the plan workbook is built from: the stored plan of `as_of` (the latest when none), with the service level and review period the plan was run with unless others are given.
+    The promotion is one factor and window for every variant: the one given, else the largest promotion entered for all variants that has not ended, else none (a factor of 1)."""
+    run = await conn.fetchrow("select * from inventory_plan_run where as_of = $1" if as_of else "select * from inventory_plan_run order by as_of desc limit 1", *([as_of] if as_of else []))
+    if run is None:
+        raise LookupError("no stored inventory plan: run the plan first")
+    stored = json.loads(run["params"]) if isinstance(run["params"], str) else dict(run["params"])
+    plan_day = run["as_of"]
+    notes: list[str] = []
+    if promo_factor is None:
+        entered = await conn.fetchrow("select factor, starts_on, ends_on from inventory_promo where variant_id is null and ends_on >= $1 order by factor desc, starts_on limit 1", plan_day)
+        promo_factor, promo_from, promo_to = (entered["factor"], entered["starts_on"], entered["ends_on"]) if entered else (1.0, plan_day, plan_day)
+    else:
+        promo_from, promo_to = promo_from or plan_day, promo_to or plan_day
+    if await conn.fetchval("select count(*) from inventory_promo where variant_id is not null and ends_on >= $1", plan_day):
+        notes.append("A promotion entered in the hub for a single variant is not in this file: the promotion on this sheet applies to every variant.")
+    lines = await conn.fetch(
+        """select l.*, v.moq, v.pack_size from inventory_plan_line l join inventory_variant v on v.id = l.variant_id where l.run_id = $1
+            order by l.product_title, l.variant_title, l.id""", run["id"])
+    left_out = sum(1 for l in lines if l["status"] not in ("ok", "no_supplier"))
+    if left_out:
+        notes.append("%d variant(s) are left out: the shop does not track their stock or no stock reading exists." % left_out)
+    return workbook.inputs_from_lines(lines, as_of=plan_day, service_level=service_level if service_level is not None else stored.get("service_level", 0.95),
+                                      review_days=review_days if review_days is not None else stored.get("review_days", 14), promo_factor=promo_factor,
+                                      promo_start=promo_from, promo_end=promo_to, notes=notes)

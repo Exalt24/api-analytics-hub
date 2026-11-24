@@ -48,6 +48,16 @@ PERMISSIONS: dict[Role, frozenset[str]] = {
 }
 
 
+#: Inventory planning (app/api/inventory.py): every role reads the orders and the plan workbook; an operator or admin makes, moves and receives orders. Added here, after the table above,
+#: so the lines of that table other code and checks point at stay as they were.
+_INVENTORY: dict[Role, frozenset[str]] = {
+    Role.VIEWER: frozenset({"read:inventory"}),
+    Role.OPERATOR: frozenset({"read:inventory", "write:inventory"}),
+    Role.ADMIN: frozenset({"read:inventory", "write:inventory"}),
+}
+PERMISSIONS = {role: granted | _INVENTORY[role] for role, granted in PERMISSIONS.items()}
+
+
 @dataclass(frozen=True)
 class Principal:
     tenant_id: str
