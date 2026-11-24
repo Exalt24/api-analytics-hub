@@ -79,6 +79,9 @@ export default function Page() {
           <Link href="/reports" className="linkish">
             Reports
           </Link>
+          <Link href="/inventory" className="linkish">
+            Inventory
+          </Link>
           <label className="field">
             <span>Connection</span>
             <select

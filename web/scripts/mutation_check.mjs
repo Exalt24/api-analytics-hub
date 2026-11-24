@@ -36,6 +36,7 @@ const T = {
   sync: "tests/replicache-sync.test.ts",
   portal: "tests/portal.test.ts",
   esign: "tests/esign.test.ts",
+  inv: "tests/inventory.test.ts",
 };
 
 /** One edit: the text must occur exactly once in the file. */
@@ -164,6 +165,40 @@ const MUTANTS = [
   { name: "tsc.strict_off", tests: [T.strict], edits: [e("tsconfig.json", '"strict": true,\n    "noImplicitAny": true,', '"strict": false,\n    "noImplicitAny": false,')] },
   { name: "lint.any_is_a_warning", lint: true, edits: [e("lint/eslint.config.mjs", '"@typescript-eslint/no-explicit-any": "error"', '"@typescript-eslint/no-explicit-any": "warn"')] },
   { name: "lint.any_is_off", lint: true, edits: [e("lint/eslint.config.mjs", '"@typescript-eslint/no-explicit-any": "error"', '"@typescript-eslint/no-explicit-any": "off"')] },
+
+  // ---- inventory planning page (lib/inventory)
+  { name: "inventory.po_supplier_not_filtered", tests: [T.inv], edits: [e("lib/inventory/po.ts", "if (onlySupplier !== undefined && name !== onlySupplier) continue;", "")] },
+  { name: "inventory.po_untracked_ordered", tests: [T.inv], edits: [e("lib/inventory/po.ts", 'l.status === "ok" && l.needsReorder &&', "l.needsReorder &&")] },
+  { name: "inventory.po_not_needing_reorder_ordered", tests: [T.inv], edits: [e("lib/inventory/po.ts", 'l.status === "ok" && l.needsReorder && l.suggestedQty > 0', 'l.status === "ok" && l.suggestedQty > 0')] },
+  { name: "inventory.po_zero_quantity_ordered", tests: [T.inv], edits: [e("lib/inventory/po.ts", "l.needsReorder && l.suggestedQty > 0 && l.supplier", "l.needsReorder && l.supplier")] },
+  { name: "inventory.po_lead_time_ignored", tests: [T.inv], edits: [e("lib/inventory/po.ts", "expectedOn: addDays(asOf, lead),", "expectedOn: addDays(asOf, 0),")] },
+  { name: "inventory.po_missing_cost_becomes_zero", tests: [T.inv], edits: [e("lib/inventory/po.ts", "lineTotalMinor: l.unitCostMinor === null ? null : l.unitCostMinor * BigInt(l.suggestedQty),", "lineTotalMinor: l.unitCostMinor === null ? 0n : l.unitCostMinor * BigInt(l.suggestedQty),")] },
+  { name: "inventory.po_cost_not_multiplied", tests: [T.inv], edits: [e("lib/inventory/po.ts", "l.unitCostMinor * BigInt(l.suggestedQty)", "l.unitCostMinor")] },
+  { name: "inventory.po_least_cover_not_first", tests: [T.inv], edits: [e("lib/inventory/po.ts", "(a.coverDays ?? Infinity) - (b.coverDays ?? Infinity) || ", "")] },
+  { name: "inventory.po_blank_cost_written_as_zero", tests: [T.inv], edits: [e("lib/inventory/po.ts", 'l.unitCostMinor === null ? "" : plainAmount(l.unitCostMinor', 'l.unitCostMinor === null ? "0" : plainAmount(l.unitCostMinor')] },
+  { name: "inventory.export_viewer_may_enter_promo", tests: [T.inv], edits: [e("lib/inventory/export.ts", 'if (principal.role === "viewer") return', "if (false) return")] },
+  { name: "inventory.export_tab_kept_in_paste", tests: [T.inv], edits: [e("lib/inventory/export.ts", "const TSV_BAD = /[\\t\\r\\n]/g;", "const TSV_BAD = /[\\r\\n]/g;")] },
+  { name: "inventory.export_paste_formula_not_defused", tests: [T.inv], edits: [e("lib/inventory/export.ts", "!numeric && /^[=+\\-@]/.test(clean) ?", "false ?")] },
+  { name: "inventory.export_empty_draft_written", tests: [T.inv], edits: [e("lib/inventory/export.ts", "if (orders.length === 0) {", "if (false) {")] },
+  { name: "inventory.export_supplier_not_passed", tests: [T.inv], edits: [e("lib/inventory/export.ts", "buildPurchaseOrders(plan.lines, plan.asOf, req.supplier)", "buildPurchaseOrders(plan.lines, plan.asOf)")] },
+  { name: "inventory.export_numbers_as_text", tests: [T.inv], edits: [e("lib/inventory/export.ts", "cellRef.value = Number(cellRef.value);", "cellRef.value = cellRef.value;")] },
+  { name: "inventory.data_oldest_run_read", tests: [T.inv], edits: [e("lib/inventory/data.ts", '.orderBy("as_of", "desc")', '.orderBy("as_of", "asc")')] },
+  { name: "inventory.data_every_run_mixed", tests: [T.inv], edits: [e("lib/inventory/data.ts", '.where("l.run_id", "=", run.id)', "")] },
+  { name: "inventory.data_shortages_not_first", tests: [T.inv], edits: [e("lib/inventory/data.ts", "if (sa !== sb) return sa - sb;", "")] },
+  { name: "inventory.data_reorder_not_next", tests: [T.inv], edits: [e("lib/inventory/data.ts", "if (a.needsReorder !== b.needsReorder) return a.needsReorder ? -1 : 1;", "")] },
+  { name: "inventory.data_no_sales_sorts_first", tests: [T.inv], edits: [e("lib/inventory/data.ts", "const ca = a.coverDays ?? Number.POSITIVE_INFINITY;", "const ca = a.coverDays ?? 0;")] },
+  { name: "inventory.data_reorder_count_ignores_quantity", tests: [T.inv], edits: [e("lib/inventory/data.ts", "l.needsReorder && l.suggestedQty > 0).length", "l.needsReorder).length")] },
+  { name: "inventory.input_zero_factor_allowed", tests: [T.inv], edits: [e("lib/inventory/input.ts", '.gt(0, "The factor must be above 0")', '.gte(0, "The factor must be above 0")')] },
+  { name: "inventory.input_factor_cap_dropped", tests: [T.inv], edits: [e("lib/inventory/input.ts", '.max(20, "The factor can be at most 20")', "")] },
+  { name: "inventory.input_reversed_range_allowed", tests: [T.inv], edits: [e("lib/inventory/input.ts", "(v) => v.endsOn >= v.startsOn,", "() => true,")] },
+  { name: "inventory.input_loose_day", tests: [T.inv], edits: [e("lib/inventory/input.ts", "(0[1-9]|[12]\\d|3[01])$/;", "(\\d{1,2})$/;")] },
+  { name: "inventory.input_any_format", tests: [T.inv], edits: [e("lib/inventory/input.ts", "format: z.enum(PO_FORMATS),", "format: z.string(),")] },
+  { name: "inventory.input_short_key_allowed", tests: [T.inv], edits: [e("lib/inventory/input.ts", '.min(8, "Enter your API key")', "")] },
+  { name: "inventory.format_new_for_every_trend", tests: [T.inv], edits: [e("lib/inventory/format.ts", 'return label === "rising" ? "new" : "-";', 'return "new";')] },
+  { name: "inventory.format_cover_rounded", tests: [T.inv], edits: [e("lib/inventory/format.ts", 'days === null ? "no sales" : days.toFixed(1)', 'days === null ? "no sales" : days.toFixed(0)')] },
+  { name: "inventory.format_shortage_filter_open", tests: [T.inv], edits: [e("lib/inventory/format.ts", 'if (filter === "short") return line.shortage !== null;', 'if (filter === "short") return true;')] },
+  { name: "inventory.format_reorder_filter_ignores_quantity", tests: [T.inv], edits: [e("lib/inventory/format.ts", "return line.needsReorder && line.suggestedQty > 0;", "return line.needsReorder;")] },
+  { name: "inventory.view_revenue_in_minor_units", tests: [T.inv], edits: [e("lib/inventory/view.ts", 'revenue: displayAmount(l.revenueMinor, "minor_currency", l.currency),', "revenue: String(l.revenueMinor),")] },
 ];
 
 // ---------------------------------------------------------------------------------------------

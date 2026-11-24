@@ -1,0 +1,30 @@
+/* The Inventory page: plain CSS on the dashboard tokens in globals.css, so it follows the same light and dark scheme. */
+.inv-section { margin-top: 28px; }
+.inv-tag {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px;
+  border: 1px solid var(--line); background: var(--card); color: var(--fg);
+}
+.inv-tag.best_seller { border-color: var(--accent); color: var(--accent); }
+.inv-tag.rising { border-color: #1a7f37; color: #1a7f37; }
+.inv-tag.slow_mover { border-color: var(--muted); color: var(--muted); }
+.inv-tag.short { border-color: var(--bad); color: var(--bad); }
+.inv-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+.inv-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.inv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.inv-form input, .inv-toolbar select {
+  padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); font-size: 14px; min-width: 120px;
+}
+.inv-form input:disabled, .inv-form button:disabled { opacity: .55; }
+.inv-orders { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.inv-order { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 14px 16px; }
+.inv-order h3 { margin: 0 0 4px; font-size: 15px; }
+.inv-order ul { margin: 8px 0; padding-left: 18px; font-size: 14px; }
+.inv-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.inv-actions button {
+  padding: 7px 12px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); font-size: 13px; cursor: pointer;
+}
+.inv-actions button:disabled { opacity: .55; cursor: default; }
+.inv-note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.ok-note { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; margin: 12px 0; font-size: 14px; background: var(--card); }
