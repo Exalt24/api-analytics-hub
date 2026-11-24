@@ -2,7 +2,7 @@
 """Shared setup for the inventory planning database tests, and a stand-in Shopify for the reader tests.
 
 Like the other database suites this DROPS and recreates the `public` schema of the database it points at (ANALYTICS_TEST_DSN, default the compose Postgres on 5433), so aim it at a
-scratch database. It applies 001, 002, 003 and 020: inventory planning needs the tenant table, the request role, the API keys the web tests read and its own tables.
+scratch database. It applies 001, 002, 003, 020 and 021: inventory planning needs the tenant table, the request role, the API keys the web tests read and its own tables.
 
 `FakeShop` is an httpx transport that answers the two queries app/inventory/reader.py sends, written from the shapes Shopify's Admin GraphQL documentation gives for
 `productVariants`, `inventoryLevels` and `orders`. It pages, filters orders by the processed_at window of the query, reports a cost bucket in `extensions`, and can be told to
@@ -25,7 +25,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 DSN = os.environ.get("ANALYTICS_TEST_DSN", "postgresql://analytics:analytics@127.0.0.1:5433/analytics")
 TODAY = date(2026, 11, 24)
-MIGRATIONS = ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "020_inventory_planning.sql")
+MIGRATIONS = ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "020_inventory_planning.sql", "021_purchase_orders.sql")
 
 psycopg = pytest.importorskip("psycopg", reason="psycopg not installed")
 pytest.importorskip("asyncpg")

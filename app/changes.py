@@ -432,10 +432,10 @@ class SinkAnswer(NamedTuple):
 
 Sink = Callable[[dict[str, Any], str], SinkAnswer]
 
-#: The outbox tables the delivery code below works on. Both have the same columns (event_id, idempotency_key, payload and the lease and attempt columns); the second is the inventory
-#: planning alert outbox (migrations/020_inventory_planning.sql), which reuses this claim, retry and outcome code instead of carrying a copy. A name is checked against this list
+#: The outbox tables the delivery code below works on. Both have the same columns (event_id, idempotency_key, payload and the lease and attempt columns); the others are the inventory
+#: planning alert outbox (migrations/020_inventory_planning.sql) and the late purchase order outbox (migrations/021_purchase_orders.sql), which reuse this claim, retry and outcome code instead of carrying a copy. A name is checked against this list
 #: before it is put into SQL.
-OUTBOX_TABLES = ("change_outbox", "inventory_alert_outbox")
+OUTBOX_TABLES = ("change_outbox", "inventory_alert_outbox", "inventory_po_alert_outbox")
 
 
 def _outbox(table: str) -> str:

@@ -29,6 +29,9 @@ from . import model
 
 KINDS = ("out_of_stock", "cover_below_lead_time", "stockout_projected")
 OUTBOX_TABLE = "inventory_alert_outbox"
+#: A late purchase order is its own alert, in its own table and outbox (migrations/021_purchase_orders.sql), delivered by the same code.
+LATE_KIND = "po_late"
+LATE_OUTBOX_TABLE = "inventory_po_alert_outbox"
 
 
 def shortage_kind(status: str, velocity: float, available: int, lead_time_days: int | None, cover_days: float | None, forecast_cover_days: float | None) -> str | None:
@@ -90,7 +93,16 @@ def _kind_of_line(ln: asyncpg.Record) -> str | None:
 
 # ------------------------------------------------------------------------------------------------------- sinks
 
+def describe_late_order(payload: dict[str, Any]) -> str:
+    """One sentence for a late purchase order: who, how late, what is still to arrive."""
+    units = payload.get("open_units") or 0
+    return "The purchase order to %s was expected %s and is %s day(s) late: %s unit(s) are still to arrive (%s)." % (
+        payload.get("supplier") or "a supplier", payload.get("expected_on"), payload.get("days_late"), units, payload.get("status"))
+
+
 def describe_alert(payload: dict[str, Any]) -> str:
+    if payload.get("kind") == LATE_KIND:
+        return describe_late_order(payload)
     name = payload.get("product") or "a product"
     variant = payload.get("variant")
     title = "%s - %s" % (name, variant) if variant and variant != "Default Title" else name

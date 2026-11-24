@@ -12,7 +12,7 @@ from typing import Sequence
 
 import asyncpg
 
-from . import alerts, model
+from . import alerts, model, orders
 from .model import PlanParams, PlanRow, Promo, VariantInput
 from .reader import OrderLine, VariantStock
 
@@ -141,6 +141,12 @@ async def load_inputs(conn: asyncpg.Connection, as_of: date, params: PlanParams)
     for r in await conn.fetch("select variant_id, starts_on, ends_on, factor from inventory_promo where ends_on >= $1", as_of):
         promos[str(r["variant_id"]) if r["variant_id"] else None].append(Promo(r["starts_on"], r["ends_on"], r["factor"]))
 
+    # What is on order and still to arrive, from the purchase orders a person tracks (migrations/021). A draft, a cancelled order and a received line are not inbound.
+    arrivals = orders.arrivals_by_variant([
+        (str(r["variant_id"]), r["status"], r["quantity_ordered"], r["quantity_received"], r["expected_on"]) for r in await conn.fetch(
+            """select l.variant_id, o.status, l.quantity_ordered, l.quantity_received, o.expected_on from inventory_purchase_order_line l
+                 join inventory_purchase_order o on o.id = l.order_id where l.variant_id is not null and o.status = any($1::text[])""", list(orders.OPEN_STATUSES))])
+
     inputs: list[VariantInput] = []
     by_key: dict[str, asyncpg.Record] = {}
     for v in variants:
@@ -152,7 +158,7 @@ async def load_inputs(conn: asyncpg.Connection, as_of: date, params: PlanParams)
             key=key, available=int(snap["available"]) if snap else 0, incoming=int(snap["incoming"]) if snap else 0, tracked=v["tracked"], stock_known=snap is not None,
             snapshots=snaps.get(key, {}), sales=sales.get(key, {}), units_all=int(total["units"]) if total else 0, revenue_minor=int(total["revenue"]) if total else 0,
             lead_time_days=v["lead_time_days"], lead_time_sd_days=float(v["lead_time_sd_days"] or 0.0), moq=v["moq"], pack_size=v["pack_size"],
-            promos=tuple(promos.get(None, [])) + tuple(promos.get(key, []))))
+            promos=tuple(promos.get(None, [])) + tuple(promos.get(key, [])), arrivals=tuple(arrivals.get(key, []))))
     return inputs, by_key
 
 
@@ -175,14 +181,14 @@ async def make_plan(conn: asyncpg.Connection, tenant_id: str, as_of: date, param
             """insert into inventory_plan_line (tenant_id, run_id, variant_id, product_title, variant_title, sku, supplier_id, supplier_name, status, available, incoming, velocity,
                    velocity_sd, counted_days, out_days, unknown_days, window_days, units_recent, units_prior, units_all, trend_ratio, revenue_minor, currency, cover_days,
                    forecast_cover_days, stockout_date, promo_factor, lead_time_days, lead_time_sd_days, safety_stock, reorder_point, needs_reorder, suggested_qty,
-                   unit_cost_minor, abc_class, label, stock_read_on, shortage)
+                   unit_cost_minor, abc_class, label, stock_read_on, shortage, inbound_source, inbound_expected_on, inbound_late)
                values ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7::uuid, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
-                       $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)""",
+                       $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)""",
             tenant_id, run_id, r.key, v["product_title"], v["variant_title"], v["sku"], v["supplier_id"], v["supplier_name"], r.status, r.available, r.incoming,
             r.velocity.mean, r.velocity.sd, r.velocity.counted_days, r.velocity.out_days, r.velocity.unknown_days, r.velocity.window_days, r.velocity.units,
             r.prior_velocity.units, item.units_all, r.trend_ratio, item.revenue_minor, v["currency"] or fallback_currency, r.cover_days, r.forecast_cover_days, r.stockout_date,
             r.promo_factor, r.lead_time_days, r.lead_time_sd_days, r.safety_stock, r.reorder_point, r.needs_reorder, r.suggested_qty, v["unit_cost_minor"], r.abc_class, r.label, read_on.get(r.key),
-            alerts.shortage_kind(r.status, r.velocity.mean, r.available, r.lead_time_days, r.cover_days, r.forecast_cover_days))
+            alerts.shortage_kind(r.status, r.velocity.mean, r.available, r.lead_time_days, r.alert_cover_days, r.forecast_cover_days), r.inbound_source, r.inbound_expected_on, r.inbound_late)
     return str(run_id), rows
 
 

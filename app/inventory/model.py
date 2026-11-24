@@ -19,6 +19,8 @@ from fractions import Fraction
 from statistics import NormalDist
 from typing import Mapping, Sequence
 
+from .orders import Arrival
+
 IN_STOCK = "in"
 OUT_OF_STOCK = "out"
 UNKNOWN = "unknown"
@@ -138,14 +140,20 @@ def demand_over(baseline: float, start: date, horizon_days: int, promos: Sequenc
     return sum(baseline * promo_factor_on(start + timedelta(days=i), promos) for i in range(max(horizon_days, 0)))
 
 
-def projected_cover(available: int, baseline: float, start: date, promos: Sequence[Promo], cap: int = COVER_CAP_DAYS) -> float | None:
-    """Days until the stock runs out when each day sells the baseline times its promotion factor. 0 when nothing is left, None when it lasts past `cap` days or nothing sells."""
+def projected_cover(available: int, baseline: float, start: date, promos: Sequence[Promo], cap: int = COVER_CAP_DAYS, arrivals: Sequence[Arrival] = ()) -> float | None:
+    """Days until the stock runs out when each day sells the baseline times its promotion factor and each open order lands on its expected date. 0 when nothing is left, None when it
+    lasts past `cap` days or nothing sells. An arrival is added at the start of its day. One with no date, or a date before `start` (an order already late), is not assumed to arrive."""
     if available <= 0:
         return 0.0
     if baseline <= 0:
         return None
+    landing: dict[int, int] = {}
+    for a in arrivals:
+        if a.expected_on is not None and (a.expected_on - start).days >= 0:
+            landing[(a.expected_on - start).days] = landing.get((a.expected_on - start).days, 0) + a.quantity
     remaining = float(available)
     for i in range(cap):
+        remaining += landing.get(i, 0)
         daily = baseline * promo_factor_on(start + timedelta(days=i), promos)
         if remaining <= daily:
             return i + remaining / daily
@@ -262,6 +270,9 @@ class VariantInput:
     moq: int = 1
     pack_size: int = 1
     promos: Sequence[Promo] = ()
+    #: Open purchase orders for the variant (app/inventory/orders.py), one entry for each order's remaining quantity and expected date. When there are any, they are the inbound stock
+    #: and `incoming` (Shopify's own figure) is not used: the same goods can be in both, so the two are never added.
+    arrivals: Sequence[Arrival] = ()
 
 
 @dataclass(frozen=True)
@@ -285,6 +296,13 @@ class PlanRow:
     suggested_qty: int
     abc_class: str
     label: str
+    #: The cover the shortage alerts compare with the lead time: the plain cover, or, when open orders land on dated days, the cover those arrivals give.
+    alert_cover_days: float | None = None
+    #: Where `incoming` came from: orders (the open purchase orders), shopify (its incoming quantity) or none.
+    inbound_source: str = "none"
+    #: The earliest expected date among the open orders, and whether any of them is already past its date.
+    inbound_expected_on: date | None = None
+    inbound_late: bool = False
 
 
 def plan_variant(item: VariantInput, as_of: date, abc: str, params: PlanParams) -> PlanRow:
@@ -298,27 +316,38 @@ def plan_variant(item: VariantInput, as_of: date, abc: str, params: PlanParams) 
     baseline = recent.mean
     label = label_for(abc, item.units_all, recent, prior, params)
     cover = days_of_cover(item.available, baseline)
-    forecast_cover = projected_cover(item.available, baseline, as_of, item.promos)
+    # Open purchase orders are the inbound stock when there are any; their dated arrivals also lengthen the cover. An order already past its date stays in the stock position (so the plan
+    # does not buy the same goods twice, and the late alert is what asks for it to be chased) but is not assumed to land.
+    on_time = [a for a in item.arrivals if a.expected_on is not None and a.expected_on >= as_of]
+    forecast_cover = projected_cover(item.available, baseline, as_of, item.promos, arrivals=on_time)
+    alert_cover = projected_cover(item.available, baseline, as_of, (), arrivals=on_time) if on_time else cover
     stockout = as_of + timedelta(days=int(forecast_cover)) if forecast_cover is not None else None
+    if item.arrivals:
+        inbound, source = sum(a.quantity for a in item.arrivals), "orders"
+    else:
+        inbound, source = item.incoming, "shopify" if item.incoming > 0 else "none"
+    dated = [a.expected_on for a in item.arrivals if a.expected_on is not None]
+    inbound_expected = min(dated) if dated else None
+    inbound_late = any(d < as_of for d in dated)
 
     status = "untracked" if not item.tracked else "no_stock_reading" if not item.stock_known else "no_supplier" if item.lead_time_days is None else "ok"
     lead = item.lead_time_days
     if status != "ok" or lead is None:
-        return PlanRow(item.key, status, item.available, item.incoming, recent, prior, trend, cover, forecast_cover, stockout, 1.0, lead,
-                       item.lead_time_sd_days if lead is not None else None, None, None, False, 0, abc, label)
+        return PlanRow(item.key, status, item.available, inbound, recent, prior, trend, cover, forecast_cover, stockout, 1.0, lead,
+                       item.lead_time_sd_days if lead is not None else None, None, None, False, 0, abc, label, alert_cover, source, inbound_expected, inbound_late)
 
     lead_demand = demand_over(baseline, as_of, lead, item.promos)
     factor = lead_demand / (baseline * lead) if baseline * lead > 0 else 1.0
     ss = ceil_units(safety_stock(baseline * factor, recent.sd * factor, lead, item.lead_time_sd_days, params.service_level))
     rop = ceil_units(reorder_point(lead_demand, ss))
-    position = item.available + item.incoming
+    position = item.available + inbound
     needs = baseline > 0 and position <= rop
     quantity = 0
     if needs:
         target = demand_over(baseline, as_of, lead + params.review_days, item.promos) + ss
         quantity = round_to_order(ceil_units(target - position), item.moq, item.pack_size)
-    return PlanRow(item.key, status, item.available, item.incoming, recent, prior, trend, cover, forecast_cover, stockout, factor, lead,
-                   item.lead_time_sd_days, ss, rop, needs, quantity, abc, label)
+    return PlanRow(item.key, status, item.available, inbound, recent, prior, trend, cover, forecast_cover, stockout, factor, lead,
+                   item.lead_time_sd_days, ss, rop, needs, quantity, abc, label, alert_cover, source, inbound_expected, inbound_late)
 
 
 def plan_all(items: Sequence[VariantInput], as_of: date, params: PlanParams | None = None) -> list[PlanRow]:

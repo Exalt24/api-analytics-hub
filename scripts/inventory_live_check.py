@@ -68,7 +68,7 @@ def admin(sql: str, *params):
 def build_schema() -> None:
     with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("drop schema if exists public cascade; create schema public")
-        for name in ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "020_inventory_planning.sql"):
+        for name in ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "020_inventory_planning.sql", "021_purchase_orders.sql"):
             cur.execute((ROOT / "migrations" / name).read_text(encoding="utf-8"))
 
 
