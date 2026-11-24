@@ -160,6 +160,8 @@ create table if not exists inventory_plan_line (
     unit_cost_minor    bigint,
     abc_class          char(1)     not null check (abc_class in ('A', 'B', 'C')),
     label              text        not null check (label in ('best_seller', 'rising', 'slow_mover', 'steady')),
+    -- the shortage this line shows, decided once in app/inventory/alerts.py: the alerts and the dashboard both read it
+    shortage           text        check (shortage in ('out_of_stock', 'cover_below_lead_time', 'stockout_projected')),
     unique (run_id, variant_id)
 );
 

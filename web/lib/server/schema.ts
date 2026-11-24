@@ -70,7 +70,88 @@ export interface ReportPresetTable {
   version: string;
 }
 
+/** migrations/020: the inventory plan a tenant's last run stored, the variant names, the suppliers and promotions a person enters, and the alerts raised. */
+export interface InventoryPlanRunTable {
+  id: string;
+  tenant_id: string;
+  as_of: string;
+  variants: number;
+  created_at: Date;
+}
+
+export interface InventoryPlanLineTable {
+  id: Generated<string>;
+  tenant_id: string;
+  run_id: string;
+  variant_id: string;
+  product_title: string;
+  variant_title: string;
+  sku: string | null;
+  supplier_name: string | null;
+  status: "ok" | "no_supplier" | "untracked" | "no_stock_reading";
+  stock_read_on: string | null;
+  available: string;
+  incoming: string;
+  velocity: number;
+  velocity_sd: number;
+  counted_days: number;
+  out_days: number;
+  unknown_days: number;
+  window_days: number;
+  units_recent: number;
+  units_prior: number;
+  trend_ratio: number | null;
+  revenue_minor: string;
+  currency: string | null;
+  cover_days: number | null;
+  forecast_cover_days: number | null;
+  stockout_date: string | null;
+  lead_time_days: number | null;
+  safety_stock: number | null;
+  reorder_point: number | null;
+  needs_reorder: boolean;
+  suggested_qty: number;
+  unit_cost_minor: string | null;
+  abc_class: "A" | "B" | "C";
+  label: "best_seller" | "rising" | "slow_mover" | "steady";
+  shortage: "out_of_stock" | "cover_below_lead_time" | "stockout_projected" | null;
+}
+
+export interface InventoryVariantTable {
+  id: Generated<string>;
+  tenant_id: string;
+  sku: string | null;
+  product_title: string;
+}
+
+export interface InventoryPromoTable {
+  id: Generated<string>;
+  tenant_id: string;
+  variant_id: string | null;
+  starts_on: string;
+  ends_on: string;
+  factor: number;
+  note: string | null;
+  entered_by: string;
+}
+
+export interface InventoryAlertTable {
+  id: Generated<string>;
+  tenant_id: string;
+  variant_id: string;
+  kind: "out_of_stock" | "cover_below_lead_time" | "stockout_projected";
+  event_ref: string;
+  as_of: string;
+  detail: Record<string, unknown>;
+  created_at: Date;
+}
+
 export interface Database {
+  inventory_plan_run: InventoryPlanRunTable;
+  inventory_plan_line: InventoryPlanLineTable;
+  inventory_variant: InventoryVariantTable;
+  inventory_promo: InventoryPromoTable;
+  inventory_alert: InventoryAlertTable;
   replicache_space: ReplicacheSpaceTable;
   replicache_client: ReplicacheClientTable;
   report_preset: ReportPresetTable;

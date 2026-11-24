@@ -84,7 +84,8 @@ async def raise_alerts(conn: asyncpg.Connection, tenant_id: str, as_of: date, li
 
 
 def _kind_of_line(ln: asyncpg.Record) -> str | None:
-    return shortage_kind(ln["status"], ln["velocity"], ln["available"], ln["lead_time_days"], ln["cover_days"], ln["forecast_cover_days"])
+    """The shortage stored on the plan line, decided by `shortage_kind` when the plan was made."""
+    return ln["shortage"]
 
 
 # ------------------------------------------------------------------------------------------------------- sinks

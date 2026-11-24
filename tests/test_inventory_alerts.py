@@ -89,8 +89,9 @@ def test_the_webhook_sink_maps_each_outcome_and_never_leaks_the_url():
 
 def _line(vid: str, **kw):
     base = {"variant_id": vid, "product_title": "P" + vid, "variant_title": "Default Title", "sku": None, "status": "ok", "velocity": 2.0, "available": 20, "incoming": 0,
-            "lead_time_days": 9, "cover_days": 10.0, "forecast_cover_days": 10.0, "stockout_date": None, "suggested_qty": 0, "supplier_name": None}
-    return base | kw
+            "lead_time_days": 9, "cover_days": 10.0, "forecast_cover_days": 10.0, "stockout_date": None, "suggested_qty": 0, "supplier_name": None} | kw
+    base["shortage"] = shortage_kind(base["status"], base["velocity"], base["available"], base["lead_time_days"], base["cover_days"], base["forecast_cover_days"])
+    return base
 
 
 def test_open_shortages_lists_only_shortages_most_urgent_kind_first():
