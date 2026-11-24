@@ -77,8 +77,11 @@ export async function buildPdf(data: ReportData, summary?: ReportSummary): Promi
   };
 
   ensure(30);
-  page.drawText(pdfSafe(`${data.tenantName}`), { x: MARGIN, y, size: 18, font: bold });
-  y -= 24;
+  for (const l of wrap(pdfSafe(`${data.tenantName}`), bold, 18, PAGE.width - 2 * MARGIN)) {
+    ensure(24);
+    page.drawText(l, { x: MARGIN, y, size: 18, font: bold });
+    y -= 24;
+  }
   draw(`Monthly report for ${monthName(data.month)} (${data.month})`, text, 11);
 
   heading("Summary");

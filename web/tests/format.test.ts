@@ -118,6 +118,14 @@ describe("the three formats hold the same data", () => {
     expect(pdf.lines.join(" ")).toContain("across the month for this client");
   });
 
+  it("pdf: a long tenant name in the title wraps instead of running off the page", async () => {
+    const name = "The Very Long Named Regional Outfitters and Adventure Equipment Supply Company of the Northern Highlands";
+    const pdf = await readPdf(await buildPdf({ ...data, tenantName: name }));
+    const title = pdf.lines.slice(0, pdf.lines.findIndex((l) => l.startsWith("Monthly report")));
+    expect(title.length).toBeGreaterThan(1);
+    expect(title.join(" ")).toBe(name);
+  });
+
   it("pdf: a long source document name with no spaces is cut into lines that fit the page", async () => {
     const filename = `${"quarterly-board-pack-final-".repeat(7)}v2.pdf`;
     const pdf = await readPdf(await buildPdf({ ...data, attachment: { filename, objectKey: "tenants/x/reports/2026-10/source.pdf" } }));
