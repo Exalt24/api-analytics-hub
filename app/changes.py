@@ -432,6 +432,17 @@ class SinkAnswer(NamedTuple):
 
 Sink = Callable[[dict[str, Any], str], SinkAnswer]
 
+#: The outbox tables the delivery code below works on. Both have the same columns (event_id, idempotency_key, payload and the lease and attempt columns); the second is the inventory
+#: planning alert outbox (migrations/020_inventory_planning.sql), which reuses this claim, retry and outcome code instead of carrying a copy. A name is checked against this list
+#: before it is put into SQL.
+OUTBOX_TABLES = ("change_outbox", "inventory_alert_outbox")
+
+
+def _outbox(table: str) -> str:
+    if table not in OUTBOX_TABLES:
+        raise ValueError("not an outbox table: %r" % (table,))
+    return table
+
 
 @dataclass(frozen=True)
 class Claimed:
@@ -451,18 +462,19 @@ class DeliveryResult:
     lost_claim: int = 0
 
 
-def claim_outbox(conn: psycopg.Connection, *, limit: int = 100, lease_seconds: int = 300) -> list[Claimed]:
+def claim_outbox(conn: psycopg.Connection, *, limit: int = 100, lease_seconds: int = 300, table: str = "change_outbox") -> list[Claimed]:
     """Take up to `limit` due rows. A row whose lease is still running is not due, so two workers never push the same row, and a worker that died frees its rows when the lease ends.
 
     It commits on its own, on an autocommit connection or a normal one, so the claim is visible to other workers before the sink is called.
     """
     _require_idle(conn, "claim_outbox")
+    table = _outbox(table)
     with conn.transaction(), conn.cursor() as cur:
         cur.execute(
-            """
-            update change_outbox o
+            f"""
+            update {table} o
                set claim_token = gen_random_uuid(), lease_expires_at = now() + make_interval(secs => %s), attempts = o.attempts + 1, last_attempt_at = now()
-             where o.event_id in (select event_id from change_outbox
+             where o.event_id in (select event_id from {table}
                                    where status = 'pending' and next_attempt_at <= now() and (lease_expires_at is null or lease_expires_at <= now())
                                    order by event_id limit %s for update skip locked)
             returning o.event_id, o.idempotency_key, o.payload, o.attempts, o.claim_token
@@ -481,27 +493,29 @@ def record_outcome(
     max_attempts: int = 5,
     backoff_seconds: float = 60.0,
     backoff_cap_seconds: float = 3600.0,
+    table: str = "change_outbox",
 ) -> str | None:
     """Store what the sink said. Returns the new status, or None when this worker no longer holds the claim (its lease ran out and another worker took the row), in which case nothing is
     written, so a stale worker cannot overwrite a newer one's result. It commits on its own, so a caller on a normal connection cannot lose an outcome and push again."""
     _require_idle(conn, "record_outcome")
+    table = _outbox(table)
     with conn.transaction(), conn.cursor() as cur:
         if answer is not None and answer.status == "ok":
             cur.execute(
-                "update change_outbox set status = 'delivered', delivered_at = now(), sink_ref = %s, last_outcome = 'ok', claim_token = null, lease_expires_at = null "
+                f"update {table} set status = 'delivered', delivered_at = now(), sink_ref = %s, last_outcome = 'ok', claim_token = null, lease_expires_at = null "
                 "where event_id = %s and claim_token = %s and status = 'pending' returning status",
                 (answer.ref, claimed.event_id, claimed.claim_token),
             )
         elif answer is not None and answer.status == "rejected":
             cur.execute(
-                "update change_outbox set status = 'dead', last_outcome = %s, claim_token = null, lease_expires_at = null "
+                f"update {table} set status = 'dead', last_outcome = %s, claim_token = null, lease_expires_at = null "
                 "where event_id = %s and claim_token = %s and status = 'pending' returning status",
                 ("rejected: " + (answer.detail or "")[:200], claimed.event_id, claimed.claim_token),
             )
         elif answer is not None and answer.status == "throttled":
             wait = backoff_seconds if answer.retry_after is None else answer.retry_after
             cur.execute(
-                "update change_outbox set attempts = greatest(attempts - 1, 0), next_attempt_at = now() + make_interval(secs => least(%s, %s)), "
+                f"update {table} set attempts = greatest(attempts - 1, 0), next_attempt_at = now() + make_interval(secs => least(%s, %s)), "
                 "       last_outcome = %s, claim_token = null, lease_expires_at = null "
                 "where event_id = %s and claim_token = %s and status = 'pending' returning status",
                 (max(wait, 0), backoff_cap_seconds, "throttled: " + (answer.detail or "")[:200], claimed.event_id, claimed.claim_token),
@@ -510,7 +524,7 @@ def record_outcome(
             outcome = "ambiguous: " + (answer.detail or "")[:200] if answer is not None and answer.status == "ambiguous" else "error: " + (
                 answer.detail if answer is not None and answer.detail else "no usable answer")[:200]
             cur.execute(
-                "update change_outbox "
+                f"update {table} "
                 "   set status = case when attempts >= %s then 'dead' else 'pending' end, "
                 "       next_attempt_at = now() + make_interval(secs => least(%s * power(2, attempts - 1), %s)), "
                 "       last_outcome = %s, claim_token = null, lease_expires_at = null "
@@ -529,10 +543,11 @@ def deliver_pending(
     lease_seconds: int = 300,
     max_attempts: int = 5,
     backoff_seconds: float = 60.0,
+    table: str = "change_outbox",
 ) -> DeliveryResult:
     """One pass: claim due rows, push each stored payload to the sink, store the outcome. Call it from a schedule until it returns nothing delivered."""
     result = DeliveryResult()
-    for claimed in claim_outbox(conn, limit=limit, lease_seconds=lease_seconds):
+    for claimed in claim_outbox(conn, limit=limit, lease_seconds=lease_seconds, table=table):
         try:
             answer = sink(claimed.payload, claimed.idempotency_key)
             if not isinstance(answer, SinkAnswer):
@@ -540,7 +555,7 @@ def deliver_pending(
         except Exception as exc:  # noqa: BLE001
             # The class only: a driver message can carry a URL with a token in it.
             answer = SinkAnswer("ambiguous", None, type(exc).__name__)
-        status = record_outcome(conn, claimed, answer, max_attempts=max_attempts, backoff_seconds=backoff_seconds)
+        status = record_outcome(conn, claimed, answer, max_attempts=max_attempts, backoff_seconds=backoff_seconds, table=table)
         if status == "delivered":
             result.delivered += 1
         elif status == "dead":
@@ -554,12 +569,13 @@ def deliver_pending(
     return result
 
 
-def requeue_dead(conn: psycopg.Connection, event_ids: list[int] | None = None, *, reason: str = "operator requeue") -> int:
+def requeue_dead(conn: psycopg.Connection, event_ids: list[int] | None = None, *, reason: str = "operator requeue", table: str = "change_outbox") -> int:
     """Put dead rows back to pending with their attempts reset, and record why on the row. `event_ids` limits it to those events; None means every dead row. Returns how many moved."""
     _require_idle(conn, "requeue_dead")
+    table = _outbox(table)
     with conn.transaction(), conn.cursor() as cur:
         cur.execute(
-            "update change_outbox set status = 'pending', attempts = 0, requeued_count = requeued_count + 1, next_attempt_at = now(), claim_token = null, lease_expires_at = null, "
+            f"update {table} set status = 'pending', attempts = 0, requeued_count = requeued_count + 1, next_attempt_at = now(), claim_token = null, lease_expires_at = null, "
             "       last_outcome = left('requeued: ' || %s || ' (was ' || coalesce(last_outcome, 'no outcome') || ')', 300) "
             "where status = 'dead' and (%s::bigint[] is null or event_id = any(%s::bigint[]))",
             (reason, event_ids, event_ids),
