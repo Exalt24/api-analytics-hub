@@ -67,7 +67,7 @@ async def raise_alerts(conn: asyncpg.Connection, tenant_id: str, as_of: date, li
         ref = event_ref(model.last_restock(snapshots.get(variant_id, {})))
         detail: dict[str, Any] = {
             "variant_id": variant_id, "sku": ln["sku"], "product": ln["product_title"], "variant": ln["variant_title"], "supplier": ln["supplier_name"],
-            "available": ln["available"], "velocity": round(ln["velocity"], 4), "cover_days": None if ln["cover_days"] is None else round(ln["cover_days"], 1),
+            "available": ln["available"], "incoming": ln["incoming"], "velocity": round(ln["velocity"], 4), "cover_days": None if ln["cover_days"] is None else round(ln["cover_days"], 1),
             "forecast_cover_days": None if ln["forecast_cover_days"] is None else round(ln["forecast_cover_days"], 1), "lead_time_days": ln["lead_time_days"],
             "stockout_date": ln["stockout_date"].isoformat() if ln["stockout_date"] else None, "suggested_qty": ln["suggested_qty"], "abc_class": ln["abc_class"], "label": ln["label"]}
         alert_id = await conn.fetchval(
@@ -101,8 +101,9 @@ def describe_alert(payload: dict[str, Any]) -> str:
         head = "%s%s has %.1f days of cover and the supplier needs %s days." % (title, sku, payload.get("cover_days") or 0, payload.get("lead_time_days"))
     else:
         head = "%s%s runs out about %s with the promotion entered, inside the %s day lead time." % (title, sku, payload.get("stockout_date"), payload.get("lead_time_days"))
+    inbound = " %s units are inbound." % payload["incoming"] if payload.get("incoming") else ""
     tail = " Suggested order: %s units from %s." % (payload["suggested_qty"], payload.get("supplier") or "no supplier set") if payload.get("suggested_qty") else ""
-    return head + tail
+    return head + inbound + tail
 
 
 def webhook_sink(url: str, *, client: httpx.Client | None = None, timeout: float = 10.0) -> Callable[[dict[str, Any], str], SinkAnswer]:
@@ -149,7 +150,7 @@ def open_shortages(lines: list[asyncpg.Record]) -> list[OpenShortage]:
         kind = _kind_of_line(ln)
         if kind is None:
             continue
-        payload = {"product": ln["product_title"], "variant": ln["variant_title"], "sku": ln["sku"], "kind": kind, "velocity": ln["velocity"], "cover_days": ln["cover_days"],
+        payload = {"product": ln["product_title"], "variant": ln["variant_title"], "sku": ln["sku"], "kind": kind, "incoming": ln["incoming"], "velocity": ln["velocity"], "cover_days": ln["cover_days"],
                    "lead_time_days": ln["lead_time_days"], "stockout_date": ln["stockout_date"], "suggested_qty": ln["suggested_qty"], "supplier": ln["supplier_name"]}
         out.append(OpenShortage(str(ln["variant_id"]), kind, ln["product_title"], describe_alert(payload)))
     return sorted(out, key=lambda s: (KINDS.index(s.kind), s.title, s.variant_id))
