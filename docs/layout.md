@@ -58,13 +58,23 @@ scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, 
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
-migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security), 013 the metric keys of Google Ads, TikTok, Square, QuickBooks and Shopmonkey with the money check and the milli_count unit, 014 Business Profile metric keys, 015 report presets sync, 016 e-signatures (signing requests, signatures and a hash chained audit log, forced row level security, append only)
+migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security), 013 the metric keys of Google Ads, TikTok, Square, QuickBooks and Shopmonkey with the money check and the milli_count unit, 014 Business Profile metric keys, 015 report presets sync, 016 e-signatures (signing requests, signatures and a hash chained audit log, forced row level security, append only), 020 inventory planning (suppliers, variants, dated stock snapshots, order lines, promotions, the stored plan, alerts and their outbox; forced row level security, alerts append only)
 docs/GA4_SOURCES.md, META_SOURCES.md, GSC_SOURCES.md, AD_AND_BUSINESS_SOURCES.md   what each vendor's pages said, and what is UNVERIFIED
 docs/ad-spend.md   the five connectors, their env variables, the ad spend view, its rules and limits
 seed_demo.py         invented figures and two API keys, for anyone without the owner's Shopify store
 deploy/              Caddyfile, systemd units for the nightly backup and its alert, and the script that verifies them (docs/deploy.md)
 app/lead_match.py    lead dedupe, attribution to a call and a source, and the missed call queue, each answer with a reason code (docs/salesforce.md)
 app/similar_queries.py hashed-trigram embedding and the tenant-scoped nearest-query lookup (docs/test-runs/2026-10-30-pgvector-rls-recall.md)
+app/inventory/       inventory planning: stock per variant as dated snapshots, stockout adjusted velocity, safety stock, reorder point, cover, classes, alerts (docs/inventory-planning.md)
+  model.py           the rules as pure functions: which days were on sale, velocity and its variance, safety stock, reorder point, order quantity, ABC classes, labels
+  reader.py          Shopify Admin GraphQL read of variants, stock levels and order lines through the existing connector's transport (queries only)
+  store.py           database side as the request role: variants, snapshots, order lines, suppliers, promotions, the stored plan
+  sync.py            one tenant's sync: read the shop, then store the day's snapshots and the order lines in one transaction
+  alerts.py          the shortage kinds, each raised once behind a UNIQUE key, the webhook sink and the digest of open shortages (app.health.decide)
+scripts/inventory_plan.py   sync, supplier, assign, promo, plan, alerts and digest from the command line
+scripts/inventory_live_check.py, inventory_dev_store.py   the recorded run against the development store, and the test data it needs (created and removed by the script)
+web/app/inventory/, web/components/InventoryPanel.tsx, web/lib/inventory/   the Inventory page: exceptions, planning table, purchase order drafts as CSV, Excel or a Sheets paste, promotion form
+tests/test_inventory_model.py, test_inventory_reader.py, test_inventory_alerts.py, test_inventory_db.py, inventory_fixtures.py, mutation_check_inventory.py   the inventory tests and their mutation harness
 app/price_watch/     competitor price monitoring (docs/price-watch.md)
   scraper.py         Playwright reader for one competitor page, and the pure extraction over what it collects
   fake_site.py       eight invented competitor pages on 127.0.0.1, for the tests and the demo
