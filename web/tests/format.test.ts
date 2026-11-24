@@ -118,6 +118,15 @@ describe("the three formats hold the same data", () => {
     expect(pdf.lines.join(" ")).toContain("across the month for this client");
   });
 
+  it("pdf: a long source document name with no spaces is cut into lines that fit the page", async () => {
+    const filename = `${"quarterly-board-pack-final-".repeat(7)}v2.pdf`;
+    const pdf = await readPdf(await buildPdf({ ...data, attachment: { filename, objectKey: "tenants/x/reports/2026-10/source.pdf" } }));
+    const after = pdf.lines.slice(pdf.lines.indexOf("Source document") + 1);
+    expect(after.length).toBeGreaterThan(1);
+    expect(Math.max(...after.map((l) => l.length))).toBeLessThan(filename.length);
+    expect(after.join("")).toBe(filename);
+  });
+
   it("pdf: a long report runs onto more pages and keeps its last row", async () => {
     const rows: DailyRow[] = [];
     for (let d = 1; d <= 28; d += 1) {

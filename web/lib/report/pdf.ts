@@ -13,10 +13,26 @@ export function pdfSafe(text: string): string {
   return text.replace(/[^\x20-\x7E -ÿ]/g, "?");
 }
 
+/** A single word wider than a line (a long file name with no spaces) is cut into pieces that fit, since word wrapping alone would leave it running off the page. */
+function splitLongWords(words: string[], font: PDFFont, size: number, maxWidth: number): string[] {
+  const out: string[] = [];
+  for (const word of words) {
+    let rest = word;
+    while (font.widthOfTextAtSize(rest, size) > maxWidth && rest.length > 1) {
+      let cut = rest.length - 1;
+      while (cut > 1 && font.widthOfTextAtSize(rest.slice(0, cut), size) > maxWidth) cut -= 1;
+      out.push(rest.slice(0, cut));
+      rest = rest.slice(cut);
+    }
+    out.push(rest);
+  }
+  return out;
+}
+
 function wrap(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const out: string[] = [];
   let current = "";
-  for (const word of text.split(/\s+/).filter(Boolean)) {
+  for (const word of splitLongWords(text.split(/\s+/).filter(Boolean), font, size, maxWidth)) {
     const next = current ? `${current} ${word}` : word;
     if (font.widthOfTextAtSize(next, size) > maxWidth && current) {
       out.push(current);
@@ -92,7 +108,7 @@ export async function buildPdf(data: ReportData, summary?: ReportSummary): Promi
 
   if (data.attachment) {
     heading("Source document");
-    draw(data.attachment.filename, text);
+    paragraph(data.attachment.filename);
   }
 
   const bytes = await doc.save();
