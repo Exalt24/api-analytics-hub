@@ -6,6 +6,12 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # pyspark and delta-spark move as one measured pair (delta-spark 4.4.1 needs pyspark<=4.2.0, so the bot bump to pyspark 4.3.0 cannot install); bump by hand and re-run the lakehouse proof
+      - dependency-name: "pyspark"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "delta-spark"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
