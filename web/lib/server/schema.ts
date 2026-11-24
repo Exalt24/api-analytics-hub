@@ -115,6 +115,10 @@ export interface InventoryPlanLineTable {
   abc_class: "A" | "B" | "C";
   label: "best_seller" | "rising" | "slow_mover" | "steady";
   shortage: "out_of_stock" | "cover_below_lead_time" | "stockout_projected" | null;
+  /** migrations/021: where `incoming` came from, the earliest date an open order is expected, and whether any open order is past its date. */
+  inbound_source: "orders" | "shopify" | "none";
+  inbound_expected_on: string | null;
+  inbound_late: boolean;
 }
 
 export interface InventoryVariantTable {
@@ -146,7 +150,51 @@ export interface InventoryAlertTable {
   created_at: Date;
 }
 
+/** migrations/021: purchase orders, written and moved by the database's own functions (the rules live there), read here. */
+export type PurchaseOrderStatus = "draft" | "ordered" | "confirmed" | "shipped" | "partly_received" | "received" | "cancelled";
+
+export interface InventoryPurchaseOrderTable {
+  id: Generated<string>;
+  tenant_id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  status: PurchaseOrderStatus;
+  currency: string | null;
+  lead_time_days: number | null;
+  plan_as_of: string | null;
+  ordered_on: string | null;
+  expected_on: string | null;
+  confirmed_on: string | null;
+  shipped_on: string | null;
+  closed_on: string | null;
+  note: string | null;
+  created_by: string;
+  created_at: Date;
+}
+
+export interface InventoryPurchaseOrderLineTable {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  variant_id: string | null;
+  sku: string | null;
+  description: string;
+  quantity_ordered: number;
+  quantity_received: number;
+  over_received: boolean;
+  unit_cost_minor: string | null;
+  currency: string | null;
+}
+
+export interface InventoryPoTransitionTable {
+  from_status: PurchaseOrderStatus;
+  to_status: PurchaseOrderStatus;
+}
+
 export interface Database {
+  inventory_purchase_order: InventoryPurchaseOrderTable;
+  inventory_purchase_order_line: InventoryPurchaseOrderLineTable;
+  inventory_po_transition: InventoryPoTransitionTable;
   inventory_plan_run: InventoryPlanRunTable;
   inventory_plan_line: InventoryPlanLineTable;
   inventory_variant: InventoryVariantTable;

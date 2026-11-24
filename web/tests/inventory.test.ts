@@ -19,7 +19,7 @@ function line(over: Partial<PlanLine>): PlanLine {
     variantId: "v", product: "Tee", variant: "Default Title", sku: "T", supplier: "Acme", status: "ok", stockReadOn: PLAN_DAY, available: 10, incoming: 0, velocity: 2, velocitySd: 0,
     countedDays: 20, outDays: 8, unknownDays: 0, windowDays: 28, unitsRecent: 40, unitsPrior: 10, trendRatio: null, revenueMinor: 100000n, currency: "USD", coverDays: 5,
     forecastCoverDays: 5, stockoutDate: null, leadTimeDays: 9, safetyStock: 0, reorderPoint: 18, needsReorder: true, suggestedQty: 60, unitCostMinor: 800n, abcClass: "A",
-    label: "best_seller", shortage: "cover_below_lead_time", ...over,
+    label: "best_seller", shortage: "cover_below_lead_time", inboundSource: "none", inboundExpectedOn: null, inboundLate: false, ...over,
   };
 }
 

@@ -28,3 +28,11 @@
 .inv-actions button:disabled { opacity: .55; cursor: default; }
 .inv-note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 .ok-note { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; margin: 12px 0; font-size: 14px; background: var(--card); }
+.inv-order table { width: 100%; font-size: 13px; margin-top: 6px; }
+.inv-qty { width: 64px; padding: 4px 6px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 13px; }
+.inv-check { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.inv-check input[type="date"] { padding: 5px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 13px; }
+.inv-tag.po-ordered, .inv-tag.po-confirmed, .inv-tag.po-shipped { border-color: var(--accent); color: var(--accent); }
+.inv-tag.po-partly_received { border-color: #9a6700; color: #9a6700; }
+.inv-tag.po-received { border-color: #1a7f37; color: #1a7f37; }
+.inv-tag.po-cancelled { border-color: var(--muted); color: var(--muted); }

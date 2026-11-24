@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { addPromoAction, exportPurchaseOrdersAction, loadPlanAction } from "@/app/inventory/actions";
+import { addPromoAction, createOrderAction, downloadWorkbookAction, exportPurchaseOrdersAction, loadPlanAction } from "@/app/inventory/actions";
 import { KeyGate } from "@/components/KeyGate";
 import { KpiCard } from "@/components/KpiCard";
-import { FILTERS, LABEL_TEXT, SHORTAGE_TEXT, STATUS_TEXT, basisText, coverText, matchesFilter, trendText, velocityText, type LabelFilter } from "@/lib/inventory/format";
-import { promoFormSchema, type PoFormat } from "@/lib/inventory/input";
+import { PurchaseOrders } from "@/components/PurchaseOrders";
+import { FILTERS, LABEL_TEXT, SHORTAGE_TEXT, STATUS_TEXT, basisText, coverText, inboundText, matchesFilter, trendText, velocityText, type LabelFilter } from "@/lib/inventory/format";
+import { promoFormSchema, workbookRequestSchema, type PoFormat } from "@/lib/inventory/input";
 import type { PlanView } from "@/lib/inventory/view";
 import { saveFile } from "@/lib/report/download";
 
@@ -26,6 +27,7 @@ export function InventoryPanel() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<LabelFilter>("all");
   const [ready, setReady] = useState(false);
+  const [ordersToken, setOrdersToken] = useState(0);
 
   const load = useCallback(async (apiKey: string | undefined) => {
     setError(undefined);
@@ -66,6 +68,40 @@ export function InventoryPanel() {
     setNotice(undefined);
     try {
       const result = await exportPurchaseOrdersAction({ apiKey: key, format, ...(supplier ? { supplier } : {}) });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      saveFile(result.base64, result.filename, result.mimeType);
+      setNotice(`Saved ${result.filename}`);
+    } catch {
+      setError("Could not reach the server. Try again.");
+    }
+  }
+
+  async function createOrder(supplier: string) {
+    if (!key) return;
+    setError(undefined);
+    setNotice(undefined);
+    try {
+      const result = await createOrderAction({ apiKey: key, supplier });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setOrdersToken((n) => n + 1);
+      setNotice(`Draft order made for ${supplier}. Place it below when it is sent.`);
+    } catch {
+      setError("Could not reach the server. Try again.");
+    }
+  }
+
+  async function downloadWorkbook(settings: { promoFactor?: number; promoFrom?: string; promoTo?: string }) {
+    if (!key) return;
+    setError(undefined);
+    setNotice(undefined);
+    try {
+      const result = await downloadWorkbookAction({ apiKey: key, ...settings });
       if (!result.ok) {
         setError(result.message);
         return;
@@ -172,6 +208,9 @@ export function InventoryPanel() {
                       </ul>
                       {o.linesWithoutCost > 0 ? <p className="inv-note">{o.linesWithoutCost} line(s) have no unit cost and are left out of the total.</p> : undefined}
                       <div className="inv-actions">
+                        <button type="button" disabled={!ready} onClick={() => void createOrder(o.supplier)}>
+                          Create order for {o.supplier}
+                        </button>
                         <button type="button" disabled={!ready} onClick={() => void download("csv", o.supplier)}>
                           CSV for {o.supplier}
                         </button>
@@ -197,6 +236,10 @@ export function InventoryPanel() {
               </>
             )}
           </section>
+
+          <PurchaseOrders apiKey={key} ready={ready} reloadToken={ordersToken} setError={setError} setNotice={setNotice} />
+
+          <WorkbookForm ready={ready} onDownload={downloadWorkbook} setError={setError} />
 
           <section className="inv-section" aria-labelledby="planning">
             <h2 id="planning">Planning table</h2>
@@ -247,7 +290,8 @@ export function InventoryPanel() {
                       </td>
                       <td>
                         {l.available}
-                        {l.incoming > 0 ? <span className="muted"> +{l.incoming} inbound</span> : undefined}
+                        {l.incoming > 0 ? <span className="muted"> {inboundText(l)}</span> : undefined}
+                        {l.inboundLate ? <span className="inv-tag short"> Late</span> : undefined}
                       </td>
                       <td title={basisText(l.countedDays, l.windowDays, l.outDays, l.unknownDays)}>{velocityText(l.velocity)}</td>
                       <td>{trendText(l.trendRatio, l.label)}</td>
@@ -346,6 +390,64 @@ function PromoForm({ apiKey, ready, onSaved, setError, setNotice }: PromoProps) 
         </label>
         <button type="submit" className="primary" disabled={!ready || busy}>
           {busy ? "Saving" : "Save promotion"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+type WorkbookProps = {
+  ready: boolean;
+  onDownload: (settings: { promoFactor?: number; promoFrom?: string; promoTo?: string }) => Promise<void>;
+  setError: (message: string | undefined) => void;
+};
+
+/** The plan as an Excel workbook with live formulas. The promotion is optional: left empty it starts from the one entered for all variants, if any. */
+function WorkbookForm({ ready, onDownload, setError }: WorkbookProps) {
+  const [factor, setFactor] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(undefined);
+    const checked = workbookRequestSchema.omit({ apiKey: true }).safeParse({
+      promoFactor: factor === "" ? undefined : Number(factor),
+      promoFrom: from === "" ? undefined : from,
+      promoTo: to === "" ? undefined : to,
+    });
+    if (!checked.success) {
+      setError(checked.error.issues[0]?.message ?? "Check the workbook settings.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onDownload(checked.data);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="inv-section" aria-labelledby="workbook">
+      <h2 id="workbook">Plan workbook</h2>
+      <p className="sub">Excel with live formulas: change the service level, a supplier lead time or the promotion and the plan moves. Leave the promotion empty to use the one entered.</p>
+      <form className="inv-form" onSubmit={(e) => void submit(e)} noValidate>
+        <label>
+          Promotion factor
+          <input inputMode="decimal" value={factor} onChange={(e) => setFactor(e.target.value)} placeholder="as entered" />
+        </label>
+        <label>
+          Promotion from
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </label>
+        <label>
+          Promotion to
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </label>
+        <button type="submit" className="primary" disabled={!ready || busy}>
+          {busy ? "Preparing" : "Download workbook"}
         </button>
       </form>
     </section>

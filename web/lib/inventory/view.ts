@@ -34,6 +34,9 @@ export type LineView = {
   abcClass: "A" | "B" | "C";
   label: Label;
   shortage: Shortage | null;
+  inboundSource: "orders" | "shopify" | "none";
+  inboundExpectedOn: string | null;
+  inboundLate: boolean;
 };
 
 export type OrderView = {
@@ -83,6 +86,9 @@ export function toView(plan: PlanData): PlanView {
     abcClass: l.abcClass,
     label: l.label,
     shortage: l.shortage,
+    inboundSource: l.inboundSource,
+    inboundExpectedOn: l.inboundExpectedOn,
+    inboundLate: l.inboundLate,
   }));
   const orders: OrderView[] = buildPurchaseOrders(plan.lines, plan.asOf).map((o) => ({
     supplier: o.supplier,

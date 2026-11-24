@@ -18,6 +18,7 @@ export const CONN_B1 = "b1b1b1b1-0000-4000-8000-0000000000b1";
 export const KEY_A = "aah_test_alpha_viewer_key_0001";
 export const KEY_A_REVOKED = "aah_test_alpha_revoked_key_0002";
 export const KEY_B = "aah_test_bravo_operator_key_0003";
+export const KEY_A_OPERATOR = "aah_test_alpha_operator_key_0004";
 
 export const sha256 = (s: string): string => createHash("sha256").update(s).digest("hex");
 
@@ -81,6 +82,7 @@ export async function seed(client: pg.Client): Promise<void> {
     [KEY_A, TENANT_A, "viewer", false],
     [KEY_A_REVOKED, TENANT_A, "admin", true],
     [KEY_B, TENANT_B, "operator", false],
+    [KEY_A_OPERATOR, TENANT_A, "operator", false],
   ] as const) {
     await client.query(
       "insert into api_key (tenant_id, key_hash, label, role, revoked_at) values ($1, $2, $3, $4, $5)",

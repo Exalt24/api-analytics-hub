@@ -12,6 +12,7 @@ import { ADMIN_DSN, withDatabase } from "./tests/db-build";
 export const E2E_DB = "analytics_web_e2e";
 export const WEB_PORT = 3100;
 export const MODEL_PORT = 4010;
+export const WORKBOOK_PORT = 4011;
 export const S3_ENDPOINT = process.env.S3_TEST_ENDPOINT ?? "http://127.0.0.1:8333";
 
 // The same suite runs in Chromium, Firefox and WebKit (Safari's engine). E2E_BROWSERS narrows it,
@@ -47,12 +48,20 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      command: "node e2e/stand-ins/workbook-backend.mts",
+      url: `http://127.0.0.1:${WORKBOOK_PORT}/__health`,
+      env: { PORT: String(WORKBOOK_PORT) },
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
       command: `npx next start -p ${WEB_PORT}`,
       url: `http://127.0.0.1:${WEB_PORT}/reports`,
       reuseExistingServer: false,
       timeout: 60_000,
       env: {
         DATABASE_URL: withDatabase(ADMIN_DSN, E2E_DB),
+        INVENTORY_API_BASE: `http://127.0.0.1:${WORKBOOK_PORT}`,
         ANTHROPIC_API_KEY: "stand-in-key",
         ANTHROPIC_BASE_URL: `http://127.0.0.1:${MODEL_PORT}/v1`,
         S3_BUCKET: "report-documents",

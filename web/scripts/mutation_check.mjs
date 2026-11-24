@@ -37,6 +37,7 @@ const T = {
   portal: "tests/portal.test.ts",
   esign: "tests/esign.test.ts",
   inv: "tests/inventory.test.ts",
+  invo: "tests/inventory-orders.test.ts",
 };
 
 /** One edit: the text must occur exactly once in the file. */
@@ -199,6 +200,32 @@ const MUTANTS = [
   { name: "inventory.format_shortage_filter_open", tests: [T.inv], edits: [e("lib/inventory/format.ts", 'if (filter === "short") return line.shortage !== null;', 'if (filter === "short") return true;')] },
   { name: "inventory.format_reorder_filter_ignores_quantity", tests: [T.inv], edits: [e("lib/inventory/format.ts", "return line.needsReorder && line.suggestedQty > 0;", "return line.needsReorder;")] },
   { name: "inventory.view_revenue_in_minor_units", tests: [T.inv], edits: [e("lib/inventory/view.ts", 'revenue: displayAmount(l.revenueMinor, "minor_currency", l.currency),', "revenue: String(l.revenueMinor),")] },
+  // ---- purchase orders on the page (lib/inventory/orders.ts, input.ts, format.ts)
+  { name: "inventory_orders.viewer_may_change", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (principal.role === "viewer") return {', "if (false) return {")] },
+  { name: "inventory_orders.shipped_may_be_cancelled", tests: [T.invo], edits: [e("lib/inventory/orders.ts", "  shipped: [],", '  shipped: ["cancelled"],')] },
+  { name: "inventory_orders.draft_may_skip_to_confirmed", tests: [T.invo], edits: [e("lib/inventory/orders.ts", '  draft: ["ordered", "cancelled"],', '  draft: ["ordered", "confirmed", "cancelled"],')] },
+  { name: "inventory_orders.partly_received_has_no_cancel", tests: [T.invo], edits: [e("lib/inventory/orders.ts", '  partly_received: ["cancelled"],', "  partly_received: [],")] },
+  { name: "inventory_orders.late_on_the_day_itself", tests: [T.invo], edits: [e("lib/inventory/orders.ts", "o.expectedOn < today", "o.expectedOn <= today")] },
+  { name: "inventory_orders.open_list_holds_drafts", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'const OPEN_FILTER: readonly PurchaseOrderStatus[] = ["ordered",', 'const OPEN_FILTER: readonly PurchaseOrderStatus[] = ["draft", "ordered",')] },
+  { name: "inventory_orders.total_not_multiplied_by_quantity", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'BigInt(l.unit_cost_minor ?? "0") * BigInt(l.quantity_ordered)', 'BigInt(l.unit_cost_minor ?? "0")')] },
+  { name: "inventory_orders.open_units_can_go_negative", tests: [T.invo], edits: [e("lib/inventory/orders.ts", "open: Math.max(l.quantity_ordered - l.quantity_received, 0),", "open: l.quantity_ordered - l.quantity_received,")] },
+  { name: "inventory_orders.missing_order_is_a_conflict", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (code === "PO404") return { ok: false, code: "not_found", message };', 'if (code === "PO404") return { ok: false, code: "conflict", message };')] },
+  { name: "inventory_orders.bad_quantity_is_a_conflict", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (code === "PO006") return { ok: false, code: "invalid_input", message };', 'if (code === "PO006") return { ok: false, code: "conflict", message };')] },
+  { name: "inventory_orders.driver_message_passed_on", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'return { ok: false, code: "failed", message: "The request failed. Try again." };\n}\n\nconst DATE', 'return { ok: false, code: "failed", message };\n}\n\nconst DATE')] },
+  { name: "inventory_orders.workbook_key_not_sent", tests: [T.invo], edits: [e("lib/inventory/orders.ts", "headers: { Authorization: `Bearer ${req.apiKey}` }", "headers: {}")] },
+  { name: "inventory_orders.workbook_forbidden_is_failed", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (response.status === 403) return { ok: false, code: "forbidden",', 'if (response.status === 403) return { ok: false, code: "failed",')] },
+  { name: "inventory_orders.workbook_no_plan_is_failed", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (response.status === 404) return { ok: false, code: "no_data",', 'if (response.status === 404) return { ok: false, code: "failed",')] },
+  { name: "inventory_orders.workbook_double_slash", tests: [T.invo], edits: [e("lib/inventory/orders.ts", '.replace(/\\/+$/, "")', "")] },
+  { name: "inventory_orders.workbook_promotion_dropped", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (req.promoFactor !== undefined) query.set("promo_factor", String(req.promoFactor));', "")] },
+  { name: "inventory_orders.workbook_invalid_request_sent", tests: [T.invo], edits: [e("lib/inventory/orders.ts", 'if (!parsed.success) return { ok: false, code: "invalid_input", message: parsed.error.issues[0]?.message ?? "The request is not valid.", fieldErrors: fieldErrorsOf(parsed.error.issues) };\n  const req = parsed.data;\n  const query', 'const req = parsed.success ? parsed.data : { apiKey: "" };\n  const query')] },
+  { name: "inventory_orders.input_a_person_may_move_to_received", tests: [T.invo], edits: [e("lib/inventory/input.ts", 'export const MANUAL_STATUSES = ["ordered", "confirmed", "shipped", "cancelled"] as const;', 'export const MANUAL_STATUSES = ["ordered", "confirmed", "shipped", "received", "cancelled"] as const;')] },
+  { name: "inventory_orders.input_zero_receipt_allowed", tests: [T.invo], edits: [e("lib/inventory/input.ts", '.positive("Receive at least 1")', "")] },
+  { name: "inventory_orders.input_fractional_receipt_allowed", tests: [T.invo], edits: [e("lib/inventory/input.ts", '.int("Use a whole number")', "")] },
+  { name: "inventory_orders.input_over_receipt_accepted_by_default", tests: [T.invo], edits: [e("lib/inventory/input.ts", "allowOver: z.boolean().default(false),", "allowOver: z.boolean().default(true),")] },
+  { name: "inventory_orders.input_empty_receipt_allowed", tests: [T.invo], edits: [e("lib/inventory/input.ts", '.min(1, "Name a line and a quantity")', "")] },
+  { name: "inventory_orders.input_service_level_of_one_allowed", tests: [T.invo], edits: [e("lib/inventory/input.ts", '.lt(1, "Under 1")', "")] },
+  { name: "inventory_orders.input_zero_workbook_factor_allowed", tests: [T.invo], edits: [e("lib/inventory/input.ts", '.gt(0, "The promotion factor must be above 0")', '.gte(0, "The promotion factor must be above 0")')] },
+  { name: "inventory_orders.inbound_late_not_said", tests: [T.invo], edits: [e("lib/inventory/format.ts", "line.inboundLate ? `, was due ${line.inboundExpectedOn}`", "line.inboundLate ? `, due ${line.inboundExpectedOn}`")] },
 ];
 
 // ---------------------------------------------------------------------------------------------

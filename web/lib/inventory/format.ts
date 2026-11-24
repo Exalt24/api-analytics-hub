@@ -1,5 +1,6 @@
 /** Words and figures for the Inventory page, kept out of the component so they are tested on their own. */
 import type { Label, LineStatus, Shortage } from "@/lib/inventory/data";
+import type { OrderStatus } from "@/lib/inventory/input";
 
 export const LABEL_TEXT: Record<Label, string> = {
   best_seller: "Best seller",
@@ -58,4 +59,32 @@ export function matchesFilter(line: { label: Label; shortage: Shortage | null; n
 /** What the sales rate rests on, for the table's tooltip: days counted of the window, with the days it could not sell and the days assumed. */
 export function basisText(counted: number, window: number, out: number, unknown: number): string {
   return `${counted} of ${window} days counted; ${out} out of stock, ${unknown} assumed on sale`;
+}
+
+export const ORDER_STATUS_TEXT: Record<OrderStatus, string> = {
+  draft: "Draft",
+  ordered: "Ordered",
+  confirmed: "Confirmed",
+  shipped: "Shipped",
+  partly_received: "Partly received",
+  received: "Received",
+  cancelled: "Cancelled",
+};
+
+/** The button that moves an order to a status. */
+export const ORDER_ACTION_TEXT: Record<OrderStatus, string> = {
+  draft: "",
+  ordered: "Place order",
+  confirmed: "Mark confirmed",
+  shipped: "Mark shipped",
+  partly_received: "",
+  received: "",
+  cancelled: "Cancel order",
+};
+
+/** What is on the way to a variant, for the planning table: the quantity, where it came from, and the date or that it is late. */
+export function inboundText(line: { incoming: number; inboundSource: "orders" | "shopify" | "none"; inboundExpectedOn: string | null; inboundLate: boolean }): string {
+  if (line.incoming <= 0) return "";
+  const date = line.inboundExpectedOn === null ? "" : line.inboundLate ? `, was due ${line.inboundExpectedOn}` : `, due ${line.inboundExpectedOn}`;
+  return `+${line.incoming} inbound${date}`;
 }

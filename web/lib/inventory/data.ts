@@ -44,6 +44,10 @@ export type PlanLine = {
   abcClass: "A" | "B" | "C";
   label: Label;
   shortage: Shortage | null;
+  /** Where `incoming` came from (the open purchase orders, Shopify, or neither), the earliest date an open order is expected, and whether one is past its date. */
+  inboundSource: "orders" | "shopify" | "none";
+  inboundExpectedOn: string | null;
+  inboundLate: boolean;
 };
 
 export type PlanAlert = { kind: Shortage; eventRef: string; asOf: string; sku: string | null; product: string; raisedAt: string };
@@ -89,6 +93,7 @@ export async function readPlan(trx: TenantTx): Promise<PlanData> {
     .select([
       sql<string | null>`to_char(l.stock_read_on, 'YYYY-MM-DD')`.as("stockReadOn"),
       sql<string | null>`to_char(l.stockout_date, 'YYYY-MM-DD')`.as("stockoutDate"),
+      sql<string | null>`to_char(l.inbound_expected_on, 'YYYY-MM-DD')`.as("inboundExpectedOn"),
     ])
     .where("l.run_id", "=", run.id)
     .execute();
@@ -126,6 +131,9 @@ export async function readPlan(trx: TenantTx): Promise<PlanData> {
     abcClass: r.abc_class,
     label: r.label,
     shortage: r.shortage,
+    inboundSource: r.inbound_source,
+    inboundExpectedOn: r.inboundExpectedOn,
+    inboundLate: r.inbound_late,
   }));
   lines.sort(compareLines);
 
