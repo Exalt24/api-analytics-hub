@@ -26,8 +26,9 @@ from . import model, workbook
 from .alerts import shortage_kind
 from .workbook import COL, PLAN_FIRST_ROW, SCENARIO_FIRST_ROW, SHORTAGE_TEXT, WorkbookInputs
 
-SOFFICE_FOLDERS = (r"C:\Program Files\LibreOffice\program", r"C:\Program Files (x86)\LibreOffice\program", "/usr/bin", "/usr/local/bin", "/opt/libreoffice/program",
-                   "/Applications/LibreOffice.app/Contents/MacOS")
+# Where LibreOffice installs when it is not on the PATH: under the program folders Windows names in its environment, and the usual Linux and macOS places.
+SOFFICE_FOLDERS = tuple(str(Path(base) / "LibreOffice" / "program") for var in ("ProgramFiles", "ProgramFiles(x86)", "ProgramW6432") if (base := os.environ.get(var))) + (
+    "/usr/bin", "/usr/local/bin", "/opt/libreoffice/program", "/Applications/LibreOffice.app/Contents/MacOS")
 
 
 class RecalcUnavailable(RuntimeError):
