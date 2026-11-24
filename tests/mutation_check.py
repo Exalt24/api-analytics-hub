@@ -766,8 +766,8 @@ MUTATIONS = [
     (
         "changes",
         "a claim is not committed on a normal connection",
-        '    with conn.transaction(), conn.cursor() as cur:\n        cur.execute(\n            """\n            update change_outbox o',
-        '    with conn.cursor() as cur:\n        cur.execute(\n            """\n            update change_outbox o',
+        '    with conn.transaction(), conn.cursor() as cur:\n        cur.execute(\n            f"""\n            update {table} o',
+        '    with conn.cursor() as cur:\n        cur.execute(\n            f"""\n            update {table} o',
         "a worker's claim must be visible before the sink is called",
     ),
     (
