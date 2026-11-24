@@ -705,8 +705,13 @@ def test_only_an_open_order_past_its_date_with_something_left_to_arrive_is_late(
             await order_store.move(conn, not_yet, "ordered", "buyer", on=TODAY, expected_on=TODAY)             # expected today is not late
         return not_yet
     with_db(go)
-    assert _raise_late(world).new == 0
+
+    async def digest(db, day):
+        async with db.tenant(world.a) as conn:
+            return await order_store.open_late_orders(conn, day)
+    assert _raise_late(world).new == 0 and with_db(lambda db: digest(db, TODAY)) == []                 # the alert and the digest agree: expected today is not late
     assert _raise_late(world, TODAY + timedelta(days=1)).new == 1                                      # tomorrow it is
+    assert len(with_db(lambda db: digest(db, TODAY + timedelta(days=1)))) == 1
 
 
 def test_a_received_a_cancelled_and_a_draft_order_are_never_late(world):

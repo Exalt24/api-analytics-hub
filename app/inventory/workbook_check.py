@@ -86,6 +86,12 @@ def recalculate(xlsx: bytes, *, timeout: int = 180) -> tuple[Any, str]:
                 raise RuntimeError("the formulas package wrote no file")
             result = written[0]
         wb = load_workbook(result, data_only=True)
+        if engine == "formulas":                  # it writes sheet names in capitals, and a title that differs only in case is refused, so go through a temporary one
+            wanted = {ws.title: next((n for n in workbook.SHEETS if n.upper() == ws.title.upper()), ws.title) for ws in wb.worksheets}
+            for i, ws in enumerate(wb.worksheets):
+                ws.title = "tmp%d" % i
+            for (old, new), ws in zip(wanted.items(), wb.worksheets):
+                ws.title = new
         return wb, engine
 
 
@@ -169,6 +175,11 @@ def compare(data: WorkbookInputs, items: Sequence[model.VariantInput], after: Se
         check(classes, "Classes", "F%d" % r, classes["F%d" % r].value, sum(1 for i in members if after[i].needs_reorder and after[i].lead_time_days is not None))
         check(classes, "Classes", "G%d" % r, classes["G%d" % r].value, sum(after[i].suggested_qty for i in members))
     return bad
+
+
+def compared_cells(variants: int) -> int:
+    """How many computed cells `compare` looks at: 13 Plan and 8 Scenario cells for each variant, the two Scenario totals and 6 cells for each row of Classes."""
+    return variants * 21 + 2 + len(workbook.CLASS_ROWS) * 6
 
 
 def check_inputs(data: WorkbookInputs, items: Sequence[model.VariantInput], params: model.PlanParams, promos: Sequence[model.Promo], xlsx: bytes | None = None) -> tuple[list[str], str]:

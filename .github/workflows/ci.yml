@@ -124,6 +124,15 @@ jobs:
         env:
           INVENTORY_REQUIRE_DB: "1"
         run: python -m pytest tests/test_inventory_model.py tests/test_inventory_reader.py tests/test_inventory_alerts.py tests/test_inventory_db.py -q -rs
+      # Purchase order tracking (the order rules, the database against them over seeded worlds, the routes, the command line) and the plan workbook, whose formulas are recalculated
+      # in LibreOffice and compared with the Python plan. WORKBOOK_REQUIRE_RECALC makes a missing spreadsheet engine FAIL here instead of skipping.
+      - name: Install LibreOffice for the workbook recalculation check
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-calc
+      - name: Purchase orders and the plan workbook (order rules, routes, command line, recalculated formulas)
+        env:
+          INVENTORY_REQUIRE_DB: "1"
+          WORKBOOK_REQUIRE_RECALC: "1"
+        run: python -m pytest tests/test_inventory_orders_model.py tests/test_inventory_orders_db.py tests/test_inventory_orders_api.py tests/test_inventory_orders_cli.py tests/test_inventory_workbook.py -q -rs
       # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
       - name: Backup and restore proof against the service container
         run: |

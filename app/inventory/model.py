@@ -142,15 +142,16 @@ def demand_over(baseline: float, start: date, horizon_days: int, promos: Sequenc
 
 def projected_cover(available: int, baseline: float, start: date, promos: Sequence[Promo], cap: int = COVER_CAP_DAYS, arrivals: Sequence[Arrival] = ()) -> float | None:
     """Days until the stock runs out when each day sells the baseline times its promotion factor and each open order lands on its expected date. 0 when nothing is left, None when it
-    lasts past `cap` days or nothing sells. An arrival is added at the start of its day. One with no date, or a date before `start` (an order already late), is not assumed to arrive."""
+    lasts past `cap` days or nothing sells. An arrival is added at the start of its day. One with no date, or a date before `start` (an order already late), never lands."""
     if available <= 0:
         return 0.0
     if baseline <= 0:
         return None
     landing: dict[int, int] = {}
     for a in arrivals:
-        if a.expected_on is not None and (a.expected_on - start).days >= 0:
-            landing[(a.expected_on - start).days] = landing.get((a.expected_on - start).days, 0) + a.quantity
+        if a.expected_on is not None:
+            offset = (a.expected_on - start).days          # a day before `start` is never reached by the loop below, so an order already late is not assumed to land
+            landing[offset] = landing.get(offset, 0) + a.quantity
     remaining = float(available)
     for i in range(cap):
         remaining += landing.get(i, 0)

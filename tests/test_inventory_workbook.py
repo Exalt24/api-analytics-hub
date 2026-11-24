@@ -115,8 +115,11 @@ def test_the_supplier_row_holds_the_most_common_minimum_and_a_variant_that_diffe
 
 
 def test_inputs_from_stored_plan_lines_maps_names_labels_money_and_overrides():
+    lines_made: list = []
+
     def line(**kw):
-        base = {"status": "ok", "supplier_name": "Harbor Textiles", "lead_time_days": 21, "lead_time_sd_days": 4.0, "moq": 24, "pack_size": 6, "product_title": "IPT Studio Tee",
+        lines_made.append(1)
+        base = {"variant_id": "v-" + str(len(lines_made)), "status": "ok", "supplier_name": "Harbor Textiles", "lead_time_days": 21, "lead_time_sd_days": 4.0, "moq": 24, "pack_size": 6, "product_title": "IPT Studio Tee",
                 "variant_title": "M", "sku": "IPT-TEE-M", "abc_class": "A", "label": "best_seller", "revenue_minor": 123456, "currency": "USD", "velocity": 0.57, "velocity_sd": 0.92,
                 "available": 10, "incoming": 30, "inbound_expected_on": date(2026, 12, 1)}
         return base | kw
@@ -125,6 +128,7 @@ def test_inputs_from_stored_plan_lines_maps_names_labels_money_and_overrides():
     data = workbook.inputs_from_lines(lines, as_of=AS_OF, service_level=0.95, review_days=14, promo_factor=1.0, promo_start=AS_OF, promo_end=AS_OF)
     assert [v.sku for v in data.variants] == ["IPT-TEE-M", "IPT-TEE-S", "IPT-SOCK", "NO-SUP"]              # the untracked variant is left out
     assert data.suppliers == [SupplierRow("Harbor Textiles", 21, 4.0, 24, 6)]
+    assert list(data.variant_ids) == ["v-1", "v-2", "v-3", "v-4"]                                          # the ids of the rows kept, in order
     tee, _, sock, nosup = data.variants
     assert (tee.name, tee.label, tee.revenue, tee.moq_own, tee.arrives, tee.inbound) == ("IPT Studio Tee - M", "best seller", 1234.56, None, date(2026, 12, 1), 30)
     assert (sock.name, sock.moq_own, sock.pack_own) == ("IPT Wool Sock", 48, 12)                          # differs from the supplier's 24 and 6
@@ -162,6 +166,17 @@ def test_the_hand_worked_case_recalculates_to_the_plans_figures():
     assert scenario["H6"].value == before.suggested_qty and scenario["I6"].value == after.suggested_qty
     assert after.reorder_point > before.reorder_point
     assert cell("shortage") == "cover under lead time"
+
+
+def test_the_formulas_package_recalculates_to_the_same_figures_when_libreoffice_is_not_installed(monkeypatch):
+    """The fallback engine: with `soffice` hidden, the `formulas` package is used and says so. Skips when that package is not installed."""
+    pytest.importorskip("formulas")
+    monkeypatch.setattr(workbook_check, "find_soffice", lambda: None)
+    item, params, promos, data, _after, _before = hand_case()
+    mismatches, engine = workbook_check.check_inputs(data, [item], params, promos)
+    assert engine == "formulas" and mismatches == []
+    items, params, promos, data = build(2, count=6)
+    assert workbook_check.check_inputs(data, items, params, promos)[0] == []
 
 
 @needs_engine

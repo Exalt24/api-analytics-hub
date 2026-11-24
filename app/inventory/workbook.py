@@ -30,8 +30,10 @@ from typing import Any, Sequence
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.worksheet.worksheet import Worksheet
 
+SHEETS = ("Inputs", "Plan", "Classes", "Scenario")
 LABEL_TEXT = {"best_seller": "best seller", "rising": "rising", "slow_mover": "slow mover", "steady": "steady"}
 SHORTAGE_TEXT = {"out_of_stock": "out of stock", "cover_below_lead_time": "cover under lead time", "stockout_projected": "stockout projected with the promotion"}
 ZERO_DECIMAL = {"JPY", "KRW", "VND", "CLP"}
@@ -101,6 +103,8 @@ class WorkbookInputs:
     variants: Sequence[VariantRow]
     currency: str | None = None
     notes: Sequence[str] = field(default_factory=tuple)
+    #: The hub's variant id of each row of `variants`, when the rows came from the store (so a check can pair each row with the same variant's inputs).
+    variant_ids: Sequence[str] = field(default_factory=tuple)
 
     def validate(self) -> None:
         if not 0.5 <= self.service_level < 1:
@@ -341,6 +345,11 @@ def build_workbook(data: WorkbookInputs) -> bytes:
     last_plan_row = _plan_sheet(wb, data, last_supplier_row)
     _classes_sheet(wb, last_plan_row)
     _scenario_sheet(wb, data, last_plan_row)
+    for ws in wb.worksheets:                      # printed or saved as a PDF, every sheet is one page wide
+        ws.page_setup.orientation = "landscape"
+        ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 0
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -391,7 +400,7 @@ def inputs_from_lines(lines: Sequence[Any], *, as_of: date, service_level: float
             revenue=_major(int(l["revenue_minor"]), currency), velocity=float(l["velocity"]), sd=float(l["velocity_sd"]), onhand=int(l["available"]), inbound=int(l["incoming"]),
             arrives=l["inbound_expected_on"], moq_own=l["moq"] if supplied and l["moq"] != d_moq else None, pack_own=l["pack_size"] if supplied and l["pack_size"] != d_pack else None))
     currency = next((l["currency"].strip() for l in use if l["currency"]), None)
-    return WorkbookInputs(as_of, service_level, review_days, promo_factor, promo_start, promo_end, suppliers, variants, currency, tuple(notes))
+    return WorkbookInputs(as_of, service_level, review_days, promo_factor, promo_start, promo_end, suppliers, variants, currency, tuple(notes), tuple(str(l["variant_id"]) for l in use))
 
 
 def inputs_from_plan(items: Sequence[Any], rows: Sequence[Any], names: Sequence[str], suppliers: Sequence[str | None], *, as_of: date, service_level: float, review_days: int,
