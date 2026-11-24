@@ -273,6 +273,14 @@ def test_hand_worked_abc_classes():
     assert abc_classes({"a": 500, "b": 300, "c": 100, "d": 60, "e": 40}) == {"a": "A", "b": "A", "c": "B", "d": "B", "e": "C"}
 
 
+def test_two_variants_with_the_same_revenue_are_ranked_by_key_whatever_order_they_arrive_in():
+    """90, 5 and 5 of 100: the first 5 starts at 90 percent (B) and the second at 95 (C), so which of the tied two is first decides its class, and the key decides that."""
+    want = {"big": "A", "t1": "B", "t2": "C"}
+    assert abc_classes({"big": 90, "t1": 5, "t2": 5}) == want
+    assert abc_classes({"big": 90, "t2": 5, "t1": 5}) == want
+    assert abc_classes({"t2": 5, "big": 90, "t1": 5}) == want
+
+
 def test_one_product_is_class_a_and_no_sales_at_all_is_class_c():
     assert abc_classes({"only": 10}) == {"only": "A"}
     assert abc_classes({"x": 0, "y": 0}) == {"x": "C", "y": "C"}
@@ -381,6 +389,14 @@ def test_hand_worked_plan_for_one_variant_that_needs_an_order():
     assert row.needs_reorder and row.status == "ok"
     assert row.suggested_qty == round_to_order(ceil_units(2.0 * 23 + expected_ss - 10), 50, 12)
     assert row.suggested_qty % 12 == 0 and row.suggested_qty >= 50
+    plain = plan_variant(VariantInput(key="v", available=10, snapshots=snaps, sales=sales_rich, units_all=56, revenue_minor=56000, lead_time_days=9), AS_OF, "A", PlanParams())
+    assert plain.suggested_qty == ceil_units(2.0 * (9 + 14) + expected_ss) - 10          # no minimum and single units: the target less what is on hand, with the review period in it
+
+
+def test_a_variant_that_does_not_sell_is_never_on_the_reorder_list_even_with_an_empty_shelf():
+    item = VariantInput(key="v", available=0, snapshots={d: 0 for d in WINDOW}, sales={}, units_all=0, revenue_minor=0, lead_time_days=9, moq=10, pack_size=5)
+    row = plan_variant(item, AS_OF, "C", PlanParams())
+    assert row.status == "ok" and row.velocity.mean == 0.0 and not row.needs_reorder and row.suggested_qty == 0 and row.reorder_point == 0
 
 
 def test_a_variant_with_no_supplier_is_classified_and_forecast_but_not_ordered():

@@ -39,6 +39,10 @@ def reachable() -> bool:
         return False
 
 
+if os.environ.get("INVENTORY_REQUIRE_DB") == "1" and not reachable():
+    # CI sets this, so a Postgres that did not start fails the run instead of skipping every database test
+    raise RuntimeError("INVENTORY_REQUIRE_DB=1 but Postgres is not reachable at ANALYTICS_TEST_DSN")
+
 needs_db = pytest.mark.skipif(not reachable(), reason="Postgres not reachable, run docker compose up -d")
 
 

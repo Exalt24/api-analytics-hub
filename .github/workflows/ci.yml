@@ -118,6 +118,12 @@ jobs:
         env:
           ADS_REQUIRE_DB: "1"
         run: python -m pytest tests/test_vendor_common.py tests/test_google_ads_connector.py tests/test_tiktok_connector.py tests/test_square_connector.py tests/test_quickbooks_connector.py tests/test_shopmonkey_connector.py tests/test_adspend_view.py tests/test_ads_business_sync_db.py tests/test_gbp_connector.py tests/test_gbp_sync_db.py tests/test_salesforce_connector.py tests/test_lead_match.py tests/test_salesforce_sync_db.py tests/test_harvest_connector.py tests/test_msgraph_connector.py tests/test_harvest_graph_sync_db.py -q -rs
+      # Inventory planning (the rules and their properties, the Shopify reader against a stand-in, the alert rules, and the database suite as the request role), named so a skipped
+      # database suite shows in the log. INVENTORY_REQUIRE_DB makes an unreachable Postgres FAIL here instead of skipping, and -rs prints any skip reason.
+      - name: Inventory planning (stockout adjusted velocity, reorder point, classes, alerts raised once, tenant isolation)
+        env:
+          INVENTORY_REQUIRE_DB: "1"
+        run: python -m pytest tests/test_inventory_model.py tests/test_inventory_reader.py tests/test_inventory_alerts.py tests/test_inventory_db.py -q -rs
       # The runner's own pg_dump is older than the server, which pg_dump refuses, so the real backup, restore and tamper run goes through the service container's tools.
       - name: Backup and restore proof against the service container
         run: |
@@ -131,6 +137,7 @@ jobs:
       - run: python tests/mutation_check_esign.py --check-targets
       - run: python tests/mutation_check_salesforce.py --check-targets
       - run: python tests/mutation_check_harvest_graph.py --check-targets
+      - run: python tests/mutation_check_inventory.py --check-targets
 
   # The web dashboard's own tests: strict TypeScript, ESLint with no explicit any, the Kysely layer against Postgres with row level security,
   # the figure guard, the three export formats read back, the presigned upload against a stand-in S3, the browser test on the built dashboard,

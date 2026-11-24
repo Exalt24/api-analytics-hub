@@ -95,9 +95,10 @@ def _line(vid: str, **kw):
 
 
 def test_open_shortages_lists_only_shortages_most_urgent_kind_first():
-    lines = [_line("c", cover_days=4.0), _line("a", available=0), _line("b"), _line("d", forecast_cover_days=2.0)]
+    lines = [_line("b", cover_days=4.0), _line("m", available=0), _line("c"), _line("a", forecast_cover_days=2.0)]
     got = open_shortages(lines)
-    assert [(s.variant_id, s.kind) for s in got] == [("a", "out_of_stock"), ("c", "cover_below_lead_time"), ("d", "stockout_projected")]
+    # the kind decides the order, not the product name: "a" sorts first by name and last by kind
+    assert [(s.variant_id, s.kind) for s in got] == [("m", "out_of_stock"), ("b", "cover_below_lead_time"), ("a", "stockout_projected")]
     assert describe_shortages([]) == "No variant is short against its lead time."
     text = describe_shortages(got)
     assert text.splitlines()[0] == "3 inventory exception(s):" and len(text.splitlines()) == 4

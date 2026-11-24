@@ -1,0 +1,83 @@
+Inventory planning mutation control, 2026-11-24. python tests/mutation_check_inventory.py, run in three groups (each run is one command of under ten minutes) on the working tree of this repository, the compose Postgres up for every run. Each guard breaks one rule in the module, in the delivery code it shares with change detection, or in migration 020, runs the inventory tests, and must go red in a test it names.
+Dropped before this pass as equivalent: '<' for '<=' when the shelf empties exactly (projected_cover returns the same figure either way).
+
+--- group 1: velocity, promotions, cover, safety stock, reorder point, order size, ABC
+baseline: green
+[ok]   velocity: a sale does not prove stock: failed 4 test(s), including the expected one
+[ok]   velocity: a zero snapshot counts as stock: failed 10 test(s), including the expected one
+[ok]   velocity: a gap beside stock is read as empty: failed 1 test(s), including the expected one
+[ok]   velocity: the days after a last empty snapshot are not out: failed 1 test(s), including the expected one
+[ok]   velocity: an out of stock day is counted: failed 10 test(s), including the expected one
+[ok]   velocity: the exclude policy keeps unknown days: failed 2 test(s), including the expected one
+[ok]   velocity: divided by the window, not the counted days: failed 10 test(s), including the expected one
+[ok]   velocity: population variance instead of sample variance: failed 1 test(s), including the expected one
+[ok]   promo: overlapping promotions take the smallest factor: failed 1 test(s), including the expected one
+[ok]   promo: the last day is outside the promotion: failed 1 test(s), including the expected one
+[ok]   cover: an empty shelf has no cover figure: failed 1 test(s), including the expected one
+[ok]   cover: an oversold variant has negative cover: failed 1 test(s), including the expected one
+[ok]   safety: any service level accepted: failed 1 test(s), including the expected one
+[ok]   safety: the lead time deviation is not squared with the demand: failed 1 test(s), including the expected one
+[ok]   safety: demand variation not scaled by the lead time: failed 2 test(s), including the expected one
+[ok]   safety: a negative input is accepted: failed 1 test(s), including the expected one
+[ok]   reorder point: safety stock left out: failed 3 test(s), including the expected one
+[ok]   order: the minimum order quantity ignored: failed 7 test(s), including the expected one
+[ok]   order: not rounded to whole packs: failed 8 test(s), including the expected one
+[ok]   order: a negative quantity is ordered: failed 2 test(s), including the expected one
+[ok]   abc: the 80 percent cut is inclusive: failed 1 test(s), including the expected one
+[ok]   abc: ties broken by input order: failed 1 test(s), including the expected one
+[ok]   plan: reorder only strictly under the reorder point: failed 1 test(s), including the expected one
+[ok]   alert: cover equal to the lead time is short: failed 1 test(s), including the expected one
+[ok]   schema: a promotion factor of zero is allowed: failed 1 test(s), including the expected one
+[ok]   schema: a promotion can end before it starts: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 26: killed 26, survived 0, killed by the wrong test 0
+mutation control: PASS
+
+--- group 2: labels, the plan, restocks, alerts
+baseline: green
+[ok]   label: a best seller needs no minimum of units: failed 1 test(s), including the expected one
+[ok]   label: rising needs no minimum of recent units: failed 1 test(s), including the expected one
+[ok]   plan: reorder only strictly under the reorder point: failed 1 test(s), including the expected one
+[ok]   plan: a variant that does not sell is reordered: failed 1 test(s), including the expected one
+[ok]   plan: incoming stock ignored in the position: failed 1 test(s), including the expected one
+[ok]   plan: the order is sized for the lead time only: failed 2 test(s), including the expected one
+[ok]   plan: an untracked variant is planned: failed 2 test(s), including the expected one
+[ok]   restock: an equal quantity counts as a restock: failed 3 test(s), including the expected one
+[ok]   alert: an empty shelf with a negative count is not out of stock: failed 5 test(s), including the expected one
+[ok]   alert: cover equal to the lead time is short: failed 1 test(s), including the expected one
+[ok]   alert: a variant that does not sell is out of stock: failed 1 test(s), including the expected one
+[ok]   alert: the stock cycle is not part of the event: failed 3 test(s), including the expected one
+[ok]   alert: the idempotency key drops the cycle: failed 2 test(s), including the expected one
+[ok]   alert: a repeat is queued again: failed 2 test(s), including the expected one
+[ok]   alert: a throttled answer is read as a refusal: failed 1 test(s), including the expected one
+[ok]   alert: a server error is read as a refusal: failed 1 test(s), including the expected one
+[ok]   alert: the idempotency header is not sent: failed 1 test(s), including the expected one
+[ok]   alert: a transport error carries its message: failed 1 test(s), including the expected one
+[ok]   alert: the digest lists by name, not by urgency: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 19: killed 19, survived 0, killed by the wrong test 0
+mutation control: PASS
+
+--- group 3: the database side, the shared delivery code, the migration
+baseline: green
+[ok]   store: a refresh erases the cost a person set: failed 1 test(s), including the expected one
+[ok]   store: a refresh erases the supplier: failed 1 test(s), including the expected one
+[ok]   store: a second sync the same day keeps the old quantity: failed 1 test(s), including the expected one
+[ok]   store: stale order lines are kept: failed 1 test(s), including the expected one
+[ok]   store: the prior window is not loaded: failed 1 test(s), including the expected one
+[ok]   store: the same day's old plan is kept: failed 4 test(s), including the expected one
+[ok]   outbox: any table name is accepted: failed 1 test(s), including the expected one
+[ok]   outbox: the inventory outbox is not a known table: failed 3 test(s), including the expected one
+[ok]   schema: row level security not forced on the snapshots: failed 1 test(s), including the expected one
+[ok]   schema: the order line policy lets every tenant in: failed 2 test(s), including the expected one
+[ok]   schema: the alert key ignores the stock cycle: failed 1 test(s), including the expected one
+[ok]   schema: the request role may rewrite an alert: failed 1 test(s), including the expected one
+[ok]   schema: the delivery worker sees no outbox row: failed 2 test(s), including the expected one
+
+source restored, suite green again
+mutants run 13: killed 13, survived 0, killed by the wrong test 0
+mutation control: PASS
+
+56 guards in all (python tests/mutation_check_inventory.py --check-targets: all 56 find their target); every one was caught in the groups above; two guards fall in two groups and were caught in both.
