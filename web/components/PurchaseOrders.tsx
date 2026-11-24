@@ -103,6 +103,11 @@ function OrderCard({ order, apiKey, ready, apply }: CardProps) {
   const key = apiKey ?? "";
   const label = order.supplier;
 
+  // placing an order gives it a date and a person can change it on the server, so the field follows the order it belongs to
+  useEffect(() => {
+    setExpected(order.expectedOn ?? "");
+  }, [order.expectedOn]);
+
   async function move(to: "ordered" | "confirmed" | "shipped" | "cancelled") {
     if (!apiKey) return;
     await apply(() => moveOrderAction({ apiKey: key, orderId: order.id, to }), `${label}: ${ORDER_STATUS_TEXT[to].toLowerCase()}.`);

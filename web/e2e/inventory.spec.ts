@@ -106,40 +106,43 @@ test.describe("Inventory page on the built dashboard", () => {
     await page.getByTestId("po-Acme Goods").getByRole("button", { name: "Create order for Acme Goods" }).click();
     await expect(page.getByRole("status")).toContainText("Draft order made for Acme Goods");
     const orders = page.getByRole("region", { name: "Purchase orders" });
-    const card = orders.locator(".inv-order").filter({ hasText: "Acme Goods" }).filter({ hasText: "Draft" });
-    await expect(card).toContainText("Not placed yet");
-    await expect(card).toContainText("$480.00");
-    await expect(card.getByRole("row", { name: /Studio Tee/ })).toContainText("60");
-    await expect(card.getByRole("button", { name: "Place order" })).toBeVisible();
-    await expect(card.getByRole("button", { name: "Record receipt" })).toHaveCount(0); // nothing is received on a draft
+    // the browsers share one database, so an order an earlier browser made is also on the page: follow this one by its id
+    const draft = orders.locator('.inv-order[data-testid^="order-"]').filter({ hasText: "Draft" });
+    await expect(draft).toHaveCount(1);
+    const order = page.getByTestId((await draft.getAttribute("data-testid")) ?? "");
+    await expect(order).toContainText("Not placed yet");
+    await expect(order).toContainText("$480.00");
+    await expect(order.getByRole("row", { name: /Studio Tee/ })).toContainText("60");
+    await expect(order.getByRole("button", { name: "Place order" })).toBeVisible();
+    await expect(order.getByRole("button", { name: "Record receipt" })).toHaveCount(0); // nothing is received on a draft
 
-    await card.getByRole("button", { name: "Place order" }).click();
-    const placed = orders.locator(".inv-order").filter({ hasText: "Acme Goods" }).filter({ hasText: "Ordered" });
-    await expect(placed).toContainText(/Ordered \d{4}-\d{2}-\d{2}, expected \d{4}-\d{2}-\d{2}/);
-    await expect(placed.getByRole("button", { name: "Place order" })).toHaveCount(0);
-    await expect(placed.getByRole("button", { name: "Mark shipped" })).toBeVisible();
+    await order.getByRole("button", { name: "Place order" }).click();
+    await expect(order).toContainText(/Ordered \d{4}-\d{2}-\d{2}, expected \d{4}-\d{2}-\d{2}/);
+    await expect(order.getByRole("button", { name: "Place order" })).toHaveCount(0);
+    await expect(order.getByRole("button", { name: "Mark shipped" })).toBeVisible();
 
-    await placed.getByLabel("Expected date for Acme Goods").fill("2030-01-15");
-    await placed.getByRole("button", { name: "Save date" }).click();
-    await expect(placed).toContainText("expected 2030-01-15");
+    await expect(order.getByLabel("Expected date for Acme Goods")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/); // the field shows the date the lead time gave
+    await order.getByLabel("Expected date for Acme Goods").fill("2030-01-15");
+    await order.getByRole("button", { name: "Save date" }).click();
+    await expect(order).toContainText("expected 2030-01-15");
 
-    await placed.getByLabel("Received for TEE-1").fill("25");
-    await placed.getByRole("button", { name: "Record receipt" }).click();
-    const partly = orders.locator(".inv-order").filter({ hasText: "Partly received" });
-    await expect(partly.getByRole("row", { name: /Studio Tee/ })).toContainText("25");
-    await expect(partly.getByRole("row", { name: /Studio Tee/ })).toContainText("35"); // still open
+    await order.getByLabel("Received for TEE-1").fill("25");
+    await order.getByRole("button", { name: "Record receipt" }).click();
+    await expect(order).toContainText("Partly received");
+    await expect(order.getByRole("row", { name: /Studio Tee/ })).toContainText("25");
+    await expect(order.getByRole("row", { name: /Studio Tee/ })).toContainText("35"); // still open
 
-    await partly.getByLabel("Received for TEE-1").fill("36");
-    await partly.getByRole("button", { name: "Record receipt" }).click();
+    await order.getByLabel("Received for TEE-1").fill("36");
+    await order.getByRole("button", { name: "Record receipt" }).click();
     await expect(page.locator(".error")).toContainText("more than was ordered");
-    await expect(partly.getByRole("row", { name: /Studio Tee/ })).toContainText("35"); // the refusal recorded nothing
+    await expect(order.getByRole("row", { name: /Studio Tee/ })).toContainText("35"); // the refusal recorded nothing
 
-    await partly.getByLabel("Accept more than ordered").check();
-    await partly.getByRole("button", { name: "Record receipt" }).click();
-    const finished = orders.locator(".inv-order").filter({ hasText: "Received" });
-    await expect(finished.getByRole("row", { name: /Studio Tee/ })).toContainText("accepted over");
-    await expect(finished.getByRole("button", { name: "Record receipt" })).toHaveCount(0); // a received order takes no more
-    await expect(finished.getByRole("button", { name: "Cancel order" })).toHaveCount(0);
+    await order.getByLabel("Accept more than ordered").check();
+    await order.getByRole("button", { name: "Record receipt" }).click();
+    await expect(order).toContainText("accepted over");
+    await expect(order.locator(".inv-tag.po-received")).toHaveText("Received");
+    await expect(order.getByRole("button", { name: "Record receipt" })).toHaveCount(0); // a received order takes no more
+    await expect(order.getByRole("button", { name: "Cancel order" })).toHaveCount(0);
   });
 
   test("a viewer key is refused an order with its reason", async ({ page }) => {
