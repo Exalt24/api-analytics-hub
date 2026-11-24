@@ -1,0 +1,77 @@
+Inventory planning run, 2026-11-24 13:36 UTC. Local: Windows-11-10.0.26300-SP0, Python 3.13.14, Postgres from the compose db service (the request role, forced row level security).
+
+PART 1: the development store, read live
+store: dac-dev-store (dac-dev-store.myshopify.com), Admin GraphQL 2026-07, read only
+sync on 2026-11-24: 38 variants read with their stock levels, 38 snapshots stored, 28 order lines stored from 26 orders, 2 Shopify calls
+stored: 38 variants, 38 snapshots, 28 order lines (all under row level security as the request role)
+stock levels read for the test products, by variant:
+  IPT-CAP-R   IPT Canvas Cap     available 120 on hand 120 incoming 0 (1 location)
+  IPT-SOCK-L  IPT Wool Sock      available   0 on hand   0 incoming 0 (1 location)
+  IPT-TEE-L   IPT Studio Tee     available  60 on hand  60 incoming 0 (1 location)
+  IPT-TEE-M   IPT Studio Tee     available  10 on hand  10 incoming 0 (1 location)
+  IPT-TEE-S   IPT Studio Tee     available  40 on hand  40 incoming 0 (1 location)
+variants whose stock the store does not track: 8 (kept, never planned)
+
+Inputs entered for this run (the store holds no supplier data, so these are figures a person gives, not read):
+  Harbor Textiles: lead time 21 days (deviation 4) for the tees, 21 days for the socks, minimum order 24 (socks 48), packs of 6 (socks 12)
+  Pacific Caps: lead time 30 days (deviation 5), minimum order 60, packs of 12
+  unit costs: read from the store's own cost field (tees 8.00, cap 6.00, socks 3.50)
+
+Plan for 2026-11-24 (recent window 28 days, prior window 28 days, service level 95 percent, review 14 days):
+  variant               sku         avail  sold/day  days counted  cover  lead  safety  ROP  order  class  label
+  IPT Wool Sock - L     IPT-SOCK-L  0      0.14      28 of 28      0.0    21    3       6    48     C      steady
+  IPT Studio Tee - M    IPT-TEE-M   10     0.57      28 of 28      17.5   21    8       20   24     A      best_seller
+  IPT Studio Tee - S    IPT-TEE-S   40     0.11      28 of 28      373.3  21    3       6    0      B      steady
+  IPT Canvas Cap - Red  IPT-CAP-R   120    0.25      28 of 28      480.0  30    7       15   0      B      rising
+  IPT Studio Tee - L    IPT-TEE-L   60     0.00      28 of 28      -      21    0       0    0      C      slow_mover
+  and 33 other variants of the store (its own sample products, no supplier set, sales: The Compare at Price Snowboard 1 units)
+
+Worked on the best seller IPT-TEE-M: 16 units in the recent window over 28 counted days is 0.57 a day (standard deviation 0.92); 10 on the shelf is 17.5 days of cover against a 21 day lead time;
+  safety stock 8, reorder point 20, suggested order 24 (minimum 24, packs of 6).
+  History note: the store was set up today, so there is one stock snapshot, and the days before it are unknown, counted as on sale (8 of 28 days observed). The stockout adjustment is shown in PART 2.
+
+Promotion input: the ads team plans a 1.5 factor on IPT-TEE-M from 2026-11-27 to 2026-12-11 (entered for the run, not read from anywhere).
+  IPT-TEE-M with the promotion: forecast cover 12.7 days (was 17.5 at the normal rate), runs out 2026-12-06, reorder point 28 (was 20), suggested order 30 (was 24).
+
+Alerts, raised through the UNIQUE key outbox:
+  run 1: 2 raised, 0 already raised
+  run 2: 0 raised, 2 already raised
+  delivered 2 to a stand-in webhook (a second delivery pass sends none):
+    IPT Wool Sock - L (IPT-SOCK-L) is out of stock and it sells 0.14 a day. Suggested order: 48 units from Harbor Textiles.
+    IPT Studio Tee - M (IPT-TEE-M) has 17.5 days of cover and the supplier needs 21 days. Suggested order: 30 units from Harbor Textiles.
+
+Purchase order drafts: the page and the export read the stored plan; see the browser run in README.md and docs/inventory-planning.md.
+  lines that would be ordered now: IPT-SOCK-L x 48 (Harbor Textiles), IPT-TEE-M x 30 (Harbor Textiles)
+
+PART 2: the stockout adjustment on a CONSTRUCTED stock history (not the store: a store set up today has no history; these snapshots were written by the same code a daily sync uses)
+A variant sells 2 units on every day it is on the shelf. Its stock history: on the shelf days 1 to 10, none on days 11 to 18, back on days 19 to 28.
+  units sold in the 28 day window: 40. Days in the window: 28, out of stock: 8, counted: 20.
+  stockout adjusted velocity: 2.00 a day.  Units over the whole window instead: 1.43 a day, which would say demand fell by 29 percent.
+  10 on the shelf is 5.0 days of cover against a 9 day lead time; reorder point 18, suggested order 60 (minimum 50, packs of 12).
+  alert raised: cover_below_lead_time (the stock cycle that began at the restock on 2026-11-14).
+
+PART 3: the Inventory page driven in a real browser (built app, Chromium, a viewer key, the same stored plan; the page never calls Shopify)
+command: INVENTORY_E2E_SERVE=1 DATABASE_URL=... node web/scripts/inventory-e2e.mjs http://127.0.0.1:3100 <viewer key> <folder>
+page: Plan for 2026-11-24, Dev store inventory. 2 alerts raised so far.
+summary: VARIANTS 38 SHORTAGES 2 short on cover or out of stock TO REORDER 2 BEST SELLERS 1 RISING 1 SLOW MOVERS 34
+exceptions:
+  Variant Problem Cover (days) Lead time Runs out Suggested order Supplier
+  IPT Wool Sock - L Out of stock 0.0 21 days 2026-11-24 48 Harbor Textiles
+  IPT Studio Tee - M Cover under lead time 17.5 21 days 2026-12-06 30 Harbor Textiles
+PASS  the page lists at least one exception with a kind
+planning table: 38 variants
+PASS  the planning table names a best seller, a rising and a slow mover
+filter Rising: IPT Canvas Cap - Red IPT-CAP-R B Rising 120 0.25 7.0x 480.0 30 7 15 - $144.00
+PASS  the Rising filter shows only rising variants
+PASS  a purchase order draft is shown for at least one supplier
+purchase order draft, Harbor Textiles: Harbor Textiles Lead time 21 days, expected 2026-12-15, $408.00 48 x IPT Wool Sock - L (IPT-SOCK-L) 30 x IPT Studio Tee - M (IPT-TEE-M) CSV for Harbor Textiles Excel for Harbor Textiles Sheets paste for Harbor Textiles
+  saved purchase-orders-2026-11-24-harbor-textiles.csv
+    supplier,expected_on,sku,description,quantity,unit_cost,line_total,currency,days_of_cover,class
+    Harbor Textiles,2026-12-15,IPT-SOCK-L,IPT Wool Sock - L,48,3.50,168.00,USD,0.0,steady
+    Harbor Textiles,2026-12-15,IPT-TEE-M,IPT Studio Tee - M,30,8.00,240.00,USD,17.5,best_seller
+  saved purchase-orders-2026-11-24-harbor-textiles.xlsx
+  saved purchase-orders-2026-11-24-harbor-textiles.tsv
+screenshot: <folder>/inventory.png (the top of it is docs/inventory.png)
+
+Test data on the development store: the products, variants and orders this run needed (3 products titled IPT, 5 variants, 25 test orders tagged inventory-planning-test, made by scripts/inventory_dev_store.py) were created before the run and removed after it: reverted: 25 orders and 3 products deleted
+Nothing else on the store was changed. The store's own products, stock and its one existing order were only read.
