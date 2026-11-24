@@ -1,0 +1,111 @@
+Inventory purchase orders and workbook run, 2026-11-24 16:03 UTC. Local: Windows-11-10.0.26300-SP0, Python 3.13.14, Postgres from the compose db service (the request role, forced row level security).
+Spreadsheet engine for the recalculation: libreoffice
+
+PART 1: the development store, read live, then purchase orders and the workbook on its plan
+store: dac-dev-store (dac-dev-store.myshopify.com), Admin GraphQL 2026-07, read only
+sync on 2026-11-24: 38 variants read with their stock levels, 38 snapshots stored, 28 order lines stored from 26 orders, 2 Shopify calls
+Inputs entered for this run (the store holds no supplier data, so these are figures a person gives, not read): Harbor Textiles lead time 21 days (deviation 4) for the tees and the
+  socks, minimum 24 and packs of 6 (socks 48 and 12); Pacific Caps 30 days (deviation 5), minimum 60, packs of 12. Unit costs are the store's own cost field.
+
+1. The plan before any order, and a draft order made from it
+  no order yet                       IPT-TEE-M: on hand 10, inbound 0 (none), cover 17.5 days against a 21 day lead time, shortage: cover_below_lead_time, needs an order: yes, suggested 24
+  no order yet                       IPT-SOCK-L: on hand 0, inbound 0 (none), cover 0.0 days against a 21 day lead time, shortage: out_of_stock, needs an order: yes, suggested 48
+  draft a27795e2 for Harbor Textiles from the plan of 2026-11-24: 48 x IPT-SOCK-L at 3.5, 24 x IPT-TEE-M at 8.0, total 360.0 USD, status draft
+  a second draft for the same supplier is refused: a draft order for Harbor Textiles is already open: place it or cancel it first
+  draft only                         IPT-TEE-M: on hand 10, inbound 0 (none), cover 17.5 days against a 21 day lead time, shortage: cover_below_lead_time, needs an order: yes, suggested 24
+  (a draft is not inbound: the plan is unchanged until the order is placed)
+
+2. The order is placed: the expected date is the order date plus the supplier's lead time, and the plan reads what is on the way
+  placed on 2026-11-24, lead time 21 days, expected 2026-12-15
+  ordered, lands in 21 days          IPT-TEE-M: on hand 10, inbound 24 (orders, expected 2026-12-15), cover 17.5 days against a 21 day lead time, shortage: cover_below_lead_time, needs an order: no, suggested 0
+  ordered, lands in 21 days          IPT-SOCK-L: on hand 0, inbound 48 (orders, expected 2026-12-15), cover 0.0 days against a 21 day lead time, shortage: out_of_stock, needs an order: no, suggested 0
+  The tee's shelf lasts 17.5 days and the order lands on day 21: it is too late to help, so the shortage stays, but no second order is suggested (the 24 units on the way count).
+
+3. The supplier confirms an expedited shipment: the expected date is edited
+  confirmed, lands in 14 days        IPT-TEE-M: on hand 10, inbound 24 (orders, expected 2026-12-08), cover 17.5 days against a 21 day lead time, shortage: none, needs an order: no, suggested 0
+  The 24 tees now land on day 14, before the shelf (17.5 days) is empty: the tee shows no shortage (shortage: none) and the forecast cover is 59.5 days.
+  an illegal move is refused, loudly: a purchase order cannot move from confirmed to draft
+  and so is moving to received by hand: record a receipt instead: a receipt moves an order to partly received or received
+
+4. Receipts: the socks arrive in parts, an over-receipt is refused, the rest is accepted
+  20 of 48 socks received: order status partly_received
+  40 more socks would be 60 of 48 ordered, refused: receiving 40 would bring IPT-SOCK-L to 60 of 48 ordered: say to accept more than was ordered
+  the other 28 socks and the 24 tees received: order status received, open units 0, closed on 2026-11-24
+  received (the shop's own stock is unchanged) IPT-TEE-M: on hand 10, inbound 0 (none), cover 17.5 days against a 21 day lead time, shortage: cover_below_lead_time, needs an order: yes, suggested 24
+  (the run does not write to the shop, so the shop's stock reading did not change; a real receipt would show in the next sync)
+
+5. The workbook with live formulas, recalculated outside the hub
+  promotion input: the ads team plans a 1.5 factor on every variant from 2026-11-27 to 2026-12-11 (entered for the run, not read from anywhere)
+  workbook of the plan of 2026-11-24: 30 variants, 2 suppliers, promotion factor 1.50 from 2026-11-27 to 2026-12-11
+  recalculated in libreoffice: 674 computed cells compared with the Python plan, 0 differ
+  self-test: Harbor Textiles's lead time changed from 21 to 22 days by one: 15 cell(s) differ, so the check can fail
+    Plan!N7: workbook 22, python 21
+    Plan!N8: workbook 22, python 21
+    Plan!T8: workbook 1.34090909090909, python 1.357142857142857
+  Scenario sheet for IPT-TEE-M, promotion factor 1.50: safety stock 8 -> 11, reorder point 20 -> 28, order 24 -> 30 units (before -> after)
+  Classes sheet: A 2 variants, 80% of sales; B 2 variants, 16% of sales; C 26 variants, 4% of sales; best seller 1 variants, 35% of sales
+
+6. A late order is reported once
+  late check 1: 1 raised, 0 already raised
+  late check 2: 0 raised, 1 already raised
+  the expected date moved to 2 days ago: 0 raised, 1 already raised (one alert per order)
+  delivered 1 through the outbox to a stand-in webhook (a second pass sends 0):
+    The purchase order to Harbor Textiles was expected 2026-11-15 and is 9 day(s) late: 78 unit(s) are still to arrive (ordered).
+  digest: 1 inventory exception(s): | - The purchase order to Harbor Textiles was expected 2026-11-22 and is 2 day(s) late: 78 unit(s) are still to arrive (ordered).
+
+PART 2: the same on a CONSTRUCTED stock history (not the store: a store set up today has no history; these snapshots were written by the same code a daily sync uses)
+A variant sells 2 units on every day it is on the shelf: on the shelf days 1 to 10, none on days 11 to 18, back on days 19 to 28, 10 on the shelf today, supplier lead time 9 days, minimum 50, packs of 12.
+  no order                           CON-TEE: on hand 10, inbound 0 (none), cover 5.0 days against a 9 day lead time, shortage: cover_below_lead_time, needs an order: yes, suggested 60
+  60 on the way, lands day 8         CON-TEE: on hand 10, inbound 60 (orders, expected 2026-12-02), cover 5.0 days against a 9 day lead time, shortage: cover_below_lead_time, needs an order: no, suggested 0
+  The shelf (5.0 days) is empty on day 5 and the order lands on day 8: the shortage is real, the order is too late, and no second order is suggested.
+  60 on the way, lands day 3         CON-TEE: on hand 10, inbound 60 (orders, expected 2026-11-27), cover 5.0 days against a 9 day lead time, shortage: none, needs an order: no, suggested 0
+  Landing on day 3 the order arrives while the shelf still has stock: no shortage, no second order, and the forecast cover is the shelf plus the 60 at 2 a day.
+  the order is cancelled             CON-TEE: on hand 10, inbound 0 (none), cover 5.0 days against a 9 day lead time, shortage: cover_below_lead_time, needs an order: yes, suggested 60
+  A cancelled order stops counting: the shortage and the suggested order are back.
+
+PART 3: the Inventory page driven in a real browser against the real backend (built dashboard, Chromium, an admin key; the workbook comes from the running API)
+a look at the open orders: INVENTORY_E2E_SERVE=1 INVENTORY_E2E_LOOK=1 node web/scripts/inventory-e2e.mjs http://127.0.0.1:3100 <admin key> <folder>   (backend: uvicorn app.api.main:app on 8010)
+page: Plan for 2026-11-24, Dev store orders. 0 alerts raised so far.
+order: Harbor Textiles OrderedLate Ordered 2026-10-25, expected 2026-11-22, $408.00 Line Ordered Received Open Receive IPT Wool Sock - L IPT-SOCK-L 48 0 48 IPT Studio Tee - M IPT-TEE-M 30 0 30 Mark confirmed Mark shipped Cancel order Record receipt Accept more than ordered Expected date Save date
+order: Harbor Textiles Received Ordered 2026-11-24, expected 2026-12-08, $360.00 Line Ordered Received Open IPT Wool Sock - L IPT-SOCK-L 48 48 0 IPT Studio Tee - M IPT-TEE-M 24 24 0
+PASS  an open order past its expected date is marked late on the page
+planning rows with inbound units: IPT Wool Sock - L IPT-SOCK-L C Steady 0 +48 inbound, was due 2026-11-22Late 0.14 - 0.0 21 4 9 - $48.00 | IPT Studio Tee - M IPT-TEE-M A Best seller 10 +30 inbound, was due 2026-11-22Late 0.57 2.0x 17.5 21 11 28 - $600.00
+exit code 0
+the late order's goods arrived and were received in full; the plan was made again
+the order flow: INVENTORY_E2E_SERVE=1 INVENTORY_E2E_ORDERS=1 node web/scripts/inventory-e2e.mjs http://127.0.0.1:3100 <admin key> <folder>
+page: Plan for 2026-11-24, Dev store orders. 0 alerts raised so far.
+summary: VARIANTS 38 SHORTAGES 2 short on cover or out of stock TO REORDER 2 BEST SELLERS 1 RISING 1 SLOW MOVERS 34
+exceptions:
+  Variant Problem Cover (days) Lead time Runs out Suggested order Supplier
+  IPT Wool Sock - L Out of stock 0.0 21 days 2026-11-24 48 Harbor Textiles
+  IPT Studio Tee - M Cover under lead time 17.5 21 days 2026-12-06 30 Harbor Textiles
+PASS  the page lists at least one exception with a kind
+planning table: 38 variants
+PASS  the planning table names a best seller, a rising and a slow mover
+filter Rising: IPT Canvas Cap - Red IPT-CAP-R B Rising 120 0.25 7.0x 480.0 30 8 18 - $144.00
+PASS  the Rising filter shows only rising variants
+PASS  a purchase order draft is shown for at least one supplier
+purchase order draft, Harbor Textiles: Harbor Textiles Lead time 21 days, expected 2026-12-15, $408.00 48 x IPT Wool Sock - L (IPT-SOCK-L) 30 x IPT Studio Tee - M (IPT-TEE-M) Create order for Harbor Textiles CSV for Harbor Textiles Excel for Harbor Textiles Sheets paste for Harbor Textiles
+  saved purchase-orders-2026-11-24-harbor-textiles.csv
+    supplier,expected_on,sku,description,quantity,unit_cost,line_total,currency,days_of_cover,class
+    Harbor Textiles,2026-12-15,IPT-SOCK-L,IPT Wool Sock - L,48,3.50,168.00,USD,0.0,steady
+    Harbor Textiles,2026-12-15,IPT-TEE-M,IPT Studio Tee - M,30,8.00,240.00,USD,17.5,best_seller
+  saved purchase-orders-2026-11-24-harbor-textiles.xlsx
+  saved purchase-orders-2026-11-24-harbor-textiles.tsv
+order made from the draft: Harbor Textiles Draft Not placed yet, $408.00 Line Ordered Received Open IPT Wool Sock - L IPT-SOCK-L 48 0 48 IPT Studio Tee - M IPT-TEE-M 30 0 30 Place order Cancel order
+PASS  the order starts as a draft that is not placed
+order placed: Harbor Textiles Ordered Ordered 2026-11-24, expected 2026-12-15, $408.00 Line Ordered Received Open Receive IPT Wool Sock - L IPT-SOCK-L 48 0 48 IPT Studio Tee - M IPT-TEE-M 30 0 30 Mark confirmed Mark shipped Cancel ord
+after a receipt of 5: Harbor Textiles Partly received Ordered 2026-11-24, expected 2026-12-15, $408.00 Line Ordered Received Open Receive IPT Wool Sock - L IPT-SOCK-L 48 5 43 IPT Studio Tee - M IPT-TEE-M 30 0 30 Cancel order Record receipt Accept more than ordered Expected date Sav
+PASS  a partial receipt leaves the order partly received
+an over-receipt is refused: receiving 9999 would bring IPT-SOCK-L to 10004 of 48 ordered: say to accept more than was ordered
+PASS  an over-receipt is refused with its reason
+orders marked late on the page: 0
+workbook downloaded: inventory-plan-2026-11-24.xlsx, sheets Inputs, Plan, Classes, Scenario, Plan!T2 {"formula":"IF($N2=\"\",\"\",IF($G2*$N2>0,$U2/($G2*$N2),1))"}
+PASS  the workbook has its four sheets and a live formula
+screenshot: <folder>/inventory.png
+exit code 0
+
+Screenshots kept from this run: docs/inventory-orders.png (the Purchase orders section, one open order marked late) and docs/inventory-workbook.png (the workbook's Scenario sheet as rendered by LibreOffice). The workbook itself is docs/inventory-plan-dev-store.xlsx.
+
+Test data on the development store: the products, variants and orders this run needed (3 products titled IPT, 5 variants, 25 test orders tagged inventory-planning-test, made by scripts/inventory_dev_store.py) were created before the run and removed after it: reverted: 25 orders and 3 products deleted
+Nothing else on the store was changed. The store's own products, stock and its one existing order were only read. The purchase orders, suppliers, lead times and the promotion in this file were entered for the run: the store holds none of them.

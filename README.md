@@ -70,13 +70,13 @@ Connectors translate and nothing else: each yields `CanonicalPoint` values, neve
 
 ## Ad platforms, business systems and the ad spend view
 
-Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written from the vendors' public documentation and ran against stand-in servers. Salesforce adds OAuth refresh, SOQL paging and a lead matcher with a reason code per answer ([docs/salesforce.md](docs/salesforce.md)). `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
+Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written from the vendors' public documentation and ran against stand-in servers. Salesforce adds a lead matcher ([docs/salesforce.md](docs/salesforce.md)). `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
 
 ---
 
 ## Grounded catalogue copy
 
-`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions that refuses to publish a number it was not given: `verify_grounded` rejects any row whose figures are not in the product facts. Against a live model it invented nothing with the rule, and made up a 99.99% purity and a 150 x 100 x 30 mm size without it, all four refused. 30 tests and four mutation guards: [docs/catalogue-copy.md](docs/catalogue-copy.md).
+`app/ai/catalog_copy.py` is an LLM copywriter for product meta descriptions that refuses to publish a number it was not given: `verify_grounded` rejects any row whose figures are not in the product facts. Against a live model it invented nothing with the rule. 30 tests and four mutation guards: [docs/catalogue-copy.md](docs/catalogue-copy.md).
 
 ---
 
@@ -88,7 +88,7 @@ Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written fr
 
 ## Job pipeline
 
-An hourly n8n workflow pulls ten job data vendors, normalises and dedupes them, archives the raw JSON, embeds each new job into Qdrant and scores a tailored resume and cover letter that refuses any claim the applicant's facts do not hold. A form filler types a field only at 0.95 confidence; the rest go to a review queue where a person answers, and the answer resumes the run through RabbitMQ and an n8n Wait node.
+An hourly n8n workflow pulls ten job data vendors, normalises and dedupes them, archives the raw JSON, embeds each new job into Qdrant and scores a tailored resume and cover letter that refuses any claim the applicant's facts do not hold. A form filler types a field only at 0.95 confidence; the rest go to a review queue, and the answer resumes the run.
 
 Run against stand-ins, real Redis, Qdrant, RabbitMQ, Postgres and n8n ([output](docs/test-runs/2026-11-17-job-pipeline-n8n.txt)), with the embeddings and a chat model live ([output](docs/test-runs/2026-11-17-job-pipeline-live.txt)). Not pointed at a vendor account or an employer's application form. [Details](docs/job-pipeline.md), [vendors](docs/job-vendors.md).
 
@@ -96,22 +96,21 @@ Run against stand-ins, real Redis, Qdrant, RabbitMQ, Postgres and n8n ([output](
 
 ## Prepaid wallet and billing ledger
 
-`app/billing/` is a prepaid wallet with a double-entry ledger in integer minor units under forced row level security: an unbalanced transaction cannot commit and a wallet cannot go below zero. Top-ups, refunds, subscriptions and a signed webhook receiver run through a Stripe provider interface (the official SDK against stripe-mock, or a client written from Stripe's [saved pages](docs/vendor-contract/README.md)), with an idempotency key on every money command: [docs/billing.md](docs/billing.md).
+`app/billing/` is a prepaid wallet with a double-entry ledger in integer minor units under forced row level security: an unbalanced transaction cannot commit and a wallet cannot go below zero. Top-ups, refunds, subscriptions and a signed webhook receiver run through a Stripe provider interface (the official SDK against stripe-mock), with an idempotency key on every money command: [docs/billing.md](docs/billing.md).
 
 ---
 
 ## Monthly report
 
 `scripts/monthly_report.py --month 2026-10 --tenant <uuid>` turns one month of stored snapshots into a PowerPoint deck: seven slides for a store, up to ten with a website, ads and search. The narrative is a fixed template; a model's text is used only if every figure in it is computed.
-**The monthly run.** `POST /api/reports/monthly` builds the same deck byte for byte and says whether it was delivered, so a rerun sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month; a real n8n container found two faults a file check could not ([output](docs/test-runs/2026-10-26-n8n.txt)).
+**The monthly run.** `POST /api/reports/monthly` builds the same deck byte for byte and says whether it was delivered, so a rerun sends nothing. [The n8n workflow](n8n/monthly_report.workflow.json) calls it for each tenant at 13:00 UTC on the first of the month; ([output](docs/test-runs/2026-10-26-n8n.txt)). `--drive-folder <id>` uploads the deck to Google Drive ([detail](docs/drive-delivery.md)). [Method and limits](docs/MONTHLY_REPORT.md).
 
-**Google Drive delivery.** `--drive-folder <id>` uploads the deck under a stable name, so a rerun replaces it; tested against a stand-in and once for real ([output](docs/test-runs/2026-11-10-drive-delivery.txt), [detail](docs/drive-delivery.md)). [Method and limits](docs/MONTHLY_REPORT.md).
 
 ---
 
 ## Report export from the dashboard
 
-The Reports page in `web/` (Next.js App Router, strict TypeScript, Tailwind CSS 4, shadcn/ui) exports a tenant's month as CSV, Excel or PDF through Server Actions with Zod checks. An optional AI summary passes a code guard that refuses any figure not in the data. Documents attach by presigned S3 URL, and saved presets sync to tenant scoped Postgres. Tested on real Postgres, a fake model, SeaweedFS, one live Groq run and a free Neon project ([detail](docs/web-reports.md#the-neon-run)): 156 tests, 12 browser tests, 76 deliberate breakages each caught.
+The Reports page in `web/` (Next.js App Router, strict TypeScript, Tailwind CSS 4, shadcn/ui) exports a tenant's month as CSV, Excel or PDF through Server Actions with Zod checks. An optional AI summary passes a code guard that refuses any figure not in the data. Tested on real Postgres and a free Neon project ([detail](docs/web-reports.md#the-neon-run)): 156 tests, 12 browser tests, 76 deliberate breakages each caught.
 
 ---
 
@@ -119,9 +118,13 @@ The Reports page in `web/` (Next.js App Router, strict TypeScript, Tailwind CSS 
 
 ![The Inventory page on the plan stored from the development store: two shortages, a purchase order draft for a supplier and the start of the planning table](docs/inventory.png)
 
-`app/inventory/` reads **Shopify inventory levels per product variant** (available, on hand, committed and incoming at each location) and keeps them as dated snapshots in Postgres for each tenant under forced row level security, beside the order lines sold. It works out a **stockout-adjusted forecast**: the daily sales velocity of each SKU and variant is the units sold over the days it was on sale, so ten days with an empty shelf do not read as demand falling (40 units over 20 days on sale is 2.00 a day, where the 28 day window would say 1.43). From the supplier's lead time and the variation in demand it gives **days of cover, a reorder point and safety stock**, and a suggested order rounded to the minimum order and whole packs. A dated promotion factor a person enters lifts the forecast. Variants are ranked into ABC classes by sales contribution and labelled an **all-time best seller, a rising best seller or a slow mover**. Each shortage raises one alert behind a UNIQUE key, through the outbox code the change detection uses. The `/inventory` page is the **inventory dashboard with exception alerts** and writes a **supplier purchase order draft** for each supplier as CSV, Excel or a Google Sheets paste, reusing the Reports export code.
+`app/inventory/` reads **Shopify inventory levels per product variant** and keeps them as dated snapshots in Postgres for each tenant under forced row level security, beside the order lines sold. It works out a **stockout-adjusted forecast**: the daily sales velocity of each SKU and variant is the units sold over the days it was on sale, so ten days with an empty shelf do not read as demand falling (40 units over 20 days on sale is 2.00 a day, where the 28 day window would say 1.43). From the supplier's lead time and the variation in demand it gives **days of cover, a reorder point and safety stock**, and a suggested order rounded to the minimum order and whole packs. A dated promotion factor a person enters lifts the forecast. Variants are ranked into ABC classes by sales contribution and labelled an **all-time best seller, a rising best seller or a slow mover**. Each shortage raises one alert behind a UNIQUE key, through the outbox code the change detection uses. The `/inventory` page is the **inventory dashboard with exception alerts** and writes a **supplier purchase order draft** for each supplier as CSV, Excel or a Google Sheets paste, reusing the Reports export code.
 
-Run against the owner's Shopify development store, read only: 38 variants and 28 order lines, with five variants and 25 test orders made for the run and removed after it. The store holds no suppliers, so the lead times and one promotion are inputs. Its stock history began on the first sync, so the stockout adjustment is shown on a history written through the same code ([the run](docs/test-runs/2026-11-24-inventory-planning-dev-store.txt)).
+Run against the owner's Shopify development store, read only: 38 variants and 28 order lines, with five variants and 25 test orders made for the run and removed after it. The store holds no suppliers, so lead times and promotions are inputs, and the stockout adjustment is shown on a constructed history ([the run](docs/test-runs/2026-11-24-inventory-planning-dev-store.txt)).
+
+**Purchase order tracking.** An order is made from the plan's draft and moves through draft, ordered, confirmed, shipped, partly received, received or cancelled by a transition table the database enforces. It takes its expected date from the supplier's lead time, records what arrived on each line and raises one late alert through the outbox. What is still on order counts as inbound stock, with its date in the cover, so an order that lands in time raises no shortage and no second order ([rules and limits](docs/inventory-planning.md#purchase-order-tracking)).
+
+**Excel model with live formulas.** `inventory_plan.py workbook`, or the page's download, writes Inputs (service level, promotion factor and window, a row per supplier), Plan (supplier by `INDEX` and `MATCH`, then cover, safety stock, reorder point, order and shortage flag as formulas), Classes (`COUNTIFS`, `SUMIFS`) and Scenario (before and after the promotion factor). Each computed cell is recalculated in LibreOffice and compared with the Python plan, and a one unit change in an input fails the check ([run](docs/test-runs/2026-11-24-inventory-orders-and-workbook.txt), [how](docs/inventory-planning.md#the-plan-workbook)).
 
 ```
 variant               on hand  sold/day  cover  lead  reorder pt  order  class  label
@@ -132,7 +135,7 @@ IPT Wool Sock - L           0      0.14    0.0    21           6     48  C      
 -> draft for Harbor Textiles, expected 2026-12-15: 48 x IPT-SOCK-L, 30 x IPT-TEE-M, $408.00
 ```
 
-Formulas, the rule for a day with no snapshot and what is not done: [docs/inventory-planning.md](docs/inventory-planning.md).
+Formulas, the rule for a day with no snapshot and what is not done (seasonality is not modelled): [docs/inventory-planning.md](docs/inventory-planning.md).
 
 ---
 
@@ -140,13 +143,13 @@ Formulas, the rule for a day with no snapshot and what is not done: [docs/invent
 
 ![Power BI Desktop, Sales and ads page: cards, daily net sales with a seven day average, ad spend by month, a month table](docs/powerbi/sales-and-ads.png)
 
-`powerbi/` holds a Power BI report over the same snapshot tables, as a `.pbix` and as a `.pbip` project: a five table star schema, 27 DAX measures, two pages and 18 visuals, on sample figures. `powerbi/check_model.py` runs the measures against 56 figures worked out from the CSV files: all match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
+`powerbi/` holds a Power BI report over the same snapshot tables,: a five table star schema, 27 DAX measures, two pages and 18 visuals, on sample figures. `powerbi/check_model.py` runs the measures against 56 figures worked out from the CSV files: all match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
 
 ---
 
 ## Subdomain client portals and e-signatures
 
-A Next.js proxy reads the Host header and rewrites a one label subdomain to an internal route; a key opens a portal only when its tenant's row carries that host's slug. Run on local Host headers against Postgres (16 tests, 14 live HTTP checks, 8 breakages caught): [docs/portals.md](docs/portals.md).
+A Next.js proxy reads the Host header and rewrites a one label subdomain to an internal route; a key opens a portal only when its tenant's row carries that host's slug. 16 tests, 14 live HTTP checks, 8 breakages caught: [docs/portals.md](docs/portals.md).
 
 **E-signatures.** A client reads a document's SHA-256 and a versioned consent text, types their full name and signs once; the record links into a hash chained, append only audit log, and `verify` names the row or byte that changed. 212 tests over 50 seeded worlds and 63 guards, each caught. A tamper-evident record, not a certified e-signature service, not legal advice: [docs/esign.md](docs/esign.md).
 
@@ -154,27 +157,27 @@ A Next.js proxy reads the Host header and rewrites a one label subdomain to an i
 
 ## Change detection on a daily file
 
-`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 (local Docker Postgres, sample data): day 2 (400,200 rows, 0.5 percent changed) took 9.89 s and raised 2,371 events; the same file again raised 0, and an error at each of 7 stages left the tables unchanged. Method and limits: [docs/change-detection.md](docs/change-detection.md).
+`app/changes.py` loads one day of about 400,000 carriers, finds the few that changed with one hash compare, keeps every change in history and raises each alert once behind a UNIQUE key. Measured on 2026-10-24 (sample data): a 400,200 row day took 9.89 s and raised 2,371 events; the same file again raised 0. Method and limits: [docs/change-detection.md](docs/change-detection.md).
 
 ---
 
 ## Lakehouse: PySpark and Delta Lake
 
-`lakehouse/` is a medallion pipeline over the hub's own daily figures, on open source Spark 4.1 and Delta Lake 4.3 on one machine. The Spark code never ran on Databricks; the same layers written as SQL did, on a Free Edition workspace ([run](docs/databricks)). Bronze quarantines an unreadable record with its reason, silver merges typed rows with a Delta `MERGE`, gold is a star schema, and a second run on the same input left every Delta version and row count unchanged. 68 tests; 24 of 24 breakages caught. [Details and limits](docs/lakehouse.md), [runbook](lakehouse/RUNBOOK.md).
+`lakehouse/` is a medallion pipeline over the hub's own daily figures, on open source Spark 4.1 and Delta Lake 4.3 on one machine. The Spark code never ran on Databricks; the same layers written as SQL did, on a Free Edition workspace ([run](docs/databricks)). A second run on the same input left every Delta version and row count unchanged. 68 tests; 24 of 24 breakages caught. [Details and limits](docs/lakehouse.md), [runbook](lakehouse/RUNBOOK.md).
 
 ---
 
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 8,406 tests, none failing; the skips and 5 known limits are marked
+python -m pytest tests/ -q                # 8,511 tests, none failing; the skips and 5 known limits are marked
 python tests/mutation_check.py            # all 300 hand matched guards; edits source, so use a copy
 python tests/mutation_check_jobs.py       # the job pipeline's guards, run in a temporary copy
-python tests/mutation_check_inventory.py  # 56 inventory guards, each broken on purpose; use a copy
+python tests/mutation_check_inventory.py  # 114 inventory guards, each broken on purpose; use a copy
 python live_check.py                      # against the real store
-cd web && npm test                        # 227 tests, 11 need the S3 stand-in ([docs/web-reports.md](docs/web-reports.md))
-cd web && npm run build && npx playwright test    # 18 browser tests in Chromium, Firefox and WebKit
-cd web && node scripts/mutation_check.mjs # 133 guards broken one at a time; use a copy
+cd web && npm test                        # 240 tests, 11 need the S3 stand-in ([docs/web-reports.md](docs/web-reports.md))
+cd web && npm run build && npx playwright test    # 21 browser tests in Chromium, Firefox and WebKit
+cd web && node scripts/mutation_check.mjs # 158 guards broken one at a time; use a copy
 ```
 
 Run dates, outputs, skips and the 2,779 syntax tree mutants: [docs/TESTING.md](docs/TESTING.md).

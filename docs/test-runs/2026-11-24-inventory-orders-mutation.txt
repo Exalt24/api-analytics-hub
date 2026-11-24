@@ -1,0 +1,44 @@
+Mutation control for purchase order tracking and the plan workbook, 2026-11-24. Local: Windows 11, Python 3.13, Postgres from the compose db service, LibreOffice for the workbook guards.
+
+python tests/mutation_check_inventory.py: 114 guards in all (the 56 of the first run and 58 added here), each broken in the real source in turn and each required to turn red a test it names.
+It was run in chunks (--match), each chunk beginning and ending with the suite green on the restored source; the last chunk, and the check that every guard still finds its target text exactly once:
+
+  all 114 guards find their target
+  pure order rules and plan reading, 16:  killed 16, survived 0, killed by the wrong test 0
+  api, auth and the late alert on the day, 7:  killed 7, survived 0, killed by the wrong test 0
+  store, 2 of the 3 original (the third dropped, below):  killed 2
+  order_store (repeat alert, idempotency key, refusal escaping), 3:  killed 3 (first pass of 22 guards: 19 killed, 3 survived, handled below)
+  migration 021, in five chunks, 18:  killed 18, survived 0, killed by the wrong test 0
+  workbook formulas, in four chunks, 12:  killed 12 (one first named the wrong test, below)
+  mutation control: PASS in every chunk
+
+The 58 added guards, all caught:
+  the order rules (app/inventory/orders.py, 12): a shipped order may be cancelled; a draft may be shipped; a person may move an order to received; the open quantity can go negative;
+    more than ordered accepted without saying so; a received quantity of zero accepted; an accepted over-receipt not flagged; received when any line is in full; late on the expected day
+    itself; late with nothing left to arrive; a draft counted as inbound; the lead time ignored for the expected date
+  how the plan reads open orders (model.py and store.py, 6): open orders not the inbound stock; an arrival added after the day's sales; the alert cover ignores the arrival; a late order not
+    flagged; the orders not given to the plan; the alert uses the plain cover
+  the database side (order_store.py, 4): a repeat late alert queued again; expected today raised as late; the idempotency key drops the order; a refusal escapes as a database error
+  the migration (021, 18): row level security not forced on the orders; the line policy lets every tenant in; the transition trigger gone; a shipped order cancellable in the table; an
+    over-receipt needing no flag; received without every line in full; the expected date ignoring the lead time; the lead time read at the draft instead of at placing; two drafts for one
+    supplier; an order moving to its own status; an over-receipt taken without the flag; the order never marked received; an order event rewritable; a late alert key that allows a second
+    alert; the request role may delete an order; a line changeable after placing; a received quantity reducible; a cost needing no currency
+  the HTTP door (api/inventory.py and auth.py, 6): a missing order a 400; a malformed id a 422; making an order or receiving needing only read; an unknown field in a body ignored; a viewer
+    holding write:inventory
+  the workbook formulas (workbook.py, 12): the z score of another service level; safety stock rounded down; the stock position leaving out the inbound; reordering only strictly under the
+    reorder point; the minimum order replaced by the pack size; the promotion window swapped; the lead time deviation read from the wrong column; an arrival never counted in the cover; the
+    revenue column summing the stock; labels counted by class; the Scenario before leaving out safety stock; the Scenario after reading the wrong column
+
+What the first passes left alive, and what was done:
+  - a purchase order guard was caught by a test other than the one it named (the z score, also caught by the sheet structure test): the guard now names both
+  - `expected today is raised as late` stayed green because the Python check after the query repeated the date test; the digest (`open_late_orders`) uses the query alone, so the late test
+    gained an assertion that the digest and the alert agree on the day itself, and the guard was caught
+  - three guards were dropped as equivalent mutants, because no input tells them from the original: the `on_time` filter in plan_variant and the offset test in projected_cover (the loop
+    never reaches a day before the plan date, so an order already late is not assumed to land either way; the offset test was removed from the code), and the status list in the SQL that
+    reads open orders (the Python grouping filters on the status again)
+  - a first full pass over the web guards read a Postgres that had gone away as survivors (the run printed no failing test); the guards were rerun in chunks with Postgres up
+
+In web/: node scripts/mutation_check.mjs --only inventory_orders, 25 guards on lib/inventory/orders.ts, input.ts and format.ts (a viewer key may change an order, the legal buttons, late on the day
+itself, drafts in the open list, the total not multiplied by the quantity, the open units going negative, the refusal codes, the driver message passed on, the workbook key not sent, the
+promotion settings dropped, a doubled slash, the receipt schema bounds, the service level of 1): 25 of 25 caught. A 26th, a date shown for Shopify's inbound, was dropped as equivalent
+(only an order carries an expected date), and the code was simplified instead.
