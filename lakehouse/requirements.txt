@@ -3,5 +3,5 @@ pyspark==4.1.1
 delta-spark==4.3.1
 pytest==9.2.0
 # only to seed the sample Postgres (python -m lakehouse.sample_data --postgres)
-psycopg[binary]==3.3.8
+psycopg[binary]==3.3.9
 pytest-xdist==3.8.0
