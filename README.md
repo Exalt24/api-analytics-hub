@@ -120,7 +120,7 @@ The Reports page in `web/` (Next.js App Router, strict TypeScript, Tailwind CSS 
 
 `app/inventory/` reads **Shopify inventory levels per product variant** and keeps them as dated snapshots in Postgres for each tenant under forced row level security, beside the order lines sold. It works out a **stockout-adjusted forecast**: the daily sales velocity of each SKU and variant is the units sold over the days it was on sale, so ten days with an empty shelf do not read as demand falling (40 units over 20 days on sale is 2.00 a day, where the 28 day window would say 1.43). From the supplier's lead time and the variation in demand it gives **days of cover, a reorder point and safety stock**, and a suggested order rounded to the minimum order and whole packs. A dated promotion factor a person enters lifts the forecast. Variants are ranked into ABC classes by sales contribution and labelled an **all-time best seller, a rising best seller or a slow mover**. Each shortage raises one alert behind a UNIQUE key, through the outbox code the change detection uses. The `/inventory` page is the **inventory dashboard with exception alerts** and writes a **supplier purchase order draft** for each supplier as CSV, Excel or a Google Sheets paste, reusing the Reports export code.
 
-Run against the owner's Shopify development store, read only: 38 variants and 28 order lines, with five variants and 25 test orders made for the run and removed after it. The store holds no suppliers, so lead times and promotions are inputs, and the stockout adjustment is shown on a constructed history ([the run](docs/test-runs/2026-11-24-inventory-planning-dev-store.txt)).
+Run against the owner's Shopify development store, read only: 38 variants and 28 order lines, with five variants and 25 test orders made for the run and removed after it. Lead times and promotions are supplied as inputs, and the stockout adjustment is shown on a constructed history ([the run](docs/test-runs/2026-11-24-inventory-planning-dev-store.txt)).
 
 **Purchase order tracking.** An order is made from the plan's draft and moves through draft, ordered, confirmed, shipped, partly received, received or cancelled by a transition table the database enforces. It takes its expected date from the supplier's lead time, records what arrived on each line and raises one late alert through the outbox. What is still on order counts as inbound stock, with its date in the cover, so an order that lands in time raises no shortage and no second order ([rules and limits](docs/inventory-planning.md#purchase-order-tracking)).
 
@@ -135,7 +135,7 @@ IPT Wool Sock - L           0      0.14    0.0    21           6     48  C      
 -> draft for Harbor Textiles, expected 2026-12-15: 48 x IPT-SOCK-L, 30 x IPT-TEE-M, $408.00
 ```
 
-Formulas, the rule for a day with no snapshot and what is not done (seasonality is not modelled): [docs/inventory-planning.md](docs/inventory-planning.md).
+Formulas, the rule for a day with no snapshot and the limits (seasonality is out of scope): [docs/inventory-planning.md](docs/inventory-planning.md).
 
 ---
 
