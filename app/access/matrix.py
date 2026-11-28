@@ -26,6 +26,10 @@ RESOURCES = ("orders", "invoices", "payments", "commissions")
 ACTIONS = ("read", "create", "update", "settle", "refund")
 SCOPES = ("none", "clinic", "assigned", "self", "all")
 
+#: the cells no operation exists for: an order is not paid or refunded, a payment is moved by the provider's events and not by a role, a commission is never edited or settled. Every role
+#: holds `none` in these (validate() checks it, and the generated tests check the database does too).
+NO_OPERATION = frozenset({("orders", "settle"), ("orders", "refund"), ("payments", "settle"), ("payments", "refund"), ("commissions", "update"), ("commissions", "settle")})
+
 #: role -> resource -> action -> scope. Anything not written is "none".
 _GRANTS: dict[str, dict[str, dict[str, str]]] = {
     "clinic": {
@@ -76,6 +80,7 @@ def validate() -> None:
             assert resource in RESOURCES, resource
             for action, sc in by_action.items():
                 assert action in ACTIONS and sc in SCOPES and sc != "none", (role, resource, action, sc)
+                assert (resource, action) not in NO_OPERATION, (role, resource, action)
 
 
 def seed_sql() -> str:

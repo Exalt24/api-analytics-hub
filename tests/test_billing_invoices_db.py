@@ -520,3 +520,92 @@ def test_over_seeded_random_worlds_the_wallet_the_invoices_and_the_commissions_a
         expected = (m["total"] - m["refunded"]) * m["bp"] // 10000 if m["status"] == "paid" else 0
         assert net.get(iid, 0) == expected, "the commission of %s is the rate of what is still paid" % iid
     assert report.ok, report.discrepancies
+
+
+# ---- the ledger invariants hold for the two new kinds of transaction, whatever the code does --------------------------------------------------------
+
+def ledger_ids(world):
+    """The tenant's account ids by kind in USD (made as the owner, as the engine would) and a fresh invoice id for a provider reference."""
+    import uuid
+    with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
+        t = world.a.tenant
+        for kind in ("wallet", "platform_revenue", "provider_clearing", "refunds", "adjustments"):
+            cur.execute("insert into billing_account (tenant_id, kind, currency) values (%s, %s, 'USD') on conflict do nothing", (t, kind))
+        cur.execute("select kind, id from billing_account where tenant_id = %s and currency = 'USD'", (t,))
+        return {k: v for k, v in cur.fetchall()}, str(uuid.uuid4())
+
+
+def test_an_unbalanced_invoice_payment_or_refund_cannot_commit_and_a_balanced_one_can(world):
+    accounts, invoice = ledger_ids(world)
+    t = world.a.tenant
+    for n, (kind, lines) in enumerate((("invoice_payment", [("provider_clearing", 1000), ("platform_revenue", -900)]), ("invoice_refund", [("platform_revenue", 500)]),
+                                       ("invoice_payment", [("provider_clearing", 1), ("platform_revenue", 1)]))):
+        with psycopg.connect(DSN) as conn, conn.cursor() as cur:
+            cur.execute("insert into billing_transaction (tenant_id, kind, currency, idempotency_key, request_hash, provider_ref, actor) values (%s, %s, 'USD', %s, 'h', %s, 'test') returning id",
+                        (t, kind, "k-%d" % n, "invoice:%s:%d" % (invoice, n)))
+            tx = cur.fetchone()[0]
+            for account, amount in lines:
+                cur.execute("insert into billing_entry (tenant_id, transaction_id, account_id, currency, amount_minor) values (%s, %s, %s, 'USD', %s)", (t, tx, accounts[account], amount))
+            with pytest.raises(psycopg.errors.CheckViolation):
+                conn.commit()
+    with psycopg.connect(DSN) as conn, conn.cursor() as cur:                       # the control: the same shape, balanced, commits
+        cur.execute("insert into billing_transaction (tenant_id, kind, currency, idempotency_key, request_hash, provider_ref, actor) values (%s, 'invoice_payment', 'USD', 'ok', 'h', %s, 'test') returning id",
+                    (t, "invoice:" + invoice))
+        tx = cur.fetchone()[0]
+        for account, amount in (("provider_clearing", 1000), ("platform_revenue", -1000)):
+            cur.execute("insert into billing_entry (tenant_id, transaction_id, account_id, currency, amount_minor) values (%s, %s, %s, 'USD', %s)", (t, tx, accounts[account], amount))
+        conn.commit()
+    with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute("select count(*) from billing_transaction where tenant_id = %s", (t,))
+        assert cur.fetchone()[0] == 1                                                 # only the balanced one is there
+
+
+def test_a_wallet_debit_by_an_invoice_payment_cannot_take_the_wallet_below_zero_and_one_invoice_cannot_be_booked_twice(world):
+    accounts, invoice = ledger_ids(world)
+    t = world.a.tenant
+
+    async def go(rig):
+        import asyncpg
+        async with rig.acting(world.a, "admin").tenant(t) as conn:
+            tx = await conn.fetchval("insert into billing_transaction (tenant_id, kind, currency, idempotency_key, request_hash, provider_ref, actor) values ($1::uuid, 'invoice_payment', 'USD', 'od', 'h', $2, 'test') returning id",
+                                     t, "invoice:" + invoice)
+            try:
+                await conn.execute("insert into billing_entry (tenant_id, transaction_id, account_id, currency, amount_minor) values ($1::uuid, $2, $3, 'USD', 1000)", t, tx, accounts["wallet"])
+            except asyncpg.CheckViolationError as exc:
+                return "wallet_never_overdrawn" if "wallet_never_overdrawn" in str(exc) else str(exc)
+        return "allowed"
+    assert with_portal(go) == "wallet_never_overdrawn"
+    ref = "invoice:" + invoice + "x"
+    with psycopg.connect(DSN) as conn, conn.cursor() as cur:
+        cur.execute("insert into billing_transaction (tenant_id, kind, currency, idempotency_key, request_hash, provider_ref, actor) values (%s, 'invoice_payment', 'USD', 'a', 'h', %s, 'test') returning id", (t, ref))
+        tx = cur.fetchone()[0]
+        for account, amount in (("provider_clearing", 1000), ("platform_revenue", -1000)):
+            cur.execute("insert into billing_entry (tenant_id, transaction_id, account_id, currency, amount_minor) values (%s, %s, %s, 'USD', %s)", (t, tx, accounts[account], amount))
+        conn.commit()
+        with pytest.raises(psycopg.errors.UniqueViolation):                         # the same invoice's reference twice, whatever key is used
+            cur.execute("insert into billing_transaction (tenant_id, kind, currency, idempotency_key, request_hash, provider_ref, actor) values (%s, 'invoice_payment', 'USD', 'b', 'h', %s, 'test')", (t, ref))
+
+
+def test_a_ledger_row_and_a_commission_row_can_never_be_edited_or_deleted_and_the_net_commission_never_goes_below_zero(world):
+    async def go(rig):
+        await fund(rig, world, 20000)
+        db = rig.acting(world.a, "admin")
+        inv = await open_invoice(rig, world)
+        await invoices.pay(db, rig.provider, world.a.tenant, inv["id"], method="wallet", key="p1", actor="admin")
+        await invoices.refund(db, rig.provider, world.a.tenant, inv["id"], amount_minor=500, key="r1", actor="admin")
+        return inv
+    with_portal(go)
+    with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
+        for sql in ("update billing_transaction set actor = 'x' where kind = 'invoice_payment'", "delete from billing_transaction where kind = 'invoice_refund'",
+                    "update billing_entry set amount_minor = amount_minor + 1", "update commission set amount_minor = 1", "delete from commission"):
+            with pytest.raises(psycopg.errors.RestrictViolation):
+                cur.execute(sql)
+        copy = ("insert into commission (tenant_id, invoice_id, clinic_id, rep_user_id, kind, amount_minor, basis_minor, rate_bp, currency, ref) "
+                "select tenant_id, invoice_id, clinic_id, rep_user_id, %s, %s, 1, 500, 'USD', %s from commission where kind = 'accrual' limit 1")
+        with pytest.raises(psycopg.errors.CheckViolation):                           # a reversal that takes the net below zero
+            cur.execute(copy, ("reversal", -100000, "refund:99"))
+        with pytest.raises(psycopg.errors.CheckViolation):                           # an accrual that is negative
+            cur.execute(copy, ("accrual", -5, "accrual"))
+        with pytest.raises(psycopg.errors.UniqueViolation):                          # a second accrual for the invoice
+            cur.execute(copy, ("accrual", 5, "accrual"))
+        cur.execute(copy, ("reversal", -1, "refund:98"))                              # the control: a small reversal goes in

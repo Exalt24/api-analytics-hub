@@ -231,6 +231,30 @@ drop policy if exists sales_rep_assignment_write on sales_rep_assignment;
 create policy sales_rep_assignment_write on sales_rep_assignment for all using (tenant_id = portal_tenant() and portal_role() = 'admin')
     with check (tenant_id = portal_tenant() and portal_role() = 'admin');
 
+-- ---------------------------------------------------------------- authentication: a key to a user
+
+-- The API key is read before anyone knows the tenant, so this function (SECURITY DEFINER, like the api_key lookup it stands beside) takes the hash, finds a credential that is not revoked, and
+-- returns the user's tenant, id, role and clinic. It sets the user and tenant the policy on portal_user needs for the one read, and clears them before it returns. A hash that matches nothing,
+-- or a revoked credential, returns no rows.
+create or replace function portal_resolve_credential(p_key_hash text)
+returns table (tenant_id uuid, user_id uuid, role text, clinic_id uuid) language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+    c record;
+begin
+    select pc.tenant_id as t, pc.user_id as u into c from portal_credential pc where pc.key_hash = p_key_hash and pc.revoked_at is null;
+    if not found then
+        return;
+    end if;
+    perform set_config('app.tenant_id', c.t::text, true);
+    perform set_config('app.user_id', c.u::text, true);
+    return query select pu.tenant_id, pu.id, pu.role, pu.clinic_id from portal_user pu where pu.id = c.u;
+    perform set_config('app.tenant_id', '', true);
+    perform set_config('app.user_id', '', true);
+end;
+$$;
+revoke all on function portal_resolve_credential(text) from public;
+grant execute on function portal_resolve_credential(text) to app_request;
+
 -- ---------------------------------------------------------------- grants
 
 -- the request role reads the matrix and can never change it; it has no grant to write the credential table either (an admin tool does that as the owner)
