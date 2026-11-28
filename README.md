@@ -99,7 +99,7 @@ Run against stand-ins, real Redis, Qdrant, RabbitMQ, Postgres and n8n ([output](
 
 `app/billing/` is a prepaid wallet with a double-entry ledger in integer minor units under forced row level security: an unbalanced transaction cannot commit and a wallet cannot go below zero. Top-ups, refunds, subscriptions and a signed webhook receiver run through a Stripe provider interface (the official SDK against stripe-mock), with an idempotency key on every money command: [docs/billing.md](docs/billing.md).
 
-- **Ordering portal, for a US healthcare ordering job.** Python, FastAPI, asyncpg and Postgres row level security: Stripe bank debit (ACH) and invoices, a partner fulfilment connector with signed status events and a hash chained audit log, and a four role access matrix enforced in the API and in the database. 368 tests, 182 breakages each caught: [bank debit and invoices](docs/billing.md#bank-debit-ach-invoices-and-commissions), [fulfilment](docs/fulfillment.md), [roles](docs/access-matrix.md).
+- **Ordering portal (clinics, prescribers, sales reps).** Python, FastAPI, asyncpg and Postgres row level security: Stripe bank debit (ACH) and invoices run against stripe-mock, a partner fulfilment connector with signed status events and a hash chained audit log run against a stand-in partner, and a four role access matrix enforced in the API and in the database. 368 tests, 182 breakages each caught: [bank debit and invoices](docs/billing.md#bank-debit-ach-invoices-and-commissions), [fulfilment](docs/fulfillment.md), [roles](docs/access-matrix.md).
 
 ---
 

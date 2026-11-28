@@ -1,0 +1,36 @@
+Ordering portal tests, run 2026-11-28 against Postgres 17 (pgvector image) as the request role, stripe-mock 0.206.0 and the stand-in partner server.
+BILLING_REQUIRE_DB=1 and STRIPE_MOCK_REQUIRE=1 as in CI, so a service that is down fails the run instead of skipping.
+Command: python -m pytest <the eleven portal files> <the existing billing files> tests/test_api_rbac.py tests/test_doc_links.py -q -rs
+
+.venv\Lib\site-packages\pytest_asyncio\plugin.py:300: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the "fixture" caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to "function" scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+........................................................................ [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 33%]
+........................................................................ [ 44%]
+........................................................................ [ 55%]
+........................................................................ [ 66%]
+........................................................................ [ 77%]
+........................................................................ [ 88%]
+........................................................................ [ 99%]
+...                                                                      [100%]
+============================== warnings summary ===============================
+.venv\Lib\site-packages\anyio\pytest_plugin.py:14
+  .venv\Lib\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/test_billing_stripe_sdk_ach.py: 11 warnings
+tests/test_billing_stripe_sdk.py: 28 warnings
+tests/test_billing_stripe_sdk_db.py: 14 warnings
+tests/test_billing_simulation.py: 99 warnings
+  .venv\Lib\site-packages\httpx\_models.py:408: DeprecationWarning: Use 'content=<...>' to upload raw bytes/text content.
+    headers, stream = encode_request(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+651 passed, 153 warnings in 198.33s (0:03:18)
+exit code 0

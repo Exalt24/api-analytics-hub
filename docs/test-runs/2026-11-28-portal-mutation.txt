@@ -1,0 +1,238 @@
+Ordering portal mutation control, run 2026-11-28 in clones of the repository (tests/mutation_check_fulfillment.py), six chunks at the same time, each on its own Postgres 17 container,
+stripe-mock 0.206.0 shared. Each chunk runs the whole portal suite as its baseline, breaks its guards one at a time (each runs only the tests it names) and runs the whole suite again after restoring.
+The first pass (28 + 26 + 31 + 33 + 64 guards in five overlapping chunks) left three guards alive; each got a stronger test or the right test named, and this is the second pass over all 182.
+The three: the policy that lets any role read invoice lines (its guard named two tests that never read a line as another clinic), a payment row for an invoice that credits the wallet (the test row also broke
+another rule, so the wallet rule was never alone), and the policy that lets any role read dead letters (the table was empty when it was read as another clinic).
+Chunk F6 came back with a RED baseline the first time, when seven runs shared the machine; it was run again with fewer running and its baseline was green (the output below is that run). The cause was
+not found: the baseline does not say which test failed, and it is a reason to run this harness with few chunks at once. Total over the six chunks: 182 guards, 182 killed, 0 survived, 0 killed by the wrong test.
+
+==== chunk F1 ====
+baseline: green
+[ok]   matrix: an unknown role, resource or action is allowed: failed 1 test(s), including the expected one
+[ok]   matrix: allows is always true: failed 2 test(s), including the expected one
+[ok]   matrix: the seed leaves every scope at none: failed 1 test(s), including the expected one
+[ok]   matrix: a clinic user may create invoices: failed 2 test(s), including the expected one
+[ok]   matrix: a sales rep may update orders: failed 2 test(s), including the expected one
+[ok]   matrix: a prescriber may read invoices: failed 2 test(s), including the expected one
+[ok]   scope: the clinic scope allows every clinic: failed 17 test(s), including the expected one
+[ok]   scope: the assigned scope allows every clinic: failed 6 test(s), including the expected one
+[ok]   scope: the self scope allows every rep: failed 2 test(s), including the expected one
+[ok]   scope: an unknown scope allows: failed 45 test(s), including the expected one
+[ok]   scope: a role the table has no row for gets all: failed 1 test(s), including the expected one
+[ok]   scope: the user's clinic is any user's clinic: failed 7 test(s), including the expected one
+[ok]   rls: clinic is not forced: failed 1 test(s), including the expected one
+[ok]   rls: portal_user is not enabled: failed 1 test(s), including the expected one
+[ok]   rls: the assignment table is not forced: failed 1 test(s), including the expected one
+[ok]   policy: any user may write clinics: failed 1 test(s), including the expected one
+[ok]   policy: any user may write users: failed 1 test(s), including the expected one
+[ok]   policy: any user may write assignments: failed 1 test(s), including the expected one
+[ok]   policy: a user sees every user of the tenant: failed 1 test(s), including the expected one
+[ok]   policy: a user sees every clinic: failed 1 test(s), including the expected one
+[ok]   policy: a rep sees every assignment: failed 1 test(s), including the expected one
+[ok]   assignment: a clinic can be given to a user who is not a rep: failed 1 test(s), including the expected one
+[ok]   credential: a revoked credential still resolves: failed 2 test(s), including the expected one
+[ok]   grant: the request role can write the matrix: failed 1 test(s), including the expected one
+[ok]   grant: the request role can write credentials: failed 1 test(s), including the expected one
+[ok]   user: a clinic user may have no clinic: failed 1 test(s), including the expected one
+[ok]   policy: any role reads invoices of the tenant: failed 5 test(s), including the expected one
+[ok]   policy: any role inserts invoices: failed 5 test(s), including the expected one
+[ok]   policy: any role updates invoices: failed 1 test(s), including the expected one
+[ok]   policy: any role reads invoice lines: failed 1 test(s), including the expected one
+[ok]   policy: any role writes invoice lines: failed 1 test(s), including the expected one
+[ok]   policy: any role inserts refunds: failed 1 test(s), including the expected one
+[ok]   policy: any role reads commissions: failed 5 test(s), including the expected one
+[ok]   policy: a reversal needs the create action: failed 1 test(s), including the expected one
+[ok]   policy: any role inserts commissions: failed 10 test(s), including the expected one
+[ok]   policy: any role reads payments: failed 5 test(s), including the expected one
+[ok]   policy: any role inserts payments: failed 5 test(s), including the expected one
+[ok]   policy: any role updates payments: failed 4 test(s), including the expected one
+[ok]   policy: no role at all is a role: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 39: killed 39, survived 0, killed by the wrong test 0
+mutation control: PASS
+DONE exit 0
+
+==== chunk F2 ====
+baseline: green
+[ok]   payment: a bank debit may be in another currency: failed 1 test(s), including the expected one
+[ok]   payment: a bank debit may have no mandate: failed 1 test(s), including the expected one
+[ok]   payment: an invoice payment may credit the wallet: failed 1 test(s), including the expected one
+[ok]   ledger: invoice refunds are not a kind of transaction: failed 1 test(s), including the expected one
+[ok]   invoice: a refund may pass the total: failed 1 test(s), including the expected one
+[ok]   invoice: an open invoice may have no total: failed 1 test(s), including the expected one
+[ok]   invoice: many live payments for one invoice: failed 1 test(s), including the expected one
+[ok]   invoice: settling is the update action: failed 3 test(s), including the expected one
+[ok]   invoice: an open invoice cannot be voided: failed 1 test(s), including the expected one
+[ok]   invoice: the trigger does not ask the matrix for the move: failed 3 test(s), including the expected one
+[ok]   invoice: the trigger does not ask the matrix for a refund: failed 3 test(s), including the expected one
+[ok]   invoice: a refunded total can go down: failed 1 test(s), including the expected one
+[ok]   invoice: the total can change after it is finalized: failed 1 test(s), including the expected one
+[ok]   invoice: an invoice can move to another clinic: failed 1 test(s), including the expected one
+[ok]   invoice: a total that is not the sum of the lines is finalized: failed 1 test(s), including the expected one
+[ok]   invoice: lines change after finalizing: failed 1 test(s), including the expected one
+[ok]   invoice: an unpaid invoice is refunded: failed 1 test(s), including the expected one
+[ok]   commission: rows can be edited: failed 1 test(s), including the expected one
+[ok]   commission: the net can go below zero: failed 1 test(s), including the expected one
+[ok]   commission: a negative accrual: failed 1 test(s), including the expected one
+[ok]   proof: a paid invoice not in the ledger is not reported: failed 1 test(s), including the expected one
+[ok]   proof: an unpaid invoice with a ledger payment is not reported: failed 1 test(s), including the expected one
+[ok]   proof: a wrong refunded total is not reported: failed 1 test(s), including the expected one
+[ok]   proof: a wrong commission is not reported: failed 1 test(s), including the expected one
+[ok]   m023: invoices are not forced: failed 1 test(s), including the expected one
+[ok]   m023: commissions are not forced: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 26: killed 26, survived 0, killed by the wrong test 0
+mutation control: PASS
+DONE exit 0
+
+==== chunk F3 ====
+baseline: green
+[ok]   order: the reference may be readable text: failed 1 test(s), including the expected one
+[ok]   order: a shipped order needs no tracking: failed 1 test(s), including the expected one
+[ok]   order: the table of moves lacks packed to shipped: failed 2 test(s), including the expected one
+[ok]   order: any move is legal: failed 1 test(s), including the expected one
+[ok]   order: the reference can change: failed 1 test(s), including the expected one
+[ok]   order: the trigger does not ask the matrix for a move: failed 1 test(s), including the expected one
+[ok]   order: any role updates orders: failed 1 test(s), including the expected one
+[ok]   order: any role reads orders: failed 5 test(s), including the expected one
+[ok]   order: an order can be inserted in any status: failed 1 test(s), including the expected one
+[ok]   order: any role inserts orders: failed 5 test(s), including the expected one
+[ok]   children: any role reads submissions: failed 1 test(s), including the expected one
+[ok]   children: any role writes submissions: failed 1 test(s), including the expected one
+[ok]   children: any role reads dead letters: failed 1 test(s), including the expected one
+[ok]   children: any role writes dead letters: failed 1 test(s), including the expected one
+[ok]   children: any role reads events: failed 1 test(s), including the expected one
+[ok]   children: any role inserts events: failed 1 test(s), including the expected one
+[ok]   children: any role reads audit rows: failed 1 test(s), including the expected one
+[ok]   children: any role inserts audit rows: failed 1 test(s), including the expected one
+[ok]   router: the router reads every column: failed 1 test(s), including the expected one
+[ok]   router: the router reads no order: failed 2 test(s), including the expected one
+[ok]   audit: the audit log can be edited by the owner: failed 1 test(s), including the expected one
+[ok]   audit: the event log can be edited by the owner: failed 1 test(s), including the expected one
+[ok]   audit: the request role can edit the logs: failed 1 test(s), including the expected one
+[ok]   m024: orders are not forced: failed 1 test(s), including the expected one
+[ok]   m024: the audit log is not forced: failed 1 test(s), including the expected one
+[ok]   audit: a row's hash leaves out its detail: failed 1 test(s), including the expected one
+[ok]   audit: an edited row is not detected: failed 2 test(s), including the expected one
+[ok]   audit: a broken link is not detected: failed 1 test(s), including the expected one
+[ok]   audit: a gap is not detected: failed 1 test(s), including the expected one
+[ok]   audit: a key outside the whitelist is kept: failed 1 test(s), including the expected one
+[ok]   audit: a text value is kept whatever its shape: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 31: killed 31, survived 0, killed by the wrong test 0
+mutation control: PASS
+DONE exit 0
+
+==== chunk F4 ====
+baseline: green
+[ok]   provider: a debit is accepted in another currency: failed 1 test(s), including the expected one
+[ok]   provider: a debit is accepted without its customer or mandate: failed 1 test(s), including the expected one
+[ok]   sdk: the bank debit fields are not sent: failed 1 test(s), including the expected one
+[ok]   payments: the bank debit fields are not sent: failed 2 test(s), including the expected one
+[ok]   payments: a bank debit with no customer is tried: failed 1 test(s), including the expected one
+[ok]   payments: an invoice payment without an invoice is tried: failed 1 test(s), including the expected one
+[ok]   payments: a payment for an invoice credits the wallet: failed 6 test(s), including the expected one
+[ok]   payments: a refund of an invoice payment is a top-up refund: failed 1 test(s), including the expected one
+[ok]   payments: an invoice payment can be refunded as a top-up: failed 1 test(s), including the expected one
+[ok]   wallet: an invoice may overdraw the wallet: failed 1 test(s), including the expected one
+[ok]   wallet: a card payment debits the wallet: failed 1 test(s), including the expected one
+[ok]   wallet: a provider refund credits the wallet: failed 1 test(s), including the expected one
+[ok]   invoices: a reused key with other lines is answered: failed 1 test(s), including the expected one
+[ok]   invoices: a boolean is a quantity: failed 1 test(s), including the expected one
+[ok]   invoices: a paid invoice can be finalized: failed 1 test(s), including the expected one
+[ok]   invoices: a paid invoice can be voided: failed 1 test(s), including the expected one
+[ok]   invoices: an invoice with a payment in flight can be voided: failed 1 test(s), including the expected one
+[ok]   invoices: a wallet payment is allowed while a debit is in flight: failed 1 test(s), including the expected one
+[ok]   invoices: an invoice paid by one method is paid again by another: failed 1 test(s), including the expected one
+[ok]   invoices: a draft can be paid: failed 1 test(s), including the expected one
+[ok]   invoices: not enough credit is marked paid anyway: failed 1 test(s), including the expected one
+[ok]   invoices: a replayed event is held instead of answered: failed 1 test(s), including the expected one
+[ok]   invoices: a refund past the total is tried: failed 1 test(s), including the expected one
+[ok]   invoices: a reused refund key with another amount is answered: failed 1 test(s), including the expected one
+[ok]   invoices: a repeated refund key is not recognised: failed 1 test(s), including the expected one
+[ok]   invoices: an unpaid invoice is refunded: failed 1 test(s), including the expected one
+[ok]   invoices: a wallet refund does not go to the wallet: failed 1 test(s), including the expected one
+[ok]   invoices: a refund event above the total is applied: failed 1 test(s), including the expected one
+[ok]   invoices: a refund event that adds nothing is booked: failed 1 test(s), including the expected one
+[ok]   commissions: the rate is not basis points: failed 1 test(s), including the expected one
+[ok]   commissions: a reversal that changes nothing is written: failed 1 test(s), including the expected one
+[ok]   commissions: a reversal uses a full rate: failed 2 test(s), including the expected one
+[ok]   commissions: no accrual: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 33: killed 33, survived 0, killed by the wrong test 0
+mutation control: PASS
+DONE exit 0
+
+==== chunk F5 ====
+baseline: green
+[ok]   engine: the acting database opens a transaction with no role: failed 2 test(s), including the expected one
+[ok]   engine: the engine's block keeps its elevation: failed 1 test(s), including the expected one
+[ok]   engine: the block does not act as admin: failed 2 test(s), including the expected one
+[ok]   engine: an acting database needs no role: failed 1 test(s), including the expected one
+[ok]   engine: the acting database is the plain database: failed 2 test(s), including the expected one
+[ok]   api: the guard lets every role through: failed 2 test(s), including the expected one
+[ok]   api: a role may do anything: failed 2 test(s), including the expected one
+[ok]   api: the key is looked up unhashed: failed 1 test(s), including the expected one
+[ok]   api: a missing credential is not refused: failed 1 test(s), including the expected one
+[ok]   api: an unknown role is given a default: failed 1 test(s), including the expected one
+[ok]   api: an order may be made for another clinic: failed 1 test(s), including the expected one
+[ok]   api: a not found is a 403: failed 2 test(s), including the expected one
+[ok]   api: a body may carry extra fields: failed 1 test(s), including the expected one
+[ok]   api: the idempotency key is optional: failed 1 test(s), including the expected one
+[ok]   api: the webhook works with no router configured: failed 1 test(s), including the expected one
+[ok]   api: a card payment needs no provider: failed 1 test(s), including the expected one
+[ok]   api: the finalize route asks for the read cell: failed 1 test(s), including the expected one
+[ok]   api: the refund route asks for the settle cell: failed 1 test(s), including the expected one
+[ok]   api: the commission list asks for the orders cell: failed 1 test(s), including the expected one
+[ok]   states: a repeat is applied: failed 7 test(s), including the expected one
+[ok]   states: a legal move is ignored: failed 9 test(s), including the expected one
+[ok]   states: a skip ahead is applied: failed 18 test(s), including the expected one
+[ok]   states: an older status is refused instead of ignored: failed 20 test(s), including the expected one
+[ok]   states: a ship of a cancelled order is ignored: failed 8 test(s), including the expected one
+[ok]   states: a shipped order can be cancelled: failed 2 test(s), including the expected one
+[ok]   states: an unknown status is decided on: failed 1 test(s), including the expected one
+[ok]   client: a permanent refusal is retried: failed 3 test(s), including the expected one
+[ok]   client: the wait is not capped: failed 1 test(s), including the expected one
+[ok]   client: the partner's Retry-After is ignored: failed 3 test(s), including the expected one
+[ok]   client: each attempt makes a new key: failed 5 test(s), including the expected one
+[ok]   client: there is no wait between attempts: failed 4 test(s), including the expected one
+[ok]   client: a dropped connection is not retried: failed 2 test(s), including the expected one
+[ok]   client: a yes with no partner id is accepted: failed 1 test(s), including the expected one
+[ok]   client: the partner's error text is kept: failed 1 test(s), including the expected one
+[ok]   client: a short key is sent: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 35: killed 35, survived 0, killed by the wrong test 0
+mutation control: PASS
+DONE exit 0
+
+==== chunk F6 ====
+baseline: green
+[ok]   service: a dead lettered order is sent without a requeue: failed 1 test(s), including the expected one
+[ok]   service: every dead letter is retries exhausted: failed 1 test(s), including the expected one
+[ok]   service: a partner that never answers is retries exhausted: failed 1 test(s), including the expected one
+[ok]   service: a second sender moves the order again: failed 1 test(s), including the expected one
+[ok]   service: any order can be requeued: failed 1 test(s), including the expected one
+[ok]   service: a sent order can be cancelled here: failed 1 test(s), including the expected one
+[ok]   service: an event id seen before is applied again: failed 1 test(s), including the expected one
+[ok]   service: a refused event is applied: failed 1 test(s), including the expected one
+[ok]   service: an ignored event is applied: failed 1 test(s), including the expected one
+[ok]   service: carrier and tracking are wiped by a later event: failed 1 test(s), including the expected one
+[ok]   service: a shipped event needs no tracking: failed 1 test(s), including the expected one
+[ok]   service: a stray carrier is accepted: failed 1 test(s), including the expected one
+[ok]   service: verify does not compare the status with the log: failed 1 test(s), including the expected one
+[ok]   webhook: the signature is not checked: failed 1 test(s), including the expected one
+[ok]   webhook: an order reference of any shape is accepted: failed 1 test(s), including the expected one
+[ok]   webhook: an event id of any shape is accepted: failed 1 test(s), including the expected one
+[ok]   webhook: a refused event is answered 200: failed 2 test(s), including the expected one
+[ok]   webhook: an unknown order is not refused: failed 1 test(s), including the expected one
+
+source restored, suite green again
+mutants run 18: killed 18, survived 0, killed by the wrong test 0
+mutation control: PASS
+DONE exit 0
+
