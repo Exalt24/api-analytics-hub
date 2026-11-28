@@ -642,6 +642,9 @@ def test_a_role_that_may_only_read_orders_cannot_write_the_children_of_an_order_
     async def go(rig, partner, client, sleeps):
         order = await sent_order(rig, world, partner, client)                 # clinic c1; rep1 covers c1 and may read; rep2 covers c3; clinic2 is another clinic
         await post(rig, partner, order, "accepted", event_id="e1")
+        with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:          # one dead letter row for the order, so a table that is read has a row to show
+            cur.execute("insert into fulfillment_dead_letter (tenant_id, order_id, clinic_id, reason_code, attempts) values (%s, %s, %s, 'retries_exhausted', 4)",
+                        (world.a.tenant, order["id"], world.a.clinics["c1"]))
         out = {}
         tables = ("fulfillment_submission", "fulfillment_dead_letter", "fulfillment_event", "fulfillment_audit")
         for label in ("clinic1", "rep1", "rep2", "clinic2", "admin"):
@@ -668,6 +671,6 @@ def test_a_role_that_may_only_read_orders_cannot_write_the_children_of_an_order_
                                world.a.tenant, order["id"], world.a.clinics["c1"])
         return out, writes, updated
     out, writes, updated = with_fulfilment(go)
-    assert out["clinic1"] == out["rep1"] == out["admin"] == [1, 0, 1, out["admin"][3]] and out["admin"][3] >= 3
+    assert out["clinic1"] == out["rep1"] == out["admin"] == [1, 1, 1, out["admin"][3]] and out["admin"][3] >= 3
     assert out["rep2"] == out["clinic2"] == [0, 0, 0, 0]
     assert set(writes.values()) == {"denied"} and updated == "UPDATE 0"
