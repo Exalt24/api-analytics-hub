@@ -271,3 +271,62 @@ async def _discrepancies(rig, world):
     async with rig.db.session(world.a.tenant, "admin", world.a.users["admin"]) as conn:
         rows = await conn.fetch("select * from billing_invoice_discrepancies($1::uuid)", world.a.tenant)
     return [(r["problem"], r["ref"], r["stored_minor"], r["derived_minor"]) for r in rows]
+
+
+# ---- who writes an invoice's lines and its refund requests -----------------------------------------------------------------------------------------
+
+def test_invoice_lines_are_written_only_by_a_role_that_may_create_invoices_and_a_refund_row_only_by_one_that_may_refund(world):
+    draft, paid = invoice(world), invoice(world, status="paid", total=1000, method="wallet")
+    line = ("insert into billing_invoice_line (tenant_id, invoice_id, clinic_id, position, description, quantity, unit_amount_minor, amount_minor) "
+            "values ($1::uuid, $2::uuid, $3::uuid, $4, 'probe', 1, 100, 100)")
+    refund = ("insert into billing_invoice_refund (tenant_id, invoice_id, clinic_id, amount_minor, method, idempotency_key, request_hash, created_by) "
+              "values ($1::uuid, $2::uuid, $3::uuid, 10, 'wallet', $4, 'h', 'x')")
+
+    async def go(rig):
+        c1 = world.a.clinics["c1"]
+        lines = {label: await update_as(rig, world, label, line, world.a.tenant, draft, c1, 1 + n) for n, label in enumerate(("clinic1", "rep1", "prescriber1", "clinic2", "admin"))}
+        refunds = {label: await update_as(rig, world, label, refund, world.a.tenant, paid, c1, "r-" + label) for label in ("clinic1", "rep1", "prescriber1", "clinic2", "admin")}
+        seen = {}
+        for label in ("clinic1", "rep1", "clinic2", "rep2"):
+            role = {"clinic1": "clinic", "clinic2": "clinic", "rep1": "sales_rep", "rep2": "sales_rep"}[label]
+            async with rig.db.session(world.a.tenant, role, world.a.users[label]) as conn:
+                seen[label] = (await conn.fetchval("select count(*) from billing_invoice_line"), await conn.fetchval("select count(*) from billing_invoice_refund"))
+        return lines, refunds, seen
+    lines, refunds, seen = with_portal(go, size=2)
+    # refused is refused: by the row level security check, or earlier by the trigger that cannot even see the draft invoice of another clinic
+    assert {k: v.startswith("ok") for k, v in lines.items()} == {"clinic1": False, "rep1": False, "prescriber1": False, "clinic2": False, "admin": True}, lines
+    assert {k: v.startswith("ok") for k, v in refunds.items()} == {"clinic1": False, "rep1": False, "prescriber1": False, "clinic2": False, "admin": True}, refunds
+    assert seen == {"clinic1": (1, 1), "rep1": (1, 1), "clinic2": (0, 0), "rep2": (0, 0)}            # the rows are read by the clinic and its rep, and by nobody else
+
+
+# ---- the two tools the engine uses to act for a user and as itself --------------------------------------------------------------------------------------
+
+def test_the_engine_acts_as_admin_inside_the_block_and_gives_the_callers_own_role_back_after_it_even_when_the_block_fails(world):
+    from app.access.engine import ActingDatabase, SYSTEM_USER_ID, engine_actor
+
+    async def settings(conn):
+        row = await conn.fetchrow("select current_setting('app.role', true) as r, current_setting('app.user_id', true) as u")
+        return row["r"], row["u"]
+
+    async def go(rig):
+        clinic = world.a.users["clinic1"]
+        out = []
+        async with rig.db.session(world.a.tenant, "clinic", clinic) as conn:
+            out.append(await settings(conn))
+            async with engine_actor(conn):
+                out.append(await settings(conn))
+            out.append(await settings(conn))
+            with pytest.raises(RuntimeError):
+                async with engine_actor(conn):
+                    raise RuntimeError("the block fails")
+            out.append(await settings(conn))
+        acting = ActingDatabase(rig.db, "clinic", clinic)
+        async with acting.tenant(world.a.tenant) as conn:
+            out.append(await settings(conn))
+        for role, user in (("", clinic), ("clinic", "")):
+            with pytest.raises(ValueError):
+                ActingDatabase(rig.db, role, user)
+        return out, acting.engine is rig.db
+    out, unwrapped = with_portal(go, size=2)
+    clinic = world.a.users["clinic1"]
+    assert out == [("clinic", clinic), ("admin", SYSTEM_USER_ID), ("clinic", clinic), ("clinic", clinic), ("clinic", clinic)] and unwrapped
