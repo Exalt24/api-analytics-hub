@@ -25,7 +25,7 @@ create table if not exists fulfillment_order (
     clinic_id        uuid        not null,
     order_ref        text        not null unique check (order_ref ~ '^ord_[0-9a-f]{24}$'),
     status           text        not null default 'created' check (status in ('created', 'submitted', 'accepted', 'packed', 'shipped', 'delivered', 'rejected', 'cancelled')),
-    carrier          text        check (carrier ~ '^[A-Za-z0-9][A-Za-z0-9 ._-]{1,39}$'),
+    carrier          text        check (carrier ~ '^[A-Za-z0-9][A-Za-z0-9._-]{1,39}$'),
     tracking_number  text        check (tracking_number ~ '^[A-Za-z0-9-]{6,40}$'),
     partner_order_id text        check (partner_order_id ~ '^[A-Za-z0-9_-]{1,80}$'),
     -- the portal user who made it: an opaque uuid

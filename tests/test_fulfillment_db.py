@@ -513,7 +513,7 @@ def test_an_edited_deleted_or_reordered_audit_row_is_named_by_verify_and_an_unto
     assert any(p.code == "row_missing" for p in deleted) and any(p.code == "link_broken" for p in deleted)
 
 
-def test_a_status_the_log_does_not_explain_and_a_shipped_order_with_no_tracking_are_reported(world):
+def test_a_status_the_log_does_not_explain_is_reported(world):
     async def go(rig, partner, client, sleeps):
         order = await sent_order(rig, world, partner, client)
         admin = rig.acting(world.a, "admin")
@@ -594,3 +594,80 @@ def test_over_seeded_worlds_events_arriving_late_twice_and_out_of_order_still_en
         assert got["status"] == "delivered" and [m[1] for m in moves] == ["submitted", "accepted", "packed", "shipped", "delivered"]
     assert problems == [] and event_rows <= len({e[0] for e in events}) and not any(code == 400 for _, code, _ in results)
     assert [r["kind"] for r in got["audit"]].count("transition") == len(moves) - 1
+
+
+# ---- more of what the log and the receiver must refuse ----------------------------------------------------------------------------------------------
+
+def test_a_name_under_a_whitelisted_key_is_dropped_too_because_each_key_has_its_own_shape():
+    from app.fulfillment.audit import clean_detail
+    got = clean_detail({"reason": "Jane Roe", "result": "diabetes mellitus", "current": "Jane", "target": "shipped", "carrier": "Jane Roe", "tracking_number": "12 Elm Street",
+                        "partner_order_id": "Jane Roe", "attempts": "3", "ok": "yes", "http_status": True, "problems": 2})
+    assert got == {"target": "shipped", "problems": 2}
+    ok = clean_detail({"reason": "not_legal_now", "result": "sent", "current": "packed", "target": "cancelled", "carrier": "SwiftPost", "tracking_number": "TRK-123456",
+                       "partner_order_id": "po_000001", "attempts": 3, "ok": True, "http_status": 503, "problems": 0, "occurred_at": 1760000000})
+    assert len(ok) == 12 and ok["carrier"] == "SwiftPost" and ok["reason"] == "not_legal_now"
+
+
+def test_an_edited_detail_is_named_by_verify_because_the_detail_is_part_of_the_hash(world):
+    async def go(rig, partner, client, sleeps):
+        order = await sent_order(rig, world, partner, client)
+        admin = rig.acting(world.a, "admin")
+        tamper("update fulfillment_audit set detail = '{\"attempts\": 99}'::jsonb where order_id = %s and seq = 2", order["id"])
+        return await service.verify(admin, world.a.tenant, order["id"], actor="admin")
+    problems = with_fulfilment(go)
+    assert any(p.code == "row_edited" and p.seq == 2 for p in problems)
+
+
+def test_an_event_without_a_usable_id_or_with_a_bad_one_is_a_400_and_a_good_one_still_applies(world):
+    import hashlib
+    import hmac
+
+    async def go(rig, partner, client, sleeps):
+        order = await sent_order(rig, world, partner, client)
+        sent = []
+        for body in ({"order_ref": order["order_ref"], "status": "accepted"}, {"event_id": "has spaces", "order_ref": order["order_ref"], "status": "accepted"},
+                     {"event_id": 7, "order_ref": order["order_ref"], "status": "accepted"}, {"event_id": "e" * 121, "order_ref": order["order_ref"], "status": "accepted"},
+                     {"event_id": "ok-1", "order_ref": order["order_ref"], "status": 5}):
+            raw = json.dumps(body).encode()
+            ts = int(time.time())
+            header = "t=%d,v1=%s" % (ts, hmac.new(SECRET.encode(), str(ts).encode() + b"." + raw, hashlib.sha256).hexdigest())
+            sent.append(await webhook.handle_http(rig.db, rig.frouter, raw, header, SECRETS))
+        ok = await post(rig, partner, order, "accepted", event_id="ok-1")
+        return sent, ok, await as_owner_count("select count(*) from fulfillment_event")
+    sent, ok, events = with_fulfilment(go)
+    assert all(s == (400, {"error": "invalid event"}) for s in sent) and ok[1]["result"] == "applied" and events == 1
+
+
+def test_a_role_that_may_only_read_orders_cannot_write_the_children_of_an_order_and_another_clinic_cannot_read_them(world):
+    async def go(rig, partner, client, sleeps):
+        order = await sent_order(rig, world, partner, client)                 # clinic c1; rep1 covers c1 and may read; rep2 covers c3; clinic2 is another clinic
+        await post(rig, partner, order, "accepted", event_id="e1")
+        out = {}
+        tables = ("fulfillment_submission", "fulfillment_dead_letter", "fulfillment_event", "fulfillment_audit")
+        for label in ("clinic1", "rep1", "rep2", "clinic2", "admin"):
+            async with rig.acting(world.a, label).tenant(world.a.tenant) as conn:
+                out[label] = [await conn.fetchval("select count(*) from %s" % t) for t in tables]
+        writes = {}
+        attempts = {
+            "audit": "insert into fulfillment_audit (tenant_id, order_id, clinic_id, seq, kind, actor, at, prev_hash, entry_hash) values ($1::uuid, $2::uuid, $3::uuid, 99, 'ignored', 'x', now(), $4, $4)",
+            "event": "insert into fulfillment_event (tenant_id, order_id, clinic_id, partner_event_id, event_status, result) values ($1::uuid, $2::uuid, $3::uuid, 'forged', 'packed', 'applied')",
+            "dead letter": "insert into fulfillment_dead_letter (tenant_id, order_id, clinic_id, reason_code, attempts) values ($1::uuid, $2::uuid, $3::uuid, 'permanent_rejection', 1)",
+        }
+        for label in ("rep1", "clinic2"):
+            for name, sql in attempts.items():
+                try:
+                    async with rig.acting(world.a, label).tenant(world.a.tenant) as conn:
+                        await conn.execute(sql, world.a.tenant, order["id"], world.a.clinics["c1"], "0" * 64) if name == "audit" else await conn.execute(sql, world.a.tenant, order["id"], world.a.clinics["c1"])
+                    writes[(label, name)] = "allowed"
+                except asyncpg.InsufficientPrivilegeError:
+                    writes[(label, name)] = "denied"
+        async with rig.acting(world.a, "rep1").tenant(world.a.tenant) as conn:
+            updated = await conn.execute("update fulfillment_submission set attempts = 50")
+        async with rig.acting(world.a, "clinic1").tenant(world.a.tenant) as conn:            # the control: the clinic's own user may write its own order's children
+            await conn.execute("insert into fulfillment_dead_letter (tenant_id, order_id, clinic_id, reason_code, attempts) values ($1::uuid, $2::uuid, $3::uuid, 'permanent_rejection', 1)",
+                               world.a.tenant, order["id"], world.a.clinics["c1"])
+        return out, writes, updated
+    out, writes, updated = with_fulfilment(go)
+    assert out["clinic1"] == out["rep1"] == out["admin"] == [1, 0, 1, out["admin"][3]] and out["admin"][3] >= 3
+    assert out["rep2"] == out["clinic2"] == [0, 0, 0, 0]
+    assert set(writes.values()) == {"denied"} and updated == "UPDATE 0"

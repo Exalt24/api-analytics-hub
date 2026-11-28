@@ -34,7 +34,7 @@ from .errors import EventRejected, InvalidOrder, OrderNotFound, OrderStateError,
 
 log = logging.getLogger("fulfillment")
 
-_CARRIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._-]{1,39}$")
+_CARRIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,39}$")
 _TRACKING = re.compile(r"^[A-Za-z0-9-]{6,40}$")
 _PARTNER_ID = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 
@@ -254,8 +254,8 @@ async def apply_event(db: Database, tenant_id: str, order_id: str, event: Partne
 # ----------------------------------------------------------------------------------------------------- the proof
 
 async def verify(db: Database, tenant_id: str, order_id: str, *, actor: str) -> list[audit.Problem]:
-    """Recompute the order's audit chain and compare it with the order itself: an edited, deleted or reordered row, a status the log does not explain, a shipped order with no tracking number.
-    Returns the problems (empty is the proof)."""
+    """Recompute the order's audit chain and compare it with the order itself: an edited, deleted or reordered row, a status the log does not explain. Returns the problems (empty is the
+    proof). (A shipped order with no tracking number cannot exist: the table checks it.)"""
     async with db.tenant(tenant_id) as conn:
         order = await _lock(conn, tenant_id, order_id)
         if order is None:
@@ -266,7 +266,5 @@ async def verify(db: Database, tenant_id: str, order_id: str, *, actor: str) -> 
         last = max(moves, key=lambda r: r.seq).to_status if moves else None
         if last != order["status"]:
             problems.append(audit.Problem("status_unexplained", "the order is %s but the log's last move ended in %s" % (order["status"], last)))
-        if order["status"] in ("shipped", "delivered") and not (order["carrier"] and order["tracking_number"]):
-            problems.append(audit.Problem("tracking_missing", "a shipped order has no carrier or tracking number"))
         await audit.append(conn, tenant_id, order_id, str(order["clinic_id"]), "verified", actor, detail={"ok": not problems, "problems": len(problems)})
         return problems

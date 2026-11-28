@@ -126,8 +126,6 @@ def form_fields(params: dict[str, Any]) -> list[tuple[str, str]]:
     for key, value in params.items():
         if isinstance(value, dict):
             out.extend(("%s[%s]" % (key, sub), _text(v)) for sub, v in value.items())
-        elif isinstance(value, (list, tuple)):
-            out.extend(("%s[%d]" % (key, i), _text(v)) for i, v in enumerate(value))
         elif value is not None:
             out.append((key, _text(value)))
     return out

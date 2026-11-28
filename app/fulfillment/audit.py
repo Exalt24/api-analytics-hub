@@ -27,20 +27,29 @@ from app.esign.chain import canonical, fmt_time, sha256_hex
 GENESIS_LABEL = "fulfillment-genesis-v1"
 KINDS = ("created", "submit_attempt", "submitted", "dead_lettered", "requeued", "transition", "ignored", "refused", "verified")
 
-#: the only keys a detail may carry, and what each is. Nothing here can hold a name, an address or a health detail: counts, codes, statuses, a carrier, a tracking number, opaque ids.
-DETAIL_KEYS = ("attempts", "http_status", "reason", "carrier", "tracking_number", "partner_order_id", "occurred_at", "result", "ok", "problems", "current", "target")
-_SAFE_TEXT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._:/-]{0,79}$")
+#: the only keys a detail may carry, each with the one shape its text may have. Nothing here can hold a name, an address or a health detail: counts, codes in lower case and underscores, the
+#: statuses of the state machine, a carrier and a tracking number in the shapes the table checks, an opaque partner id. A key outside this table is dropped, and so is a value that is not in
+#: its key's shape (a name under `reason` is not a code), so neither a stray key nor a stray value gets into a hash or a row.
+_CODE = re.compile(r"^[a-z][a-z_]{0,39}$")
+_STATUS = re.compile(r"^(" + "|".join(("created", "submitted", "accepted", "packed", "shipped", "delivered", "rejected", "cancelled")) + r")$")
+DETAIL_TEXT = {
+    "reason": _CODE, "result": _CODE, "current": _STATUS, "target": _STATUS,
+    "carrier": re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,39}$"), "tracking_number": re.compile(r"^[A-Za-z0-9-]{6,40}$"), "partner_order_id": re.compile(r"^[A-Za-z0-9_-]{1,80}$"),
+}
+DETAIL_NUMBERS = ("attempts", "http_status", "problems", "occurred_at")
+DETAIL_FLAGS = ("ok",)
+DETAIL_KEYS = tuple(DETAIL_TEXT) + DETAIL_NUMBERS + DETAIL_FLAGS
 
 
 def clean_detail(detail: Mapping[str, Any] | None) -> dict[str, Any]:
-    """The detail with every key outside DETAIL_KEYS dropped and every value that is not a short safe string, an integer, a boolean or null dropped too."""
+    """The detail with every key outside DETAIL_KEYS dropped and every value that is not in its key's shape dropped too (null is kept for any key)."""
     out: dict[str, Any] = {}
     for key, value in (detail or {}).items():
-        if key not in DETAIL_KEYS:
-            continue
-        if isinstance(value, bool) or value is None or (isinstance(value, int) and abs(value) < 10 ** 12):
+        if key in DETAIL_TEXT and (value is None or (isinstance(value, str) and DETAIL_TEXT[key].match(value))):
             out[key] = value
-        elif isinstance(value, str) and _SAFE_TEXT.match(value):
+        elif key in DETAIL_NUMBERS and (value is None or (isinstance(value, int) and not isinstance(value, bool) and abs(value) < 10 ** 12)):
+            out[key] = value
+        elif key in DETAIL_FLAGS and (value is None or isinstance(value, bool)):
             out[key] = value
     return out
 

@@ -312,3 +312,40 @@ def test_a_header_a_query_or_a_body_that_names_another_tenant_clinic_or_role_cha
         return listed.json()["orders"], probe.status_code, other_tenant.json()["orders"]
     mine, probe, other = with_api(go)
     assert [o["clinic_id"] for o in mine] == [world.a.clinics["c1"]] and probe == 403 and other == []
+
+
+# ---- each route asks for the cell of what it does ------------------------------------------------------------------------------------------------
+
+#: written by hand, as a statement of what each route is: the cell of the matrix its action is. The row level security underneath would refuse most of a wrong guard with the same status,
+#: so the guard on the route is checked on its own here.
+ROUTE_CELLS = {
+    ("POST", "/api/portal/orders"): ("orders", "create"), ("GET", "/api/portal/orders"): ("orders", "read"), ("GET", "/api/portal/orders/{order_id}"): ("orders", "read"),
+    ("POST", "/api/portal/orders/{order_id}/submit"): ("orders", "update"), ("POST", "/api/portal/orders/{order_id}/cancel"): ("orders", "update"),
+    ("POST", "/api/portal/orders/{order_id}/requeue"): ("orders", "update"),
+    ("POST", "/api/portal/invoices"): ("invoices", "create"), ("GET", "/api/portal/invoices"): ("invoices", "read"), ("GET", "/api/portal/invoices/{invoice_id}"): ("invoices", "read"),
+    ("POST", "/api/portal/invoices/{invoice_id}/finalize"): ("invoices", "update"), ("POST", "/api/portal/invoices/{invoice_id}/void"): ("invoices", "update"),
+    ("POST", "/api/portal/invoices/{invoice_id}/pay"): ("invoices", "settle"), ("POST", "/api/portal/invoices/{invoice_id}/refund"): ("invoices", "refund"),
+    ("GET", "/api/portal/payments"): ("payments", "read"), ("POST", "/api/portal/payments"): ("payments", "create"), ("GET", "/api/portal/commissions"): ("commissions", "read"),
+}
+
+
+def test_every_portal_route_asks_for_the_cell_of_what_it_does_and_the_partner_webhook_asks_for_none():
+    found = {}
+    for route in router.routes:
+        cells = {dep.call.cell for dep in route.dependant.dependencies if hasattr(dep.call, "cell")}
+        for method in route.methods:
+            found[(method, route.path)] = cells
+    webhook = found.pop(("POST", "/api/portal/webhooks/fulfillment"))
+    assert webhook == set(), "the webhook is authenticated by its signature, not by a user"
+    assert found == {key: {cell} for key, cell in ROUTE_CELLS.items()}
+
+
+def test_a_role_the_table_has_no_row_for_is_refused_at_authentication_not_given_a_default(world, monkeypatch):
+    async def go(rig, http, partner):
+        before = (await http.get("/probe/orders/read", headers=auth(world, "admin"))).status_code
+        monkeypatch.setattr(matrix, "ROLES", ("clinic", "prescriber", "sales_rep"))          # as if the table had been written without admin
+        after = await http.get("/probe/orders/read", headers=auth(world, "admin"))
+        still = (await http.get("/probe/orders/read", headers=auth(world, "clinic1"))).status_code
+        return before, after, still
+    before, after, still = with_api(go)
+    assert (before, after.status_code, after.json(), still) == (200, 403, {"detail": "unknown role"}, 200)

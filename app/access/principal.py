@@ -78,4 +78,5 @@ def requires_access(resource: str, action: str):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="role %s may not %s %s" % (principal.role, action, resource))
         return principal
 
+    guard.cell = (resource, action)         # read by tests/test_access_api_db.py, which lists the cell each route is meant to ask for
     return guard

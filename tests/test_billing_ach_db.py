@@ -264,3 +264,14 @@ def test_every_tenants_debit_is_its_own_and_an_event_for_another_tenants_payment
         return await counts(rig.db, world.a.tenant), await counts(rig.db, world.b.tenant), res_b
     a, b, res_b = with_portal(go)
     assert a["spendable"] == 5000 and b["spendable"] == 0 and res_b.status == "processing"
+
+
+def test_a_payment_for_an_invoice_must_name_its_invoice_and_only_that_kind_may(world):
+    async def go(rig):
+        t = world.a.tenant
+        for kw in ({"purpose": "invoice"}, {"purpose": "invoice", "invoice_id": None}, {"purpose": "topup", "invoice_id": "11111111-1111-1111-1111-111111111111"}, {"purpose": "refund"}):
+            with pytest.raises(ValueError):
+                await payments.start_topup(rig.db, rig.provider, t, amount_minor=100, currency=USD, payment_method="pm_fake_ok", key="k", **kw)
+        return len(rig.fake.requests), await counts(rig.db, t)
+    requests, c = with_portal(go)
+    assert requests == 0 and c["billing_payment"] == 0

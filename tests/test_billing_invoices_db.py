@@ -609,3 +609,40 @@ def test_a_ledger_row_and_a_commission_row_can_never_be_edited_or_deleted_and_th
         with pytest.raises(psycopg.errors.UniqueViolation):                          # a second accrual for the invoice
             cur.execute(copy, ("accrual", 5, "accrual"))
         cur.execute(copy, ("reversal", -1, "refund:98"))                              # the control: a small reversal goes in
+
+
+# ---- more of what a refund and a repeated event must do --------------------------------------------------------------------------------------------
+
+def test_only_a_paid_invoice_is_refunded_an_open_a_void_and_a_draft_one_are_refused_with_nothing_asked_of_the_provider(world):
+    async def go(rig):
+        db = rig.acting(world.a, "admin")
+        draft, _ = await invoices.create_draft(db, world.a.tenant, clinic_id=world.a.clinics["c1"], currency=USD, lines=LINES, key="d", actor="admin")
+        opened = await open_invoice(rig, world)
+        voided = await open_invoice(rig, world)
+        await invoices.void(db, world.a.tenant, voided["id"], actor="admin")
+        for n, inv in enumerate((draft, opened, voided)):
+            with pytest.raises(InvoiceStateError):
+                await invoices.refund(db, rig.provider, world.a.tenant, inv["id"], amount_minor=100, key="r%d" % n, actor="admin")
+        with pytest.raises(InvoiceNotFound):
+            await invoices.refund(db, rig.provider, world.a.tenant, "not-a-uuid", amount_minor=100, key="r9", actor="admin")
+        return len(rig.fake.refunds), await as_owner_count("select count(*) from billing_invoice_refund")
+    assert with_portal(go) == (0, 0)
+
+
+def test_a_refund_event_above_the_invoice_total_is_held_an_equal_total_under_a_new_id_is_ignored_and_a_one_unit_refund_writes_no_commission_row(world):
+    async def go(rig):
+        db = rig.acting(world.a, "admin")
+        inv = await open_invoice(rig, world, clinic="c2", lines=[{"description": "Kit", "quantity": 1, "unit_amount_minor": 3333}])      # c2 pays rep1 1000 bp
+        paid = await invoices.pay(db, rig.provider, world.a.tenant, inv["id"], method="card", payment_method="pm_fake_ok", key="p1", actor="admin")
+        pid = await payment_provider_id(rig, world, paid.payment_id)
+        over = await deliver(rig, rig.events.charge_refunded(pid, 3333, 3334, currency="usd"))
+        await invoices.refund(db, rig.provider, world.a.tenant, inv["id"], amount_minor=1000, key="r1", actor="admin")
+        first = await deliver(rig, rig.events.charge_refunded(pid, 3333, 1000, currency="usd"))
+        same_total = await deliver(rig, rig.events.charge_refunded(pid, 3333, 1000, currency="usd"))         # another event object, the same total
+        await invoices.refund(db, rig.provider, world.a.tenant, inv["id"], amount_minor=1, key="r2", actor="admin")
+        tiny = await deliver(rig, rig.events.charge_refunded(pid, 3333, 1001, currency="usd"))             # 2332 left: 233.2 rounds to 233, as 2333 did, so nothing is reversed
+        return over, first, same_total, tiny, [r["amount_minor"] for r in await commission_rows(rig, world, inv["id"])], await invoices.get_invoice(db, world.a.tenant, inv["id"]), await books(rig, world.a.tenant)
+    over, first, same_total, tiny, rows, after, report = with_portal(go)
+    assert over.status == "held" and "more than the invoice total" in over.detail and first.status == "processed" and same_total.status == "ignored" and "already reversed" in same_total.detail
+    assert tiny.status == "processed" and rows == [333, -100] and after["refunded_minor"] == 1001 and report.ok
+    assert after["status"] == "paid"
