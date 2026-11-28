@@ -8,7 +8,7 @@
 
 Multi-tenant analytics hub: external APIs are synced, normalised, stored in PostgreSQL, served by a backend and shown on a dashboard.
 
-There are fifteen connectors. **Shopify Admin GraphQL** is verified against a real development store. Fourteen more (table below) ran against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report, built by an n8n workflow for each tenant, puts the sources side by side.
+There are sixteen connectors. **Shopify Admin GraphQL** is verified against a real development store. Fifteen more (table below) ran against stand-in servers written from the vendors' documentation. The dashboard **never** calls a vendor API to render a page; it reads snapshots the sync wrote. A monthly PowerPoint report, built by an n8n workflow for each tenant, puts the sources side by side.
 
 | Source | Built and tested against |
 |---|---|
@@ -20,6 +20,7 @@ There are fifteen connectors. **Shopify Admin GraphQL** is verified against a re
 | Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey, Salesforce | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | Harvest (time, budgets), Microsoft Graph (SharePoint, Teams, Excel) | a stand-in server each ([how](docs/harvest-graph.md)) |
 | Autotask PSA (tickets, technician time) | a stand-in server, written from the vendor's public documentation and tested against it ([sources](docs/MSP_SOURCES.md#autotask-psa)) |
+| NinjaOne (RMM: devices, active alerts) | a stand-in server, written from the vendor's public documentation and tested against it ([sources](docs/MSP_SOURCES.md#ninjaone-rmm)) |
 | ConnectWise Manage (PSA: tickets, technician time) | a stand-in server, written from third party descriptions of the API because ConnectWise's own documentation needs a login that refuses a free email address ([sources](docs/MSP_SOURCES.md#connectwise-manage-psa)) |
 | A fulfilment partner's order API (outbound) | a stand-in server ([contract](docs/fulfillment.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |

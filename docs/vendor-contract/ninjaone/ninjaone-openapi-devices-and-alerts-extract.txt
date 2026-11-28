@@ -2,7 +2,8 @@ URL: https://app.ninjarmm.com/apidocs/NinjaRMM-API-v2.json  (the OpenAPI file li
 STATUS: 200
 FETCHED: 2026-11-29
 
-EXTRACT, made by a script from that file: info, the security scheme, and for the three calls the connector makes the query parameters and every response property with its type, format and description, copied unchanged. Nothing was added.
+EXTRACT, made by a script from that file: info, the security scheme, and for the three calls the connector makes (devices, alerts, organizations) the query parameters and every response property
+with its type, format and description, copied unchanged. Nothing was added. Only the first level of the nested `device` object of an alert is listed, and not its `references`.
 The file has no `servers` entry, no rate limit text and no 429 response.
 
 info: "NinjaOne Public API 2.0" version 2.0.9-draft
@@ -36,11 +37,6 @@ GET /v2/devices  (getDevices)  summary: List devices | description: Returns list
     [].userData | object | Custom attributes
     [].tags | array | Tags
     [].maintenance | object | Maintenance mode status
-    [].maintenance.status | string | Maintenance mode status | enum: PENDING, IN_MAINTENANCE, FAILED
-    [].maintenance.start | number/double | Maintenance mode start time
-    [].maintenance.end | number/double | Maintenance mode end time
-    [].maintenance.reasonMessage | string | Maintenance reason message
-    [].references | object | Expanded entity references
 
 GET /v2/alerts  (getAlerts)  summary: List active alerts (triggered conditions) | description: Returns list of active alerts/triggered conditions
   query sourceType | string | 
@@ -62,8 +58,63 @@ GET /v2/alerts  (getAlerts)  summary: List active alerts (triggered conditions) 
     [].ticketTemplateId | integer/int32 | PSA ticket template
     [].data | object | Alert data
     [].device | object | Device information.
+    [].device.id | integer/int32 | Node (Device) identifier
+    [].device.uid | string/uuid | Node (Device) UUID
+    [].device.assignedOwnerUid | string/uuid | Node (Device) Owner UUID
+    [].device.parentDeviceId | integer/int32 | Parent Node identifier
+    [].device.organizationId | integer/int32 | Organization identifier
+    [].device.locationId | integer/int32 | Location identifier
+    [].device.nodeClass | string | Node Class | enum: WINDOWS_SERVER, WINDOWS_WORKSTATION, LINUX_WORKSTATION, MAC, ANDROID, APPLE_IOS, APPLE_IPADOS, AOSP, CHROMEOS, VMWARE_VM_HOST, VMWARE_VM_GUEST, HYPERV_VMM_HOST, HYPERV_VMM_GUEST, LINUX_SERVER, MAC_SERVER, CLOUD_MONITOR_TARGET, NMS_SWITCH, NMS_ROUTER, NMS_FIREWALL, NMS_PRIVATE_NETWORK_GATEWAY, NMS_PRINTER, NMS_SCANNER, NMS_DIAL_MANAGER, NMS_WAP, NMS_IPSLA, NMS_COMPUTER, NMS_VM_HOST, NMS_APPLIANCE, NMS_OTHER, NMS_SERVER, NMS_PHONE, NMS_VIRTUAL_MACHINE, NMS_NETWORK_MANAGEMENT_AGENT, UNMANAGED_DEVICE, MANAGED_DEVICE
+    [].device.nodeRoleId | integer/int32 | Node Role identifier
+    [].device.rolePolicyId | integer/int32 | Node Role policy ID based on organization and location Policy Mapping
+    [].device.policyId | integer/int32 | Assigned policy ID (overrides organization and location policy mapping)
+    [].device.approvalStatus | string | Approval Status | enum: PENDING, STAGED, APPROVED, DECOMMISSIONED
+    [].device.offline | boolean | Is Offline?
+    [].device.displayName | string | Display Name
+    [].device.systemName | string | System Name
+    [].device.dnsName | string | DNS Name
+    [].device.netbiosName | string | NETBIOS Name
+    [].device.created | number/double | Created
+    [].device.lastContact | number/double | Last Contact
+    [].device.lastUpdate | number/double | Last data submission timestamp
+    [].device.userData | object | Custom attributes
+    [].device.tags | array | Tags
+    [].device.maintenance | object | Maintenance mode status
     [].priority | string | 
     [].severity | string | 
     [].conditionName | string | 
     [].conditionHealthStatus | string |  | enum: UNKNOWN, HEALTHY, NEEDS_ATTENTION, UNHEALTHY
     [].useGlobalHealthStatus | boolean | 
+
+GET /v2/organizations  (getOrganizations)  summary: List organizations | description: Returns list of organizations (Brief mode)
+  query pageSize | integer/int32 | Limit number of organizations to return
+  query after | integer/int32 | Last Organization Identifier from previous page
+  query of | string | Organization filter
+  response (status listed only as `default`): array of objects with properties:
+    [].name | string | Organization full name
+    [].description | string | Organization Description
+    [].userData | object | Custom attributes
+    [].nodeApprovalMode | string | Device Approval Mode | enum: AUTOMATIC, MANUAL, REJECT
+    [].id | integer/int32 | Organization identifier
+
+ALSO READ FROM THE SAME FILE, though no call the connector makes: the unit statements and the one place severity and priority values are listed.
+
+  a description in the file: Creation time for the tag in seconds since unix epoch
+  a description in the file: Follow-up time for the ticket in epoch seconds
+  a description in the file: For UI elements, timestamp of when the element was created (unix epoch)
+  a description in the file: For UI elements, timestamp of when the element was last updated (unix epoch)
+  a description in the file: Include records on or after this timestamp (epoch seconds). Defaults to 7 days ago.
+  a description in the file: Include records on or before this timestamp (epoch seconds). Defaults to now.
+  a description in the file: Indicates the purchase date of the software license in unix epoch milliseconds
+  a description in the file: Last update time for the tag in seconds since unix epoch
+  a description in the file: Location timestamp, epoch seconds with millisecond precision
+  a description in the file: Maintenance window end. Allowed formats: ISO-8601 date-time string or epoch milliseconds.
+  a description in the file: Maintenance window start (optional, defaults to now). Allowed formats: ISO-8601 date-time string or epoch milliseconds.
+  a description in the file: The last usage timestamp in unix epoch seconds
+  a description in the file: The time that the attribute was created (unix epoch)
+  a description in the file: The time that the attribute was last updated (unix epoch)
+  a description in the file: The warranty end date for the device, in unix epoch seconds
+  a description in the file: The warranty start date for the device, in unix epoch seconds
+  GET /v2/activities, item property severity | Severity | enum: NONE, MINOR, MODERATE, MAJOR, CRITICAL
+  GET /v2/activities, item property priority | Priority | enum: NONE, LOW, MEDIUM, HIGH
+  GET /v2/activities, query pageSize | {"maximum": 1000, "minimum": 10, "type": "integer", "format": "int32", "default": 200}

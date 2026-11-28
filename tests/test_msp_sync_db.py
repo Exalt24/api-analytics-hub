@@ -51,14 +51,18 @@ from app.connectors.common import Retrier  # noqa: E402
 from app.connectors.connectwise import METRICS as CW_KEYS  # noqa: E402
 from app.connectors.connectwise import ConnectWiseConnector  # noqa: E402
 from app.connectors.connectwise_fake import FakeConnectWise  # noqa: E402
+from app.connectors.ninjaone import METRICS as NJ_KEYS  # noqa: E402
+from app.connectors.ninjaone import NinjaOneConnector  # noqa: E402
+from app.connectors.ninjaone_fake import FakeNinjaOne  # noqa: E402
 from app.db import Database  # noqa: E402
 from app.sync.runner import SyncRunner  # noqa: E402
 
 START, END = date(2026, 10, 1), date(2026, 10, 8)
 MIGRATIONS = ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "006_ga4_metrics.sql", "007_meta_metrics.sql", "013_ads_and_business_metrics.sql",
-              "017_salesforce_metrics.sql", "018_harvest_and_graph_metrics.sql", "025_connectwise_metrics.sql", "026_autotask_metrics.sql")
+              "017_salesforce_metrics.sql", "018_harvest_and_graph_metrics.sql", "025_connectwise_metrics.sql", "026_autotask_metrics.sql", "027_ninjaone_metrics.sql")
 CW_COMPANY, CW_PUBLIC, CW_PRIVATE, CW_CLIENT = "acme", "pub-db-SECRET", "priv-db-SECRET", "client-guid-db"
 AT_USER, AT_SECRET, AT_CODE = "api@example.com", "at-db-SECRET", "AT-DB-CODE-0123456789ABC"
+NJ_CLIENT, NJ_SECRET = "nj-client-db", "nj-db-SECRET"
 NOW = datetime(2026, 10, 20, 12, 0, tzinfo=timezone.utc)
 
 
@@ -103,7 +107,17 @@ def at_server():
 
 
 @pytest.fixture(scope="module")
-def world(cw_server, at_server):
+def nj_server():
+    with FakeNinjaOne(client_id=NJ_CLIENT, client_secret=NJ_SECRET) as fake:
+        for d in range(1, 5):
+            fake.add_device(d, "SRV-%d" % d, offline=d == 4)
+        for d in range(1, 8):
+            fake.add_alert("alert-%d" % d, 1 + d % 4, dt(d))
+        yield fake
+
+
+@pytest.fixture(scope="module")
+def world(cw_server, at_server, nj_server):
     a, b = uuid.uuid4(), uuid.uuid4()
     ids = {}
     with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
@@ -115,7 +129,7 @@ def world(cw_server, at_server):
             cur.execute("select set_config('app.tenant_id', %s, false)", (str(tenant),))
             cur.execute("insert into tenant (id, slug, name) values (%s, %s, %s)", (tenant, label, label))
         cur.execute("select set_config('app.tenant_id', %s, false)", (str(a),))
-        for key, platform, account in (("a_cw", "connectwise", CW_COMPANY), ("a_at", "autotask", AT_USER)):
+        for key, platform, account in (("a_cw", "connectwise", CW_COMPANY), ("a_at", "autotask", AT_USER), ("a_nj", "ninjaone", NJ_CLIENT)):
             cur.execute("insert into platform_connection (tenant_id, platform, external_account, display_name, credentials_enc) values (%s, %s, %s, %s, %s) returning id",
                         (a, platform, account, key, b"ciphertext"))
             ids[key] = cur.fetchone()[0]
@@ -130,6 +144,10 @@ def connectwise(server, private=CW_PRIVATE):
 def autotask(server, secret=AT_SECRET):
     return AutotaskConnector(username=AT_USER, secret=secret, integration_code=AT_CODE, zone_lookup_url=server.url, client=http(), retrier=Retrier(sleep=no_sleep),
                              clock=lambda: NOW)
+
+
+def ninjaone(server, secret=NJ_SECRET):
+    return NinjaOneConnector(client_id=NJ_CLIENT, client_secret=secret, epoch_unit="seconds", base_url=server.url, client=http(), retrier=Retrier(sleep=no_sleep))
 
 
 async def sync(world, connection, connector, start=START, end=END):
@@ -261,9 +279,57 @@ def test_an_hour_with_almost_no_requests_left_is_a_failed_rate_limited_run_that_
     assert not any("/Tickets/query" in r.path for r in at_server.requests)
 
 
+# ---------------------------------------------------------------- NinjaOne
+
+@pytest.fixture(scope="module")
+def nj_synced(world, nj_server):
+    return run(sync(world, "a_nj", ninjaone(nj_server)))
+
+
+def test_the_ninjaone_sync_succeeds_and_writes_three_gauges_once_and_the_alerts_created_for_each_of_seven_days(world, nj_synced):
+    assert nj_synced.status == "succeeded", (nj_synced.error_code, nj_synced.error_detail)
+    assert nj_synced.rows_written == 3 + 7 and len(stored(world["a_nj"])) == 3 + 7
+
+
+def test_ninjaone_gauges_sit_on_the_last_day_and_alerts_created_on_the_day_they_were_raised(world, nj_synced):
+    got = stored(world["a_nj"])
+    assert got[("nj_devices", 7)] == (4, None) and got[("nj_devices_offline", 7)] == (1, None) and got[("nj_alerts_active", 7)] == (7, None)
+    assert {d for (k, d) in got if k == "nj_devices"} == {7}, "a point in time figure is stored once, not repeated on every day"
+    assert [got[("nj_alerts_created", d)] for d in range(1, 8)] == [(1, None)] * 7
+    assert {c for _, c in got.values()} == {None}
+
+
+def test_migration_027_gives_the_four_keys_their_units_and_kinds_and_the_currency_check_refuses_a_currency_on_them(world, nj_synced):
+    rows = {r[0]: (r[1], r[2]) for r in sql("select key, unit, kind from metric where key = any(%s)", (list(NJ_KEYS),))}
+    assert rows == {"nj_devices": ("count", "gauge"), "nj_devices_offline": ("count", "gauge"), "nj_alerts_active": ("count", "gauge"), "nj_alerts_created": ("count", "delta")}
+    for key in NJ_KEYS:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            sql("insert into metric_snapshot (tenant_id, connection_id, metric_key, observed_on, value_numeric, currency) values (%s, %s, %s, '2026-10-21', 1, 'USD')",
+                (world["a"], world["a_nj"], key))
+
+
+def test_a_second_ninjaone_sync_rewrites_the_same_rows_and_a_new_alert_replaces_the_stored_figure(world, nj_server, nj_synced):
+    before = sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_nj"],))[0][0]
+    nj_server.add_alert("alert-extra", 1, dt(3, 15))
+    out = run(sync(world, "a_nj", ninjaone(nj_server)))
+    assert out.status == "succeeded"
+    assert sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_nj"],))[0][0] == before
+    got = stored(world["a_nj"])
+    assert got[("nj_alerts_created", 3)] == (2, None) and got[("nj_alerts_active", 7)] == (8, None)
+
+
+def test_a_refused_ninjaone_secret_is_a_failed_run_with_its_code_and_writes_nothing(world, nj_server, nj_synced):
+    before = sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_nj"],))[0][0]
+    out = run(sync(world, "a_nj", ninjaone(nj_server, secret="nobody-issued-this"), start=date(2026, 12, 1), end=date(2026, 12, 3)))
+    assert out.status == "failed" and out.error_code == "auth_revoked" and out.rows_written == 0
+    for secret in (NJ_SECRET, "nobody-issued-this"):
+        assert secret not in (out.error_detail or "")
+    assert sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_nj"],))[0][0] == before
+
+
 # ---------------------------------------------------------------- all
 
-def test_row_level_security_keeps_each_tenants_rows_apart(world, cw_synced, at_synced):
+def test_row_level_security_keeps_each_tenants_rows_apart(world, cw_synced, at_synced, nj_synced):
     async def read(tenant):
         db = Database(DSN, max_size=2)
         await db.connect()
@@ -273,5 +339,5 @@ def test_row_level_security_keeps_each_tenants_rows_apart(world, cw_synced, at_s
         finally:
             await db.close()
 
-    assert {str(r["connection_id"]) for r in run(read(world["a"]))} == {str(world["a_cw"]), str(world["a_at"])}
+    assert {str(r["connection_id"]) for r in run(read(world["a"]))} == {str(world["a_cw"]), str(world["a_at"]), str(world["a_nj"])}
     assert run(read(world["b"])) == []

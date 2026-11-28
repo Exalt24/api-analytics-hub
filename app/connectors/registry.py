@@ -204,6 +204,7 @@ def _register_builtin() -> None:
     from .autotask import AutotaskConnector
     from .connectwise import ConnectWiseConnector
     from .harvest import HarvestConnector
+    from .ninjaone import NinjaOneConnector
     from .msgraph import MicrosoftGraphConnector
     from .quickbooks import QuickBooksConnector
     from .salesforce import SalesforceConnector
@@ -399,6 +400,30 @@ def _register_builtin() -> None:
                 "Leads and opportunities per day from SOQL queries on the REST API, paged by nextRecordsUrl: leads created and converted, opportunities created "
                 "and won, and the won amount. Refreshes its access token on a 401, once, behind a lock; stops before a call when fewer than 50 of the org's daily "
                 "calls are left (Sforce-Limit-Info); a 403 REQUEST_LIMIT_EXCEEDED is handed to the runner. Never run against a live org: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="ninjaone",
+            label="NinjaOne (RMM)",
+            # An app signing in as itself with a client secret (client credentials), the same server to server shape as the Microsoft Graph connector.
+            auth_kind=AuthKind.SERVICE_ACCOUNT,
+            rate_limit_style=RateLimitStyle.UNDOCUMENTED,
+            supported_metrics=NinjaOneConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("client_id", "Client app id", secret=False, hint="of an API Services (machine to machine) client app with the Client Credentials grant and the monitoring scope"),
+                CredentialField("client_secret", "Client secret", hint="shown once, when the client app is made"),
+                CredentialField("epoch_unit", "Timestamp unit", secret=False, hint="seconds or milliseconds: the NinjaOne pages do not say, so check one alert's createTime"),
+                CredentialField("base_url", "API address", secret=False, hint="https://app.ninjarmm.com, or the host of the tenant's region"),
+            ),
+            factory=NinjaOneConnector,
+            max_history_days=None,
+            supports_backfill=False,
+            notes=(
+                "Devices (read in id order until a page is empty) and active alerts. Device, offline and active alert counts are the state when the sync ran, written on the window's last "
+                "day; alerts created are the active alerts raised each day, so an alert reset before the sync is not seen. Names no rate limit. Written from NinjaOne's public API "
+                "documentation and tested against a stand-in server. Never run against a live tenant: none is held."
             ),
         )
     )

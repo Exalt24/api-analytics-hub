@@ -48,10 +48,30 @@ python scripts/sync_connectwise.py --tenant <tenant uuid> --connection <connecti
 AUTOTASK_USERNAME=api@example.com AUTOTASK_SECRET=... AUTOTASK_INTEGRATION_CODE=... python scripts/sync_autotask.py --tenant <tenant uuid> --connection <connection uuid> [--ledger tickets.jsonl]
 ```
 
+## NinjaOne (RMM)
+
+`app/connectors/ninjaone.py` reads devices and active alerts into four figures (migration 027) and into records. Written from NinjaOne's public API documentation, saved in [vendor-contract/ninjaone/](vendor-contract/ninjaone/).
+
+| Key | Meaning |
+|---|---|
+| `nj_devices` | devices listed when the sync ran (a gauge, written on the window's last day) |
+| `nj_devices_offline` | the same, for devices whose `offline` is true (a gauge) |
+| `nj_alerts_active` | active alerts when the sync ran (a gauge) |
+| `nj_alerts_created` | active alerts whose `createTime` falls on that day (a count for each day of the window) |
+
+- Signs in as the app (client credentials, the `monitoring` scope), renews the token a minute before it expires and on a 401, once, behind a lock.
+- Reads devices by `after` until a page is empty, and refuses ids that do not rise. The alert list is one answer: the OpenAPI file gives it no paging.
+- The timestamp unit is a required setting (`epoch_unit`): NinjaOne's own file uses seconds for some fields and milliseconds for others and says nothing for `createTime`. Check one alert, then set it.
+- Only ACTIVE alerts are listed, so an alert reset before the sync is never seen, and the three gauges cannot be restated for a past day.
+
+```bash
+NINJAONE_CLIENT_ID=... NINJAONE_CLIENT_SECRET=... NINJAONE_EPOCH_UNIT=seconds python scripts/sync_ninjaone.py --tenant <tenant uuid> --connection <connection uuid> [--ledger devices.jsonl]
+```
+
 ## Tests
 
 ```bash
-python -m pytest tests/test_connectwise_connector.py tests/test_autotask_connector.py tests/test_msp_records.py -q    # the connectors against their stand-ins, the records and the ledger, no database
+python -m pytest tests/test_connectwise_connector.py tests/test_autotask_connector.py tests/test_ninjaone_connector.py tests/test_msp_records.py -q    # the connectors against their stand-ins, the records and the ledger, no database
 python -m pytest tests/test_msp_sync_db.py -q                                         # through the sync runner into Postgres (docker compose up -d)
 python tests/mutation_check_msp.py --only autotask                                    # guards broken one at a time (also connectwise, ninjaone, common, records, ledger, analysis); edits source, so use a copy
 ```

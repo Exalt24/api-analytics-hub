@@ -120,3 +120,14 @@ Autotask's public developer help (autotask.net/help/developerhelp), read on 2026
 | [autotask/autotask-understanding-picklists.txt](autotask/autotask-understanding-picklists.txt) | Understanding picklists |
 | [autotask/autotask-entity-tickets.txt](autotask/autotask-entity-tickets.txt) | The Tickets entity (every field) |
 | [autotask/autotask-entity-timeentries.txt](autotask/autotask-entity-timeentries.txt) | The TimeEntries entity (every field) |
+
+### NinjaOne
+
+NinjaOne's public API documentation (app.ninjarmm.com/apidocs and its beta site) and its product documentation, read on 2026-11-29.
+
+| Saved file | Page |
+|---|---|
+| [ninjaone/ninjaone-openapi-devices-and-alerts-extract.txt](ninjaone/ninjaone-openapi-devices-and-alerts-extract.txt) | a script-made extract of `NinjaRMM-API-v2.json`, the OpenAPI file the documentation links: the security scheme, and the devices, alerts and organizations calls with their parameters and response properties, plus the unit statements the file makes |
+| [ninjaone/ninjaone-oauth-client-credentials-flow.txt](ninjaone/ninjaone-oauth-client-credentials-flow.txt) | Client Credentials Flow (the token request and its answer) |
+| [ninjaone/ninjaone-oauth-overview.txt](ninjaone/ninjaone-oauth-overview.txt) | OAuth 2.0 Authorization Framework (endpoints and grant types) |
+| [ninjaone/ninjaone-api-oauth-token-configuration.txt](ninjaone/ninjaone-api-oauth-token-configuration.txt) | API OAuth Token Configuration (the scopes, the grant types; it contradicts itself on client credentials, see [MSP_SOURCES.md](../MSP_SOURCES.md#ninjaone-rmm)) |

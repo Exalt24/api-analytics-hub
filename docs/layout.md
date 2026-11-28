@@ -32,6 +32,8 @@ app/
     connectwise_fake.py   stand-in ConnectWise server, written from third party descriptions (docs/MSP_SOURCES.md)
     autotask.py      Autotask PSA REST API: daily tickets opened and completed, resolution goals missed and technician time, zone lookup, ThresholdInformation pacing, and the tickets and time as records
     autotask_fake.py   stand-in Autotask server, written from Autotask's developer help (docs/MSP_SOURCES.md)
+    ninjaone.py      NinjaOne public API as the app itself (client credentials): devices and active alerts, gauges on the last day and alerts created per day, and the records
+    ninjaone_fake.py   stand-in NinjaOne server, written from NinjaOne's API documentation (docs/MSP_SOURCES.md)
     msp_common.py    what the MSP connectors share: strict date parsing, the plain address check, hours to whole seconds
     google_ads_fake.py, tiktok_fake.py, square_fake.py, quickbooks_fake.py, shopmonkey_fake.py   stand-in servers, written from each vendor's pages
     shopify_oauth.py install flow, offline tokens
@@ -62,7 +64,7 @@ scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
 scripts/db_backup.py           pg_dump with a manifest, a scratch restore that compares row counts, and the backup alert
 scripts/monthly_report.py      builds the monthly deck from stored snapshots: store, website, ads and search; with --drive-folder it then delivers the deck to Google Drive
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
-scripts/sync_connectwise.py, sync_autotask.py   the same for a ConnectWise Manage company or an Autotask API user, and with --ledger the tickets and time they read
+scripts/sync_connectwise.py, sync_autotask.py, sync_ninjaone.py   the same for a ConnectWise Manage company, an Autotask API user or a NinjaOne tenant, and with --ledger the tickets, time, devices and alerts they read
 scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, sync_shopmonkey.py   the same for a Google Ads customer, TikTok advertiser, Square location, QuickBooks company or Shopmonkey shop
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
 scripts/meta_creatives.py   writes a CSV and a JSON file of an ad account's creatives (`--stand-in` for the local run)

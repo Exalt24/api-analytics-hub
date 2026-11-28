@@ -131,7 +131,7 @@ jobs:
       - name: MSP connectors (stand-in servers, records, ledger, backlog analysis, the sync runner and migrations 025 to 027)
         env:
           ADS_REQUIRE_DB: "1"
-        run: python -m pytest tests/test_connectwise_connector.py tests/test_autotask_connector.py tests/test_msp_records.py tests/test_msp_sync_db.py -q -rs
+        run: python -m pytest tests/test_connectwise_connector.py tests/test_autotask_connector.py tests/test_ninjaone_connector.py tests/test_msp_records.py tests/test_msp_sync_db.py -q -rs
       # Inventory planning (the rules and their properties, the Shopify reader against a stand-in, the alert rules, and the database suite as the request role), named so a skipped
       # database suite shows in the log. INVENTORY_REQUIRE_DB makes an unreachable Postgres FAIL here instead of skipping, and -rs prints any skip reason.
       - name: Inventory planning (stockout adjusted velocity, reorder point, classes, alerts raised once, tenant isolation)
