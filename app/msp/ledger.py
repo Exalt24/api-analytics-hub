@@ -16,7 +16,7 @@ from typing import Iterable
 
 from .records import AlertRecord, DeviceRecord, RecordError, TicketRecord, TimeRecord
 
-__all__ = ["write_ledger", "read_ledger", "Ledger", "LedgerError", "VERSION"]
+__all__ = ["write_ledger", "read_ledger", "merge_ledgers", "Ledger", "LedgerError", "VERSION"]
 
 VERSION = 1
 _KINDS = {"ticket": TicketRecord, "time": TimeRecord, "alert": AlertRecord, "device": DeviceRecord}
@@ -34,6 +34,11 @@ class Ledger:
         self.times: list[TimeRecord] = []
         self.alerts: list[AlertRecord] = []
         self.devices: list[DeviceRecord] = []
+        #: When the file was written (its header), or None for a ledger built in memory.
+        self.generated_at: datetime | None = None
+
+    def records(self) -> list[object]:
+        return [*self.tickets, *self.times, *self.alerts, *self.devices]
 
     def add(self, record: object) -> None:
         for kind, cls in _KINDS.items():
@@ -101,6 +106,7 @@ def read_ledger(path: str | Path) -> Ledger:
     if header.get("version") != VERSION:
         raise LedgerError("ledger version %r is not the version this reads (%d)" % (header.get("version"), VERSION))
     ledger = Ledger()
+    ledger.generated_at = _parse(header.get("generated_at"))
     seen: set[tuple] = set()
     for number, line in enumerate(lines[1:], start=2):
         try:
@@ -134,3 +140,20 @@ def read_ledger(path: str | Path) -> Ledger:
     if header.get("records") != len(lines) - 1:
         raise LedgerError("the header says %r records and %d follow" % (header.get("records"), len(lines) - 1))
     return ledger
+
+
+def merge_ledgers(*ledgers: Ledger) -> Ledger:
+    """One ledger from several (a PSA's, another PSA's, an RMM's). The same record in two of them is refused, and the merged ledger is as old as the oldest."""
+    merged = Ledger()
+    seen: set[tuple] = set()
+    for ledger in ledgers:
+        for record in (*ledger.tickets, *ledger.times, *ledger.alerts, *ledger.devices):
+            kind = _kind_of(record)
+            ident = (kind, record.source, getattr(record, _ID[kind]))  # type: ignore[attr-defined]
+            if ident in seen:
+                raise LedgerError("%s %s is in more than one ledger" % (kind, ident[1:]))
+            seen.add(ident)
+            merged.add(record)
+    stamps = [g.generated_at for g in ledgers if g.generated_at is not None]
+    merged.generated_at = min(stamps) if stamps else None
+    return merged

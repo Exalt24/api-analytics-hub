@@ -44,7 +44,7 @@ app/
   crypto.py          AES-256-GCM credential encryption, AAD bound to the row
   db.py              pool, tenant-scoped transactions, RLS role assertion
   ai/catalog_copy.py LLM meta descriptions that must pass a number-grounding check
-  msp/               the records the MSP connectors produce (records.py) and the file they are kept in (ledger.py)
+  msp/               the records the MSP connectors produce (records.py), the file they are kept in (ledger.py), the backlog analysis over them (analysis.py) and a generated sample world (sample.py)
   sync/runner.py     claim, lease, heartbeat, resume, finish
   sync/cli.py        the shared body of the sync commands for one connection
   api/               FastAPI, bearer auth, RBAC, request log and /metrics
@@ -66,6 +66,7 @@ scripts/monthly_report.py      builds the monthly deck from stored snapshots: st
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
 scripts/sync_connectwise.py, sync_autotask.py, sync_ninjaone.py   the same for a ConnectWise Manage company, an Autotask API user or a NinjaOne tenant, and with --ledger the tickets, time, devices and alerts they read
 scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, sync_shopmonkey.py   the same for a Google Ads customer, TikTok advertiser, Square location, QuickBooks company or Shopmonkey shop
+scripts/msp_backlog.py   ranks ticket and alert drivers, SLA risk and technician touch time from the MSP ledgers (docs/msp.md)
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
 scripts/meta_creatives.py   writes a CSV and a JSON file of an ad account's creatives (`--stand-in` for the local run)
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container

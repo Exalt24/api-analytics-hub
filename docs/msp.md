@@ -68,10 +68,32 @@ AUTOTASK_USERNAME=api@example.com AUTOTASK_SECRET=... AUTOTASK_INTEGRATION_CODE=
 NINJAONE_CLIENT_ID=... NINJAONE_CLIENT_SECRET=... NINJAONE_EPOCH_UNIT=seconds python scripts/sync_ninjaone.py --tenant <tenant uuid> --connection <connection uuid> [--ledger devices.jsonl]
 ```
 
+## The backlog analysis
+
+`scripts/msp_backlog.py analyze` reads the ledgers the three sync scripts write with `--ledger` (one JSON line per ticket, time entry, device or alert, in one vocabulary whatever the vendor), merges them, and ranks the three things an automation backlog is ordered by. It reads files only and calls no vendor; `app/msp/analysis.py` holds the arithmetic, and the same ledger always gives the same report.
+
+```bash
+python scripts/sync_connectwise.py --tenant <tenant> --connection <connection> --ledger cw.jsonl      # likewise sync_autotask.py and sync_ninjaone.py
+python scripts/msp_backlog.py analyze cw.jsonl at.jsonl nj.jsonl [--as-of 2026-11-29T12:00:00Z] [--window-days 30] [--horizon-hours 4] [--top 10] [--format markdown|json] [--out report.md]
+python scripts/msp_backlog.py sample --seed 7 --out sample.jsonl                                      # a GENERATED ledger, no client data
+```
+
+| What | How it is measured |
+|---|---|
+| **Ticket drivers** | The tickets opened in the window, grouped by category, issue type and a normalised title (lower case, every run of digits one `#`, so "Disk space low on SRV-042" and "disk space low on srv-17" are one driver). A **repeat** is a ticket after the first for the same company in its group; a ticket with no company is never a repeat. Ranked by repeats, then tickets, then name; also by category and issue type with each one's share of all tickets opened. |
+| **Alert drivers** | The active alerts grouped by source type and source name, with the devices behind them and the **repeats** (alerts beyond the first that one device raised from the same source), and the devices that raised most. Only active alerts exist in NinjaOne's list, so this describes what is still open. |
+| **SLA risk** | The tickets **open at `--as-of`** (not closed and not resolved by then; so an old ledger can be judged at an earlier time) sorted by their resolution goal: `breached` (the goal is before as_of), `at_risk` (it falls inside the horizon, 4 hours by default), `ok`, or `no_goal` (the vendor gave none, which is never called fine). Grouped by category and priority, ranked by breached, then at risk, then open, with the first responses overdue and the oldest open ticket in whole hours; also the tickets finished in the window that finished after their goal, and opened against finished per category. |
+| **Technician touch time** | The window's time entries spread over the category of the ticket each was worked on (matched by vendor and ticket number), with the technicians under each category, tickets touched, the mean seconds per ticket (rounded down) and the ticket that took most. Time on no ticket, and time on a ticket the ledger does not hold, is reported as its own total and never spread over the categories. |
+
+A window is half open on UTC days; a percentage is a whole number rounded down. "At risk" is a count of open tickets near their goal, not a forecast: the analysis has no arrival or staffing model and does not weigh one priority above another, because the order of a priority is on no saved vendor page. The report ends with what it cannot see, written from the vendors present (ConnectWise's list goals may be stale for open tickets, Autotask's closed means completed, NinjaOne's alerts are active ones only).
+
+[msp-backlog-sample.md](msp-backlog-sample.md) is the output over a generated world (`sample --seed 7`, 400 tickets, 710 time entries, 45 alerts, 30 devices; made-up companies, technicians and titles), with the top 5 of each ranking.
+
 ## Tests
 
 ```bash
 python -m pytest tests/test_connectwise_connector.py tests/test_autotask_connector.py tests/test_ninjaone_connector.py tests/test_msp_records.py -q    # the connectors against their stand-ins, the records and the ledger, no database
+python -m pytest tests/test_msp_analysis.py tests/test_msp_backlog_cli.py -q                    # the analysis against a brute force oracle, the command line, and the path from three stand-ins to a report
 python -m pytest tests/test_msp_sync_db.py -q                                         # through the sync runner into Postgres (docker compose up -d)
 python tests/mutation_check_msp.py --only autotask                                    # guards broken one at a time (also connectwise, ninjaone, common, records, ledger, analysis); edits source, so use a copy
 ```

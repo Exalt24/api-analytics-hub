@@ -19,9 +19,9 @@ There are sixteen connectors. **Shopify Admin GraphQL** is verified against a re
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
 | Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey, Salesforce | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | Harvest (time, budgets), Microsoft Graph (SharePoint, Teams, Excel) | a stand-in server each ([how](docs/harvest-graph.md)) |
-| Autotask PSA (tickets, technician time) | a stand-in server, written from the vendor's public documentation and tested against it ([sources](docs/MSP_SOURCES.md#autotask-psa)) |
-| NinjaOne (RMM: devices, active alerts) | a stand-in server, written from the vendor's public documentation and tested against it ([sources](docs/MSP_SOURCES.md#ninjaone-rmm)) |
-| ConnectWise Manage (PSA: tickets, technician time) | a stand-in server, written from third party descriptions of the API because ConnectWise's own documentation needs a login that refuses a free email address ([sources](docs/MSP_SOURCES.md#connectwise-manage-psa)) |
+| Autotask PSA (tickets, technician time) | a stand-in server only: written from the vendor's public documentation and tested against a stand-in server, never a live database ([sources](docs/MSP_SOURCES.md#autotask-psa)) |
+| NinjaOne (RMM: devices, active alerts) | a stand-in server only: written from the vendor's public documentation and tested against a stand-in server, never a live tenant ([sources](docs/MSP_SOURCES.md#ninjaone-rmm)) |
+| ConnectWise Manage (PSA: tickets, technician time) | a stand-in server only: written from third party descriptions of the API (not ConnectWise's own pages: its documentation needs a login that refuses a free email address) and tested against a stand-in server, never a live tenant ([sources](docs/MSP_SOURCES.md#connectwise-manage-psa)) |
 | A fulfilment partner's order API (outbound) | a stand-in server ([contract](docs/fulfillment.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |
 
@@ -175,6 +175,7 @@ python tests/mutation_check.py            # all 300 hand matched guards; edits s
 python tests/mutation_check_jobs.py       # the job pipeline's guards, run in a temporary copy
 python tests/mutation_check_inventory.py  # 114 inventory guards, each broken on purpose; use a copy
 python tests/mutation_check_fulfillment.py  # 182 portal guards (bank debit, invoices, roles, fulfilment); use a copy
+python tests/mutation_check_msp.py         # the MSP connectors, records, ledger and backlog analysis: every guard broken on purpose; use a copy
 python live_check.py                      # against the real store
 cd web && npm test                        # 240 tests, 11 need the S3 stand-in ([docs/web-reports.md](docs/web-reports.md))
 cd web && npm run build && npx playwright test    # 21 browser tests in Chromium, Firefox and WebKit
