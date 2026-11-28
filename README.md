@@ -15,6 +15,7 @@ There are thirteen connectors. **Shopify Admin GraphQL** is verified against a r
 | Shopify | a real development store |
 | Google Analytics 4 | a stand-in server ([sources](docs/GA4_SOURCES.md)) |
 | Meta Ads | a stand-in server ([sources](docs/META_SOURCES.md)) |
+| Meta ad creatives | a stand-in server ([sources](docs/META_SOURCES.md#ad-creatives)) |
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
 | Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey, Salesforce | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | Harvest (time, budgets), Microsoft Graph (SharePoint, Teams, Excel) | a stand-in server each ([how](docs/harvest-graph.md)) |
@@ -73,6 +74,8 @@ Connectors translate and nothing else: each yields `CanonicalPoint` values, neve
 
 Google Ads, TikTok, Square, QuickBooks, Shopmonkey and Salesforce are written from the vendors' public documentation and ran against stand-in servers. Salesforce adds a lead matcher ([docs/salesforce.md](docs/salesforce.md)). `app/report/adspend.py` puts Google Ads, Meta and TikTok side by side. Limits: [docs/ad-spend.md](docs/ad-spend.md).
 
+- **Meta ad creatives.** `scripts/meta_creatives.py` writes a CSV and a JSON file with every ad's copy, destination links, video source and permalink, shareable preview link and post link across campaigns. Built from Meta's pages and run only against a stand-in server. 389 tests, 74 breakages each caught: [docs/meta-creatives.md](docs/meta-creatives.md).
+
 ---
 
 ## Grounded catalogue copy
@@ -99,7 +102,7 @@ Run against stand-ins, real Redis, Qdrant, RabbitMQ, Postgres and n8n ([output](
 
 `app/billing/` is a prepaid wallet with a double-entry ledger in integer minor units under forced row level security: an unbalanced transaction cannot commit and a wallet cannot go below zero. Top-ups, refunds, subscriptions and a signed webhook receiver run through a Stripe provider interface (the official SDK against stripe-mock), with an idempotency key on every money command: [docs/billing.md](docs/billing.md).
 
-- **Ordering portal (clinics, prescribers, sales reps).** Python, FastAPI, asyncpg and Postgres row level security: Stripe bank debit (ACH) and invoices run against stripe-mock, a partner fulfilment connector with signed status events and a hash chained audit log run against a stand-in partner, and a four role access matrix enforced in the API and in the database. 368 tests, 182 breakages each caught: [bank debit and invoices](docs/billing.md#bank-debit-ach-invoices-and-commissions), [fulfilment](docs/fulfillment.md), [roles](docs/access-matrix.md).
+- **Ordering portal.** Python, FastAPI, asyncpg and Postgres row level security: Stripe bank debit (ACH) and invoices run against stripe-mock, a partner fulfilment connector with signed status events and a hash chained audit log run against a stand-in partner, and a four role access matrix enforced in the API and in the database. 368 tests, 182 breakages each caught: [bank debit and invoices](docs/billing.md#bank-debit-ach-invoices-and-commissions), [fulfilment](docs/fulfillment.md), [roles](docs/access-matrix.md).
 
 ---
 
@@ -121,13 +124,13 @@ The Reports page in `web/` (Next.js App Router, strict TypeScript, Tailwind CSS 
 
 ![The Inventory page on the plan stored from the development store: two shortages, a purchase order draft for a supplier and the start of the planning table](docs/inventory.png)
 
-`app/inventory/` reads **Shopify inventory levels per product variant** and keeps them as dated snapshots in Postgres for each tenant under forced row level security, beside the order lines sold. It works out a **stockout-adjusted forecast**: the daily sales velocity of each SKU and variant is the units sold over the days it was on sale, so ten days with an empty shelf do not read as demand falling (40 units over 20 days on sale is 2.00 a day, where the 28 day window would say 1.43). From the supplier's lead time and the variation in demand it gives **days of cover, a reorder point and safety stock**, and a suggested order rounded to the minimum order and whole packs. A dated promotion factor a person enters lifts the forecast. Variants are ranked into ABC classes by sales contribution and labelled an **all-time best seller, a rising best seller or a slow mover**. Each shortage raises one alert behind a UNIQUE key, through the outbox code the change detection uses. The `/inventory` page is the **inventory dashboard with exception alerts** and writes a **supplier purchase order draft** for each supplier as CSV, Excel or a Google Sheets paste, reusing the Reports export code.
+`app/inventory/` reads **Shopify inventory levels per product variant** and keeps them as dated snapshots in Postgres for each tenant under forced row level security, beside the order lines sold. It works out a **stockout-adjusted forecast**: the daily sales velocity of each SKU and variant is the units sold over the days it was on sale, so ten days with an empty shelf do not read as demand falling. From the supplier's lead time and the variation in demand it gives **days of cover, a reorder point and safety stock**, and a suggested order in whole packs. A dated promotion factor a person enters lifts the forecast. Variants are ranked into ABC classes by sales contribution and labelled an **all-time best seller, a rising best seller or a slow mover**. Each shortage raises one alert, once. The `/inventory` page is the **inventory dashboard with exception alerts** and writes a **supplier purchase order draft** for each supplier as CSV, Excel or a Google Sheets paste.
 
 Run against the owner's Shopify development store, read only: 38 variants and 28 order lines, with five variants and 25 test orders made for the run and removed after it. Lead times and promotions are supplied as inputs, and the stockout adjustment is shown on a constructed history ([the run](docs/test-runs/2026-11-24-inventory-planning-dev-store.txt)).
 
 **Purchase order tracking.** An order is made from the plan's draft and moves through draft, ordered, confirmed, shipped, partly received, received or cancelled by a transition table the database enforces. What is still on order counts as inbound stock, so an order that lands in time raises no shortage and no second order ([rules and limits](docs/inventory-planning.md#purchase-order-tracking)).
 
-**Excel model with live formulas.** `inventory_plan.py workbook`, or the page's download, writes Inputs (service level, promotion factor and window, a row per supplier), Plan (supplier by `INDEX` and `MATCH`, then cover, safety stock, reorder point, order and shortage flag as formulas), Classes (`COUNTIFS`, `SUMIFS`) and Scenario (before and after the promotion factor). Each computed cell is recalculated in LibreOffice and compared with the Python plan, and a one unit change in an input fails the check ([run](docs/test-runs/2026-11-24-inventory-orders-and-workbook.txt), [how](docs/inventory-planning.md#the-plan-workbook)).
+**Excel model with live formulas.** `inventory_plan.py workbook`, or the page's download, writes Inputs, Plan (supplier lookup, cover, safety stock, reorder point, order and shortage flag as formulas), Classes (`COUNTIFS`, `SUMIFS`) and Scenario (before and after the promotion factor). Each computed cell is recalculated in LibreOffice and compared with the Python plan, and a one unit change in an input fails the check ([run](docs/test-runs/2026-11-24-inventory-orders-and-workbook.txt), [how](docs/inventory-planning.md#the-plan-workbook)).
 
 A worked example, the formulas, the rule for a day with no snapshot and the limits (seasonality is out of scope): [docs/inventory-planning.md](docs/inventory-planning.md#a-worked-example).
 
@@ -137,7 +140,7 @@ A worked example, the formulas, the rule for a day with no snapshot and the limi
 
 ![Power BI Desktop, Sales and ads page: cards, daily net sales with a seven day average, ad spend by month, a month table](docs/powerbi/sales-and-ads.png)
 
-`powerbi/` holds a Power BI report over the same snapshot tables,: a five table star schema, 27 DAX measures, two pages and 18 visuals, on sample figures. `powerbi/check_model.py` runs the measures against 56 figures worked out from the CSV files: all match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
+`powerbi/` holds a Power BI report over the same snapshot tables: a five table star schema, 27 DAX measures, two pages and 18 visuals, on sample figures. `powerbi/check_model.py` runs the measures against 56 figures worked out from the CSV files: all match, and one dollar changed in the data fails six. [Details](docs/powerbi.md).
 
 ---
 
@@ -157,14 +160,14 @@ A Next.js proxy reads the Host header and rewrites a one label subdomain to an i
 
 ## Lakehouse: PySpark and Delta Lake
 
-`lakehouse/` is a medallion pipeline over the hub's own daily figures, on open source Spark 4.1 and Delta Lake 4.3 on one machine. The Spark code never ran on Databricks; the same layers written as SQL did, on a Free Edition workspace ([run](docs/databricks)). A second run on the same input left every Delta version and row count unchanged. 68 tests; 24 of 24 breakages caught. [Details and limits](docs/lakehouse.md), [runbook](lakehouse/RUNBOOK.md).
+`lakehouse/` is a medallion pipeline over the hub's own daily figures, on open source Spark 4.1 and Delta Lake 4.3 on one machine. The Spark code never ran on Databricks; the same layers written as SQL did, on a Free Edition workspace ([run](docs/databricks)). 68 tests; 24 of 24 breakages caught. [Details and limits](docs/lakehouse.md), [runbook](lakehouse/RUNBOOK.md).
 
 ---
 
 ## Testing
 
 ```bash
-python -m pytest tests/ -q                # 8,511 tests, none failing; the skips and 5 known limits are marked
+python -m pytest tests/ -q                # 9,145 passed, 117 skipped, 5 known limits marked
 python tests/mutation_check.py            # all 300 hand matched guards; edits source, so use a copy
 python tests/mutation_check_jobs.py       # the job pipeline's guards, run in a temporary copy
 python tests/mutation_check_inventory.py  # 114 inventory guards, each broken on purpose; use a copy

@@ -1,0 +1,231 @@
+Full suite, run 2026-11-28 to 2026-11-29 with the new Meta ad creative files in place, against the repo's docker Postgres 17 (BILLING_REQUIRE_DB=1).
+Command: python -m pytest tests/ -q -rs
+The one failure is tests/test_doc_links.py: docs/meta-creatives.md linked to this very file, which did not exist yet when the run started. The same test is re-run after this file was added (see the last lines).
+The skips are the suites that need the jobs and S3 docker profiles or other services that were not up; they are listed below.
+
+C:\Projects\Professional\Projects\Apps\api-analytics-hub\.venv\Lib\site-packages\pytest_asyncio\plugin.py:300: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the "fixture" caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to "function" scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+........................................................................ [  0%]
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  6%]
+........................................................................ [  6%]
+........................................................................ [  7%]
+.............................................sssss...................... [  8%]
+...ssss..............ss................................................. [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+................................x..............x.xx..................... [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 13%]
+.............................sss........................................ [ 14%]
+.....F.................................................................. [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 20%]
+.................x...................................................... [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+................................s......ssssssss....sssssssssssssssssssss [ 31%]
+ssssssssssssssssssssssssssssssssssssssssssssssssss...................... [ 32%]
+...ssssssssss.....sssssssssssss......................................... [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 72%]
+........................................................................ [ 73%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+........................................................................ [ 76%]
+........................................................................ [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 82%]
+........................................................................ [ 83%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+........................................................................ [ 87%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 89%]
+........................................................................ [ 90%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+........................................................................ [ 94%]
+........................................................................ [ 95%]
+........................................................................ [ 96%]
+........................................................................ [ 97%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+........................................................................ [ 99%]
+....................................................                     [100%]
+================================== FAILURES ===================================
+__________ test_every_relative_link_in_the_readme_and_docs_resolves ___________
+
+    def test_every_relative_link_in_the_readme_and_docs_resolves():
+        broken = []
+        for md in markdown_files():
+            if not md.exists():
+                continue
+            for target in LINK.findall(md.read_text(encoding="utf-8", errors="replace")):
+                if target.startswith(("http://", "https://", "mailto:")):
+                    continue
+                if not (md.parent / target).resolve().exists():
+                    broken.append("%s -> %s" % (md.relative_to(ROOT), target))
+>       assert not broken, "relative links that lead nowhere: " + "; ".join(broken)
+E       AssertionError: relative links that lead nowhere: docs\meta-creatives.md -> test-runs/2026-11-28-meta-creatives-pytest.txt
+E       assert not ['docs\\meta-creatives.md -> test-runs/2026-11-28-meta-creatives-pytest.txt']
+
+tests\test_doc_links.py:27: AssertionError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\anyio\pytest_plugin.py:14
+  C:\Projects\Professional\Projects\Apps\api-analytics-hub\.venv\Lib\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/test_billing_simulation.py: 99 warnings
+tests/test_billing_stripe_sdk.py: 24 warnings
+tests/test_billing_stripe_sdk_ach.py: 7 warnings
+tests/test_billing_stripe_sdk_db.py: 11 warnings
+  C:\Projects\Professional\Projects\Apps\api-analytics-hub\.venv\Lib\site-packages\httpx\_models.py:408: DeprecationWarning: Use 'content=<...>' to upload raw bytes/text content.
+    headers, stream = encode_request(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_billing_stripe_sdk.py:59: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:65: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:73: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:79: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk.py:86: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_ach.py:49: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_ach.py:55: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_ach.py:65: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_ach.py:75: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_db.py:175: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_billing_stripe_sdk_db.py:192: stripe-mock is not running (docker run --rm -d -p 12111:12111 stripe/stripe-mock)
+SKIPPED [1] tests\test_db_backup.py:200: needs pg_dump, pg_restore and psql, or PG_CMD_PREFIX
+SKIPPED [1] tests\test_db_backup.py:210: needs pg_dump, pg_restore and psql, or PG_CMD_PREFIX
+SKIPPED [1] tests\test_db_backup.py:251: needs pg_dump, pg_restore and psql, or PG_CMD_PREFIX
+SKIPPED [1] tests\test_inventory_workbook.py:173: could not import 'formulas': No module named 'formulas'
+SKIPPED [1] tests\test_jobs_api_db.py:104: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:112: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:123: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:131: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:150: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:181: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:192: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_api_db.py:201: needs redis, qdrant, s3, rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [60] tests\test_jobs_dedupe.py:72: needs redis: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_dedupe.py:77: needs redis: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_dedupe.py:85: needs redis: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_dedupe.py:92: needs redis: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [4] tests\test_jobs_dedupe.py:114: needs redis: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_documents_db.py:59: needs s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_documents_db.py:86: needs s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_documents_db.py:105: needs s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_documents_db.py:117: needs s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_formfill.py:214: the live Stagehand run needs a Groq key file (JOBS_GROQ_KEY_FILE)
+SKIPPED [1] tests\test_jobs_hitl_db.py:114: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:160: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:173: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:193: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:219: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:236: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:254: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:269: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_hitl_db.py:289: needs rabbitmq: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:84: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:100: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:113: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:124: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:136: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:145: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:161: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:172: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:188: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:203: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:239: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:255: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+SKIPPED [1] tests\test_jobs_pipeline_db.py:265: needs redis, qdrant, s3: docker compose --profile jobs --profile s3 up -d --wait
+1 failed, 9145 passed, 117 skipped, 5 xfailed, 142 warnings in 748.87s (0:12:28)
+
+Re-run after this file was added: python -m pytest tests/test_doc_links.py -q -> 2 passed, 1 warning in 0.05s

@@ -1,0 +1,214 @@
+Ad creative reader, run 2026-11-28 against the stand-in server (app/connectors/meta_creatives_fake.py) and its made up
+sample account. No Meta ad account is held and none was used, so this shows what the tool writes, not what Meta sends.
+
+$ python scripts/meta_creatives.py --stand-in --out-dir out
+7 ads, 3 with a note, 1 pages, 1 batches, 2 calls -> out/meta_creatives_555001.csv
+exit code 0
+
+== meta_creatives_555001.csv (every ad, one row each) ==
+ad_id,ad_name,ad_status,ad_effective_status,campaign_id,campaign_name,adset_id,creative_id,creative_kind,creative_status,primary_text,headline,link_description,call_to_action_type,destination_links,image_urls,image_hashes,thumbnail_url,video_ids,video_source_urls,video_permalinks,video_lengths,ad_preview_link,post_id,post_permalink,instagram_permalink_url,notes
+1001,Spring link ad,ACTIVE,ACTIVE,101,Spring sale,71001,5001,link,ACTIVE,Fresh deals for spring.,Spring sale,Up to 30 percent off,SHOP_NOW,https://shop.example.test/spring,https://img.example.test/spring.jpg,hash1001,,,,,,https://fb.me/preview/1001,11_9901,https://www.facebook.com/11/posts/9901,,
+1002,Spring carousel,ACTIVE,ACTIVE,101,Spring sale,71002,5002,carousel,ACTIVE,Three ways to start spring.,Seeds | Tools | Demo reel,From 2 dollars | Built to last,SHOP_NOW | LEARN_MORE | WATCH_MORE,https://shop.example.test/ | https://shop.example.test/seeds | https://shop.example.test/tools | https://shop.example.test/reel,https://img.example.test/seeds.jpg,hashtools,,9001,https://video.example.test/v/9001.mp4,https://www.facebook.com/page1/videos/9001/,31.5,https://fb.me/preview/1002,,,,
+1003,Spring video,ACTIVE,ACTIVE,101,Spring sale,71003,5003,video,ACTIVE,Watch how it grows.,Growth in 30 seconds,See the whole season,LEARN_MORE,https://shop.example.test/grow,https://img.example.test/9002.jpg,,https://img.example.test/t5003.jpg,9002,https://video.example.test/v/9002.mp4,https://www.facebook.com/page1/videos/9002/,12,https://fb.me/preview/1003,,,,
+1004,Brand photo,ACTIVE,ACTIVE,102,Brand video,71004,5004,photo,ACTIVE,Our first greenhouse.,,,,,https://img.example.test/greenhouse.jpg,,,,,,,https://fb.me/preview/1004,,,,
+1005,Brand dynamic,ACTIVE,ACTIVE,102,Brand video,71005,5005,dynamic,ACTIVE,Begin your season. | Grow something.,Level up | Swipe to grow,A first dynamic sample,LEARN_MORE,https://shop.example.test/brand,,,,9001 | 9003,https://video.example.test/v/9001.mp4 | ,https://www.facebook.com/page1/videos/9001/ | https://www.facebook.com/page1/videos/9003/,31.5 | 45,https://fb.me/preview/1005,,,,video 9003: no source returned
+1006,Boosted post,ACTIVE,ACTIVE,102,Brand video,71006,5006,post,ACTIVE,,,,,,,,,,,,,https://fb.me/preview/1006,11_9902,https://www.facebook.com/11/posts/9902,https://www.instagram.com/p/EXAMPLE1/,the ad runs an existing page post; its copy is not on the creative (see post_id)
+1008,Paused video,PAUSED,PAUSED,103,Archive tests,71008,5008,video,ACTIVE,Paused for the season.,,,LEARN_MORE,https://shop.example.test/pause,,,,9004,,,,https://fb.me/preview/1008,,,,video 9004: no access (code 200: (#200) Permissions error)
+
+== meta_creatives_555001.json (header, then the carousel and the dynamic creative in full) ==
+{
+  "account": "act_555001",
+  "source": "stand-in",
+  "api_version": "v26.0",
+  "generated_at": "2026-11-28T15:51:06Z",
+  "complete": true,
+  "stopped_because": null,
+  "stats": {
+    "api_calls": 2,
+    "batches": 1,
+    "throttle_waits": 0,
+    "pages": 1,
+    "ads_seen": 7,
+    "duplicates": 0,
+    "filtered_out": 0,
+    "nodes_read_by_id": 0,
+    "videos_looked_up": 4,
+    "peak_utilisation": 5.0
+  },
+  "count": 7
+}
+{
+  "ad_id": "1002",
+  "ad_name": "Spring carousel",
+  "ad_status": "ACTIVE",
+  "ad_effective_status": "ACTIVE",
+  "campaign_id": "101",
+  "campaign_name": "Spring sale",
+  "adset_id": "71002",
+  "creative_id": "5002",
+  "creative_name": "Spring carousel",
+  "creative_status": "ACTIVE",
+  "creative_kind": "carousel",
+  "primary_texts": [
+    "Three ways to start spring."
+  ],
+  "headlines": [
+    "Seeds",
+    "Tools",
+    "Demo reel"
+  ],
+  "link_descriptions": [
+    "From 2 dollars",
+    "Built to last"
+  ],
+  "call_to_action_types": [
+    "SHOP_NOW",
+    "LEARN_MORE",
+    "WATCH_MORE"
+  ],
+  "destination_links": [
+    "https://shop.example.test/",
+    "https://shop.example.test/seeds",
+    "https://shop.example.test/tools",
+    "https://shop.example.test/reel"
+  ],
+  "image_urls": [
+    "https://img.example.test/seeds.jpg"
+  ],
+  "image_hashes": [
+    "hashtools"
+  ],
+  "thumbnail_url": null,
+  "video_ids": [
+    "9001"
+  ],
+  "videos": [
+    {
+      "video_id": "9001",
+      "source": "https://video.example.test/v/9001.mp4",
+      "permalink_url": "https://www.facebook.com/page1/videos/9001/",
+      "length": 31.5,
+      "problem": null
+    }
+  ],
+  "cards": [
+    {
+      "name": "Seeds",
+      "description": "From 2 dollars",
+      "link": "https://shop.example.test/seeds",
+      "picture": "https://img.example.test/seeds.jpg",
+      "image_hash": null,
+      "video_id": null,
+      "call_to_action_type": "SHOP_NOW"
+    },
+    {
+      "name": "Tools",
+      "description": "Built to last",
+      "link": "https://shop.example.test/tools",
+      "picture": null,
+      "image_hash": "hashtools",
+      "video_id": null,
+      "call_to_action_type": "LEARN_MORE"
+    },
+    {
+      "name": "Demo reel",
+      "description": null,
+      "link": "https://shop.example.test/reel",
+      "picture": null,
+      "image_hash": null,
+      "video_id": "9001",
+      "call_to_action_type": "WATCH_MORE"
+    }
+  ],
+  "preview_link": "https://fb.me/preview/1002",
+  "post_id": null,
+  "post_permalink": null,
+  "instagram_permalink_url": null,
+  "notes": []
+}
+{
+  "ad_id": "1005",
+  "ad_name": "Brand dynamic",
+  "ad_status": "ACTIVE",
+  "ad_effective_status": "ACTIVE",
+  "campaign_id": "102",
+  "campaign_name": "Brand video",
+  "adset_id": "71005",
+  "creative_id": "5005",
+  "creative_name": "Brand dynamic",
+  "creative_status": "ACTIVE",
+  "creative_kind": "dynamic",
+  "primary_texts": [
+    "Begin your season.",
+    "Grow something."
+  ],
+  "headlines": [
+    "Level up",
+    "Swipe to grow"
+  ],
+  "link_descriptions": [
+    "A first dynamic sample"
+  ],
+  "call_to_action_types": [
+    "LEARN_MORE"
+  ],
+  "destination_links": [
+    "https://shop.example.test/brand"
+  ],
+  "image_urls": [],
+  "image_hashes": [],
+  "thumbnail_url": null,
+  "video_ids": [
+    "9001",
+    "9003"
+  ],
+  "videos": [
+    {
+      "video_id": "9001",
+      "source": "https://video.example.test/v/9001.mp4",
+      "permalink_url": "https://www.facebook.com/page1/videos/9001/",
+      "length": 31.5,
+      "problem": null
+    },
+    {
+      "video_id": "9003",
+      "source": null,
+      "permalink_url": "https://www.facebook.com/page1/videos/9003/",
+      "length": 45,
+      "problem": "no source returned"
+    }
+  ],
+  "cards": [],
+  "preview_link": "https://fb.me/preview/1005",
+  "post_id": null,
+  "post_permalink": null,
+  "instagram_permalink_url": null,
+  "notes": [
+    "video 9003: no source returned"
+  ]
+}
+
+== one campaign, deleted ads included ==
+$ python scripts/meta_creatives.py --stand-in --campaign 103 --include-deleted --out-dir out
+2 ads, 2 with a note, 1 pages, 1 batches, 2 calls -> out/meta_creatives_555001.csv
+exit code 0
+ad_id,ad_name,ad_status,ad_effective_status,campaign_id,campaign_name,adset_id,creative_id,creative_kind,creative_status,primary_text,headline,link_description,call_to_action_type,destination_links,image_urls,image_hashes,thumbnail_url,video_ids,video_source_urls,video_permalinks,video_lengths,ad_preview_link,post_id,post_permalink,instagram_permalink_url,notes
+1007,Old banner,DELETED,DELETED,103,Archive tests,71007,5007,unknown,DELETED,,,,,,,,,,,,,https://fb.me/preview/1007,,,,creative is DELETED
+1008,Paused video,PAUSED,PAUSED,103,Archive tests,71008,5008,video,ACTIVE,Paused for the season.,,,LEARN_MORE,https://shop.example.test/pause,,,,9004,,,,https://fb.me/preview/1008,,,,video 9004: no access (code 200: (#200) Permissions error)
+
+== a status filter ==
+$ python scripts/meta_creatives.py --stand-in --status PAUSED --out-dir out
+1 ads, 1 with a note, 1 pages, 1 batches, 2 calls -> out/meta_creatives_555001.csv
+exit code 0
+ad_id,ad_name,ad_status,ad_effective_status,campaign_id,campaign_name,adset_id,creative_id,creative_kind,creative_status,primary_text,headline,link_description,call_to_action_type,destination_links,image_urls,image_hashes,thumbnail_url,video_ids,video_source_urls,video_permalinks,video_lengths,ad_preview_link,post_id,post_permalink,instagram_permalink_url,notes
+1008,Paused video,PAUSED,PAUSED,103,Archive tests,71008,5008,video,ACTIVE,Paused for the season.,,,LEARN_MORE,https://shop.example.test/pause,,,,9004,,,,https://fb.me/preview/1008,,,,video 9004: no access (code 200: (#200) Permissions error)
+
+== a run that cannot start ==
+$ python scripts/meta_creatives.py --stand-in --campaign 12x --out-dir out
+
+stderr: no run: campaign ids are numbers, got '12x'
+exit code 2
+$ python scripts/meta_creatives.py --stand-in --status LIVE --out-dir out
+
+stderr: no run: statuses must be some of ACTIVE, PAUSED, DELETED, PENDING_REVIEW, DISAPPROVED, PREAPPROVED, PENDING_BILLING_INFO, CAMPAIGN_PAUSED, ARCHIVED, ADSET_PAUSED, IN_PROCESS, WITH_ISSUES, got ['LIVE']
+exit code 2

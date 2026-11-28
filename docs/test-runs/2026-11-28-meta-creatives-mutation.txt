@@ -1,0 +1,81 @@
+Meta ad creative reader, stand-in server and CLI mutation check, run 2026-11-28 (python tests/mutation_check_creatives.py --jobs 8).
+Each guard is broken one at a time in a temporary copy; the unmutated control runs first over all four test files (the oracle reads all 80 seeded accounts), each mutant then runs the named test files with the oracle at 24 accounts. No Meta ad account was used.
+
+control: the unmutated code passes every test file
+[ok  ] fields: the creative expansion is not asked for: failed 18 test(s), including the expected one
+[ok  ] status: a value the Ad page does not list is accepted: failed 1 test(s), including the expected one
+[ok  ] status: include_deleted is ignored: failed 1 test(s), including the expected one
+[ok  ] fields: the status filter is not sent: failed 2 test(s), including the expected one
+[ok  ] campaign: a repeated id is read twice: failed 1 test(s), including the expected one
+[ok  ] paging: the page size is not sent: failed 25 test(s), including the expected one
+[ok  ] status: deleted ads are read by default: failed 6 test(s), including the expected one
+[ok  ] campaign: the filter reads the whole account: failed 27 test(s), including the expected one
+[ok  ] campaign: an id that is not a number is accepted: failed 1 test(s), including the expected one
+[ok  ] account: the id rule is not applied: failed 9 test(s), including the expected one
+[ok  ] paging: the next link is followed: failed 8 test(s), including the expected one
+[ok  ] paging: a cursor that comes back is accepted: failed 1 test(s), including the expected one
+[ok  ] paging: a next link with no cursor is accepted: failed 1 test(s), including the expected one
+[ok  ] paging: an empty page ends the run: failed 26 test(s), including the expected one
+[ok  ] paging: there is no page limit: failed 1 test(s), including the expected one
+[ok  ] paging: the same ad twice is kept twice: failed 1 test(s), including the expected one
+[ok  ] paging: a row outside the status filter is kept: failed 1 test(s), including the expected one
+[ok  ] errors: an expired token is retried: failed 5 test(s), including the expected one
+[ok  ] errors: a 401 with no error object is not an expired token: failed 1 test(s), including the expected one
+[ok  ] errors: a 403 with no error object is not no-access: failed 1 test(s), including the expected one
+[ok  ] errors: a permission error is retried: failed 4 test(s), including the expected one
+[ok  ] errors: the Marketing API throttle codes are not known: failed 7 test(s), including the expected one
+[ok  ] errors: a refused request is retried: failed 5 test(s), including the expected one
+[ok  ] errors: an error object inside a 200 is data: failed 1 test(s), including the expected one
+[ok  ] errors: the attempt limit is not enforced: failed 14 test(s), including the expected one
+[ok  ] pacing: Retry-After is ignored: failed 1 test(s), including the expected one
+[ok  ] pacing: a long wait is slept instead of handed back: failed 1 test(s), including the expected one
+[ok  ] pacing: the regain time is read as seconds: failed 3 test(s), including the expected one
+[ok  ] pacing: usage near the limit does not stop the next page: failed 3 test(s), including the expected one
+[ok  ] pacing: the second spelling of the business use case header is ignored: failed 1 test(s), including the expected one
+[ok  ] pacing: usage is not checked between campaigns: failed 1 test(s), including the expected one
+[ok  ] pacing: the pages read are lost on a rate limit: failed 4 test(s), including the expected one
+[ok  ] batch: a video seen on an earlier page is asked again: failed 1 test(s), including the expected one
+[ok  ] batch: a permission problem on one id stops the run: failed 53 test(s), including the expected one
+[ok  ] batch: the token goes in the URL: failed 22 test(s), including the expected one
+[ok  ] batch: every id is asked again, not only the failed: failed 2 test(s), including the expected one
+[ok  ] batch: a wrong number of answers is accepted: failed 1 test(s), including the expected one
+[ok  ] batch: fifty requests become a hundred: failed 5 test(s), including the expected one
+[ok  ] batch: a request that timed out is not asked again: failed 23 test(s), including the expected one
+[ok  ] batch: an expired token inside the batch is a note: failed 1 test(s), including the expected one
+[ok  ] batch: a throttled answer is not asked again: failed 13 test(s), including the expected one
+[ok  ] batch: a non numeric id is put in a url: failed 3 test(s), including the expected one
+[ok  ] batch: the lookup url drops the fields: failed 14 test(s), including the expected one
+[ok  ] video: a length that is not a number is kept: failed 3 test(s), including the expected one
+[ok  ] video: a missing source is not noted: failed 15 test(s), including the expected one
+[ok  ] video: a relative permalink is kept relative: failed 13 test(s), including the expected one
+[ok  ] batch: the video fields are not asked for: failed 43 test(s), including the expected one
+[ok  ] shape: carousel cards are not read: failed 26 test(s), including the expected one
+[ok  ] shape: dynamic creative bodies are not read: failed 38 test(s), including the expected one
+[ok  ] shape: dynamic creative videos are not read: failed 39 test(s), including the expected one
+[ok  ] shape: an asset feed sent as a string is not parsed: failed 19 test(s), including the expected one
+[ok  ] shape: video_data is not read: failed 37 test(s), including the expected one
+[ok  ] shape: the call to action link is not read: failed 1 test(s), including the expected one
+[ok  ] shape: photo_data is not read: failed 24 test(s), including the expected one
+[ok  ] shape: the creative's own body is not used: failed 23 test(s), including the expected one
+[ok  ] shape: a post link is built from any id: failed 1 test(s), including the expected one
+[ok  ] shape: a wrong type is read as no copy: failed 4 test(s), including the expected one
+[ok  ] shape: the creative's own video id is not used: failed 14 test(s), including the expected one
+[ok  ] shape: an empty string is kept as copy: failed 1 test(s), including the expected one
+[ok  ] shape: an existing post is not named as one: failed 31 test(s), including the expected one
+[ok  ] stand-in: a batch of fifty one is answered: failed 1 test(s), including the expected one
+[ok  ] stand-in: an unknown field is answered: failed 3 test(s), including the expected one
+[ok  ] stand-in: a batch is answered without the token: failed 1 test(s), including the expected one
+[ok  ] stand-in: a cursor it did not issue is accepted: failed 1 test(s), including the expected one
+[ok  ] stand-in: a next link carries no token: failed 1 test(s), including the expected one
+[ok  ] cli: a formula is written as it is: failed 1 test(s), including the expected one
+[ok  ] cli: a partial run exits 0: failed 1 test(s), including the expected one
+[ok  ] cli: the json file always says complete: failed 1 test(s), including the expected one
+[ok  ] shape: a value is listed twice: failed 24 test(s), including the expected one
+[ok  ] cli: a failed run writes files anyway: failed 1 test(s), including the expected one
+[ok  ] stand-in: the field list parser accepts a brace that is never closed: failed 1 test(s), including the expected one
+[ok  ] fallback: a creative that came back as an id is not read by id: failed 35 test(s), including the expected one
+[ok  ] fallback: a campaign with no name is not read by id: failed 23 test(s), including the expected one
+[ok  ] stand-in: the status filter is ignored: failed 3 test(s), including the expected one
+
+mutants run 74: killed 74, not caught 0 (445 s)
+mutation control: PASS
