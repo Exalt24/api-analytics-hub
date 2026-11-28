@@ -201,6 +201,7 @@ def _register_builtin() -> None:
     from .gsc import GSCConnector
     from .meta import MetaConnector
     from .gbp import GBPConnector
+    from .connectwise import ConnectWiseConnector
     from .harvest import HarvestConnector
     from .msgraph import MicrosoftGraphConnector
     from .quickbooks import QuickBooksConnector
@@ -397,6 +398,31 @@ def _register_builtin() -> None:
                 "Leads and opportunities per day from SOQL queries on the REST API, paged by nextRecordsUrl: leads created and converted, opportunities created "
                 "and won, and the won amount. Refreshes its access token on a 401, once, behind a lock; stops before a call when fewer than 50 of the org's daily "
                 "calls are left (Sforce-Limit-Info); a 403 REQUEST_LIMIT_EXCEEDED is handed to the runner. Never run against a live org: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="connectwise",
+            label="ConnectWise Manage (PSA)",
+            auth_kind=AuthKind.STATIC_TOKEN,
+            # No saved page states a limit (the third party figures disagree), so the style is the honest word for it.
+            rate_limit_style=RateLimitStyle.UNDOCUMENTED,
+            supported_metrics=ConnectWiseConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("api_url", "API address", secret=False, hint="up to and including /apis/3.0, such as https://na.myconnectwise.net/v4_6_release/apis/3.0 (the host depends on the tenant's region)"),
+                CredentialField("company_id", "Company id", secret=False, hint="the company id typed at the ConnectWise login"),
+                CredentialField("public_key", "API member public key", hint="from the API member's API Keys tab"),
+                CredentialField("private_key", "API member private key", hint="shown once, when the key pair is made"),
+                CredentialField("client_id", "clientId", secret=False, hint="the integration clientId (a GUID) from the ConnectWise developer network"),
+            ),
+            factory=ConnectWiseConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Service tickets opened and closed per day, resolution goals missed, and technician time in seconds, from forward-only paged lists cut to the window here (the condition grammar "
+                "is on no saved page). Written from third party descriptions (an OpenAPI file in an open source client and a blog post), because the developer portal needs a login that refuses a "
+                "free mailbox address. Names no rate limit. Never run against a live tenant: none is held."
             ),
         )
     )

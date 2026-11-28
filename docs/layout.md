@@ -28,6 +28,9 @@ app/
     harvest.py       Harvest v2 time entries: daily hours, billable hours, entries and billable value, project budgets in hours and a budget status per project
     msgraph.py       Microsoft Graph as the app itself (client credentials): a SharePoint list register and a Teams channel per day, and an Excel register read from the downloaded .xlsx
     harvest_fake.py, msgraph_fake.py   stand-in servers, written from Harvest's and Microsoft's pages (docs/HARVEST_GRAPH_SOURCES.md)
+    connectwise.py   ConnectWise Manage (PSA): daily tickets opened and closed, resolution goals missed and technician time, and the tickets and time entries as records for the backlog analysis
+    connectwise_fake.py   stand-in ConnectWise server, written from third party descriptions (docs/MSP_SOURCES.md)
+    msp_common.py    what the MSP connectors share: strict date parsing, the plain address check, hours to whole seconds
     google_ads_fake.py, tiktok_fake.py, square_fake.py, quickbooks_fake.py, shopmonkey_fake.py   stand-in servers, written from each vendor's pages
     shopify_oauth.py install flow, offline tokens
     shopify_webhooks.py  HMAC verification over the raw body
@@ -37,6 +40,7 @@ app/
   crypto.py          AES-256-GCM credential encryption, AAD bound to the row
   db.py              pool, tenant-scoped transactions, RLS role assertion
   ai/catalog_copy.py LLM meta descriptions that must pass a number-grounding check
+  msp/               the records the MSP connectors produce (records.py) and the file they are kept in (ledger.py)
   sync/runner.py     claim, lease, heartbeat, resume, finish
   sync/cli.py        the shared body of the sync commands for one connection
   api/               FastAPI, bearer auth, RBAC, request log and /metrics
@@ -56,6 +60,7 @@ scripts/check_sync_health.py   cron entry point that alerts a Slack webhook
 scripts/db_backup.py           pg_dump with a manifest, a scratch restore that compares row counts, and the backup alert
 scripts/monthly_report.py      builds the monthly deck from stored snapshots: store, website, ads and search; with --drive-folder it then delivers the deck to Google Drive
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
+scripts/sync_connectwise.py   the same for a ConnectWise Manage company, and with --ledger the tickets and time it read
 scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, sync_shopmonkey.py   the same for a Google Ads customer, TikTok advertiser, Square location, QuickBooks company or Shopmonkey shop
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
 scripts/meta_creatives.py   writes a CSV and a JSON file of an ad account's creatives (`--stand-in` for the local run)

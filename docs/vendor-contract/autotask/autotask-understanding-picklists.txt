@@ -1,0 +1,25 @@
+URL: https://www.autotask.net/help/developerhelp/Content/APIs/General/Picklists.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+General information about Autotask APIs / Understanding picklists
+Understanding picklists
+What are picklists?
+In Autotask, a picklist can represent any drop-down menu accessible to a user. In the API, you can view picklists by making GET requests to the getFieldInfo() (SOAP) or /entityInformation/fields (REST) endpoints of applicable entities.
+Working with picklists
+When querying entity fields, if the isPickList field returns a value of true, the element it represents is a drop-down list. By querying the picklistValues and the picklistParentValueField endpoints, you can audit the picklist's attributes.
+picklistValues
+Calls to the picklistValues endpoint will return the following information:
+Element 	Definition
+value (string) 	The picklist value of the item.
+label (string) 	The name of the item as it appears in the drop-down list.
+isDefaultValue (boolean) 	Indicates whether the item is the default value for the field.
+sortOrder (boolean) 	Indicates the order of the items as they appear in the list.
+parentValue (string) 	If the picklist is a child of another field, identifies the parent field.
+isActive (boolean) 	Indicates the active/inactive status of the value.
+isSystem (boolean) 	Indicates if the picklist item is a system value.
+picklistParentValueField
+If isPicklist = true for the current field, and if the value for the current field depends upon another field for this entity, then picklistParentFieldName holds the name of the field. Use the known value for this field to filter the picklistValues for the current field.
+Additional resources
+The entityInformation REST API call
+The getFieldInfo() SOAP API call

@@ -1,0 +1,97 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/General/API_Zones.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+Welcome to Developer Help!
+Autotask API zones and WSDL versions
+General information about Autotask APIs
+REST API
+SOAP API
+Webhooks
+ExecuteCommand API
+Report Data Warehouse
+Kaseya Helpdesk
+Skip To Main Content
+Account
+Settings Logout
+Welcome to Developer Help!
+Autotask API zones and WSDL versions
+General information about Autotask APIs»
+REST API»
+SOAP API»
+Webhooks»
+ExecuteCommand API»
+Report Data Warehouse»
+Kaseya Helpdesk
+Account
+Settings Logout
+Filter:
+All Files
+API
+REST API
+SOAP API
+ExecuteCommand API
+Webhooks
+Data Warehouse
+Submit Search
+Welcome to Developer Help!
+Autotask API zones and WSDL versions
+General information about Autotask APIsGeneral information about Autotask APIs
+REST APIREST API
+SOAP APISOAP API
+WebhooksWebhooks
+ExecuteCommand APIExecuteCommand API
+Report Data WarehouseReport Data Warehouse
+Kaseya Helpdesk
+Autotask API zones and WSDL versions
+Autotask API zones and WSDL versions
+Autotask has multiple zones. While their allocation is normally geographic, exceptions are possible. The zone number appears in your Autotask URL.
+EXAMPLE webservices3.autotask.net is the URL for the America East zone.
+Overview
+Autotask product releases do not go out to all zones at the same time, so some zones will have a newer version of the application and the API, since the API is always current for the Autotask version in that zone. As a result, there will be some unavoidable differences between versions. This difference is most noticeable between the localized and English versions.
+IMPORTANT We strongly suggest that you update your application with each Web Service API release or monitor the impact that changes might have on your application and plan accordingly, especially if Autotask plans to remove support for the API version that you are using.
+Anticipate regular updates and the release of new versions of the Web Services API. New versions will, for the most part, support backward compatibility through multiple releases, but there may be changes to functionality that have an impact on your application. Please check Autotask release notes and any additional notifications that provide information on Web Services changes and updates.
+REST API
+Find your zone's API URL for the REST API
+When accessing the web services REST API, you must use the URL zone variation that is consistent with the base URL that you use to access the Autotask website. The table below shows the zones in the normal release order.
+NOTE To learn how to determine your user's zone via an API call, refer to our ZoneInformation article.
+For version information and specific entity paths, refer to our REST API revision history and Autotask REST API resources articles.
+Zone 	API URL
+Pre-release 	https://webservices2.autotask.net/atservicesrest
+Pre-release (UK) 	https://webservices11.autotask.net/atservicesrest
+Limited Release 	https://webservices1.autotask.net/atservicesrest
+Limited Release (UK) 	https://webservices17.autotask.net/atservicesrest
+America East 	https://webservices3.autotask.net/atservicesrest
+America East 2 	https://webservices14.autotask.net/atservicesrest
+America East 3 	https://webservices22.autotask.net/atservicesrest
+America West 	https://webservices5.autotask.net/atservicesrest
+America West 2 	https://webservices15.autotask.net/atservicesrest
+America West 3 	https://webservices24.autotask.net/atservicesrest
+America West 4
+https://webservices25.autotask.net/atservicesrest
+UK 	https://webservices4.autotask.net/atservicesrest
+UK2 	https://webservices16.autotask.net/atservicesrest
+UK3
+https://webservices28.autotask.net/atservicesrest
+Pre-release (Aus)
+https://webservices30.autotask.net/atservicesrest
+Australia / New Zealand 	https://webservices6.autotask.net/atservicesrest
+Australia 2
+https://webservices26.autotask.net/atservicesrest
+Australia 3
+https://webservices29.autotask.net/atservicesrest
+Australia 4
+https://webservices31.autotask.net/atservicesrest
+Pre-Release (Deutsch) 	https://prde.autotask.net/atservicesrest
+Pre-Release (Español) 	https://pres.autotask.net/atservicesrest
+German (Deutsch) 	https://webservices18.autotask.net/atservicesrest
+EU1 (English Europe and Asia) 	https://webservices19.autotask.net/atservicesrest
+Spanish (Español) 	https://webservices12.autotask.net/atservicesrest
+Avoid problems when you make WSDL code available to customers in multiple zones
+In your development environment, create a proxy class (Web Reference) for the Autotask Web Services API by referencing the WSDL file. The appropriate URL is determined by your Autotask zone.
+To determine the proper zone (and accompanying URL) to use for all API interactions, set up your application so that getZoneInfo() is the first call made. Direct the getZoneInfo call to
+https://webservices[n].autotask.net/atservices/1.6/atws.asmx.
+NOTE  You can determine the WSDL version by using the getWsdlVersion() call.
+IMPORTANT You can no longer generate the auto-generated WSDL file from the following URL: https://webservices[n].autotask.net/atservices/1.5/atws.asmx?wsdl (where [n] is your Autotask zone).
+If you bind your code to an English language WSDL for development and testing, before you make your code available to users in any localized zone, bind your code to the WSDL for that zone. You can then detect and correct for any differences.
+We recommend that, when writing your applications, you store the URL information in an initialization or configuration file. For example, .NET developers can store the information in the Web.config file. Doing so allows easy updating if the URL information changes.

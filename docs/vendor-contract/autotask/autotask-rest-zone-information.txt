@@ -1,0 +1,57 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_ZoneInformation.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Calls / Querying user zone information via the REST API
+Querying user zone information via the REST API
+This article explains how to query the ZoneInformation attribute of a user to determine the zone URL you will need to use to build API calls compatible with their region.
+Overview
+Autotask has multiple geographically-allocated zones. For more information about these zones, refer to REST API zone URLs.
+REST API zone URLs
+When accessing the web services REST API, you must use the URL zone variation that is consistent with the base URL that you use to access the Autotask website. The table below shows the zones in the normal release order.
+NOTE To learn how to determine your user's zone via an API call, refer to our ZoneInformation article.
+For version information and specific entity paths, refer to our REST API revision history and Autotask REST API resources articles.
+Zone 	API URL
+Pre-release 	https://webservices2.autotask.net/atservicesrest
+Pre-release (UK) 	https://webservices11.autotask.net/atservicesrest
+Limited Release 	https://webservices1.autotask.net/atservicesrest
+Limited Release (UK) 	https://webservices17.autotask.net/atservicesrest
+America East 	https://webservices3.autotask.net/atservicesrest
+America East 2 	https://webservices14.autotask.net/atservicesrest
+America East 3 	https://webservices22.autotask.net/atservicesrest
+America West 	https://webservices5.autotask.net/atservicesrest
+America West 2 	https://webservices15.autotask.net/atservicesrest
+America West 3 	https://webservices24.autotask.net/atservicesrest
+America West 4
+https://webservices25.autotask.net/atservicesrest
+UK 	https://webservices4.autotask.net/atservicesrest
+UK2 	https://webservices16.autotask.net/atservicesrest
+UK3
+https://webservices28.autotask.net/atservicesrest
+Pre-release (Aus)
+https://webservices30.autotask.net/atservicesrest
+Australia / New Zealand 	https://webservices6.autotask.net/atservicesrest
+Australia 2
+https://webservices26.autotask.net/atservicesrest
+Australia 3
+https://webservices29.autotask.net/atservicesrest
+Australia 4
+https://webservices31.autotask.net/atservicesrest
+Pre-Release (Deutsch) 	https://prde.autotask.net/atservicesrest
+Pre-Release (Español) 	https://pres.autotask.net/atservicesrest
+German (Deutsch) 	https://webservices18.autotask.net/atservicesrest
+EU1 (English Europe and Asia) 	https://webservices19.autotask.net/atservicesrest
+Spanish (Español) 	https://webservices12.autotask.net/atservicesrest
+An Autotask client can exist in any of Autotask’s zones. Although each Autotask zone is aware of all other zones and can forward the user agent to the proper zone and URL, you must use the correct zone and URL information for the most efficient response. We recommend that your API integrations make a ZoneInformation request first to determine the proper zone (and accompanying URL) to use for all of the session's API interactions.
+NOTE ZoneInformation requests do not require authentication and are not subject to thread limiting. For more information, refer to API thread limiting.
+zoneInformation call syntax
+To make the API request, send a GET call to the API with the following parameters. Replace user@companydomain.com with the fully-qualified name of the API user associated with the submitted credentials.
+EXAMPLE GET http://webservices.autotask.net/atservicesrest/v1.0/zoneInformation?user=user@companydomain.com
+The API request will return output similar to the following:
+{ "zoneName": "America East", "url": "https://webservices3.autotask.net/atservicesrest/", "webUrl": "https://ww3.autotask.net/", "ci": 20264 }
+The information shown in the above example is as follows:
+Field  	Description
+zoneName 	The name of the user's zone, as defined in REST API zone URLs.
+url 	The API access URL of the user
+webUrl 	The URL through which the user accesses Autotask
+ci 	The unique customer identifier of the user

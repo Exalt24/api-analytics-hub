@@ -1,0 +1,48 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/General/ThreadLimiting.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+General information about Autotask APIs / API thread limiting
+API thread limiting
+Limits on simultaneous API execution threads and multi-thread latency apply to the Autotask web services API. This article contains important details about how they impact integration development. Please review this information carefully.
+Index
+Why do thread limits apply to my integrations?
+How does thread limiting work?
+Example 1: Two simultaneous threads to the same object endpoint
+Example 2: Two simultaneous threads to the different objects
+How does multi-thread latency work for existing integrations?
+How does multi-thread restriction impact the 10,000 calls per hour threshold limit?
+How do notifications work when a threshold is exceeded?
+Where can I get answers to questions about thread limiting?
+Why do thread limits apply to my integrations?
+With the continuous growth of Autotask, partners heavily rely on integrations to automate processes and connect to a variety of applications. Many MSPs have multiple integrations that send simultaneous requests to high-volume object endpoints such as tickets and configuration items. This type of activity can lead to database contention and performance impacts.
+With the release of Autotask 2022.1, we introduced API threshold and thread latency limits. In doing so, we will be able to minimize performance impact to the Autotask UI and ensure that no single integration can impact an MSP’s database performance through heavy requests to a particular object endpoint.
+How does thread limiting work?
+Thread limits apply to the combination of each unique API tracking identifier plus object endpoint call that takes place in a partner's Autotask instance.
+The API tracking identifier used as part of thread limiting may be either an assigned vendor integration, or it may be a custom integration tracking identifier.
+Any integrations developed following the Autotask 2023.1 release have a thread limit of three per object endpoint and tracking identifier.
+Integrations created before the 2022.1 release start with a high default thread limit that decreases as each integration is measured and evaluated over time. The introduction of these thread limits should not impact existing integrations unless they are using an excessive number of threads.
+NOTE ZoneInformation requests are not subject to thread limiting.
+The following examples illustrate how thread limits function.
+Example 1: Two simultaneous threads to the same object endpoint
+A thread limit of one applies to integration ABC for the Ticket object
+A query call is made to the Ticket object. The call counts as one thread while the query is executing.
+A second call (of any type) is made to the Ticket object before the first query completes. The second call fails with a 429 error response indicating that the thread count has been exceeded.
+Example 2: Two simultaneous threads to the different objects
+A thread limit of one applies to Integration ABC for the Ticket and the Contact objects.
+A query call is made to the Ticket object. The call counts as one thread to the Ticket object while the query is executing
+Integration ABC does a second API call to the contact object before the ticket query completes.
+This second API call will succeed, as it is the first thread for the unique API tracking identifier plus object combination. Via this mechanism, one integration can still carry out multiple actions like a Company, Contact, and Ticket sync all in parallel.
+How does multi-thread latency work for existing integrations?
+Any integration that has an object endpoint thread limit above 2 will have thread latency applied. The latency adds a very brief delay before the thread executes. The default latency thresholds are:
+0.25 sec latency when >= 3 threads
+0.50 sec latency when >= 6 threads
+1.0 sec latency when >= 10
+How does multi-thread restriction impact the 10,000 calls per hour threshold limit?
+The limit of 10,000 calls per hour remains in place. It is not impacted by the thread threshold limit. Refer to REST API supportability, query thresholds, and latency and SOAP API supportability, query thresholds, and latency for more information about call limits.
+How do notifications work when a threshold is exceeded?
+Threshold notifications changed with the 2022.1 release. They always send notifications to the email address associated with the API user, and, if it is a vendor integration, an email to the vendor-provided support email address.
+We recommend that Autotask administrators configure the API user’s email address to go to a recipient that can take action. These notifications indicate that something isn’t working as expected with your integration and that you should investigate.
+The 2022.1 release introduces a requirement that each vendor tracking identifier has an associated support email address. Vendors must submit this information to the Autotask integrations team.
+Where can I get answers to questions about thread limiting?
+You can get in touch with our team and connect with other developers via the Datto Community. If you're a seasoned API user, we encourage you to visit the Community and share your knowledge with others.

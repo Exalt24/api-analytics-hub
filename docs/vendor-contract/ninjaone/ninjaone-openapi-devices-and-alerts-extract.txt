@@ -1,0 +1,69 @@
+URL: https://app.ninjarmm.com/apidocs/NinjaRMM-API-v2.json  (the OpenAPI file linked as NinjaRMM-API-v2.json on https://app.ninjarmm.com/apidocs/)
+STATUS: 200
+FETCHED: 2026-11-29
+
+EXTRACT, made by a script from that file: info, the security scheme, and for the three calls the connector makes the query parameters and every response property with its type, format and description, copied unchanged. Nothing was added.
+The file has no `servers` entry, no rate limit text and no 429 response.
+
+info: "NinjaOne Public API 2.0" version 2.0.9-draft
+security scheme oauth2: {"type": "http", "scheme": "bearer", "bearerFormat": "bearer"}
+global security requirement scopes: {"oauth2": ["monitoring", "management", "control"]}
+
+GET /v2/devices  (getDevices)  summary: List devices | description: Returns list of devices (basic node information)
+  query df | string | Device filter
+  query pageSize | integer/int32 | Limit number of devices to return
+  query after | integer/int32 | Last Node ID from previous page
+  response (status listed only as `default`): array of objects with properties:
+    [].id | integer/int32 | Node (Device) identifier
+    [].uid | string/uuid | Node (Device) UUID
+    [].assignedOwnerUid | string/uuid | Node (Device) Owner UUID
+    [].parentDeviceId | integer/int32 | Parent Node identifier
+    [].organizationId | integer/int32 | Organization identifier
+    [].locationId | integer/int32 | Location identifier
+    [].nodeClass | string | Node Class | enum: WINDOWS_SERVER, WINDOWS_WORKSTATION, LINUX_WORKSTATION, MAC, ANDROID, APPLE_IOS, APPLE_IPADOS, AOSP, CHROMEOS, VMWARE_VM_HOST, VMWARE_VM_GUEST, HYPERV_VMM_HOST, HYPERV_VMM_GUEST, LINUX_SERVER, MAC_SERVER, CLOUD_MONITOR_TARGET, NMS_SWITCH, NMS_ROUTER, NMS_FIREWALL, NMS_PRIVATE_NETWORK_GATEWAY, NMS_PRINTER, NMS_SCANNER, NMS_DIAL_MANAGER, NMS_WAP, NMS_IPSLA, NMS_COMPUTER, NMS_VM_HOST, NMS_APPLIANCE, NMS_OTHER, NMS_SERVER, NMS_PHONE, NMS_VIRTUAL_MACHINE, NMS_NETWORK_MANAGEMENT_AGENT, UNMANAGED_DEVICE, MANAGED_DEVICE
+    [].nodeRoleId | integer/int32 | Node Role identifier
+    [].rolePolicyId | integer/int32 | Node Role policy ID based on organization and location Policy Mapping
+    [].policyId | integer/int32 | Assigned policy ID (overrides organization and location policy mapping)
+    [].approvalStatus | string | Approval Status | enum: PENDING, STAGED, APPROVED, DECOMMISSIONED
+    [].offline | boolean | Is Offline?
+    [].displayName | string | Display Name
+    [].systemName | string | System Name
+    [].dnsName | string | DNS Name
+    [].netbiosName | string | NETBIOS Name
+    [].created | number/double | Created
+    [].lastContact | number/double | Last Contact
+    [].lastUpdate | number/double | Last data submission timestamp
+    [].userData | object | Custom attributes
+    [].tags | array | Tags
+    [].maintenance | object | Maintenance mode status
+    [].maintenance.status | string | Maintenance mode status | enum: PENDING, IN_MAINTENANCE, FAILED
+    [].maintenance.start | number/double | Maintenance mode start time
+    [].maintenance.end | number/double | Maintenance mode end time
+    [].maintenance.reasonMessage | string | Maintenance reason message
+    [].references | object | Expanded entity references
+
+GET /v2/alerts  (getAlerts)  summary: List active alerts (triggered conditions) | description: Returns list of active alerts/triggered conditions
+  query sourceType | string | 
+  query df | string | Device filter
+  query lang | string | Language tag
+  query tz | string | Time Zone
+  response (status listed only as `default`): array of objects with properties:
+    [].uid | string/uuid | Alert UID (activity series UID)
+    [].deviceId | integer/int32 | Device identifier
+    [].message | string | Alert message
+    [].createTime | number/double | Alert creation timestamp
+    [].updateTime | number/double | Alert last updated
+    [].sourceType | string | Alert origin | enum: AGENT_OFFLINE, CONDITION_AGENT_CPU, CONDITION_AGENT_MEMORY, CONDITION_AGENT_NETWORK, CONDITION_AGENT_DISK_IO, CONDITION_AGENT_DISK_FREE_SPACE, CONDITION_AGENT_DISK_USAGE, CONDITION_AGENT_CVSS_SCORE, CONDITION_AGENT_PATCH_LAST_INSTALLED, CONDITION_NMS_CPU, CONDITION_NMS_MEMORY, CONDITION_NMS_NETWORK_TRAFFIC_BITS, CONDITION_NMS_NETWORK_TRAFFIC_PERCENT, CONDITION_NMS_NETWORK_STATUS, CONDITION_NMS_NETWORK_STATUS_CHANGE, CONDITION_NMS_SYSTEM_UPTIME, CONDITION_PING, CONDITION_PING_LATENCY, CONDITION_PING_PACKET_LOSS, CONDITION_PING_RESPONSE, CONDITION_SYSTEM_UPTIME, CONDITION_SMART_STATUS_DEGRATED, CONDITION_RAID_HEALTH_STATUS, CONDITION_SCRIPT_RESULT, CONDITION_HTTP, CONDITION_HTTP_RESPONSE, CONDITION_PORT, CONDITION_PORT_SCAN, CONDITION_SYSLOG, CONDITION_CONFIGURATION_FILE, CONDITION_SNMPTRAP, CONDITION_CRITICAL_EVENT, CONDITION_DNS, CONDITION_EMAIL, CONDITION_CUSTOM_SNMP, CONDITION_COMPOUND, SHADOWPROTECT_BACKUPJOB_CREATE, SHADOWPROTECT_BACKUPJOB_UPDATE, SHADOWPROTECT_BACKUPJOB_DELETE, SHADOWPROTECT_BACKUPJOB_EXECUTE, IMAGEMANAGER_MANAGEDFOLDER_CREATE, IMAGEMANAGER_MANAGEDFOLDER_UPDATE, IMAGEMANAGER_MANAGEDFOLDER_DELETE, IMAGEMANAGER_MANAGEDFOLDER_EXECUTE, TEAMVIEWER_CONNECTION, RETRIEVE_AGENT_LOGS, SCHEDULED_TASK, CONDITION_WINDOWS_EVENT_LOG_TRIGGERED, CONDITION_WINDOWS_SERVICE_STATE_CHANGED, UI_MESSAGE_ACTION_REBOOT, UI_MESSAGE_BD_INSTALLATION_ISSUES, GRAVITYZONE_UI_MESSAGE_INSTALLATION_ISSUES, AV_QUARANTINE_THREAT, AV_RESTORE_THREAT, AV_DELETE_THREAT, AV_REMOVE_THREAT, BITDEFENDER_RESTORE_THREAT, BITDEFENDER_DELETE_THREAT, CONDITION_BITLOCKER_STATUS, CONDITION_FILEVAULT_STATUS, CONDITION_LINUX_PROCESS, CONDITION_LINUX_Daemon, CONDITION_LINUX_PROCESS_RESOURCE, CONDITION_LINUX_PROCESS_RESOURCE_CPU, CONDITION_LINUX_PROCESS_RESOURCE_MEMORY, CONDITION_LINUX_DISK_FREE_SPACE, CONDITION_LINUX_DISK_USAGE, CONDITION_VM_AGGREGATE_CPU_USAGE, CONDITION_VM_DISK_USAGE, CONDITION_VM_HOST_DATASTORE, CONDITION_VM_HOST_UPTIME, CONDITION_VM_HOST_DEVICE_DOWN, CONDITION_VM_HOST_BAD_SENSORS, CONDITION_VM_HOST_SENSOR_HEALTH, CONDITION_VM_GUEST_GUEST_OPERATIONAL_MODE, CONDITION_VM_GUEST_SNAPSHOT_SIZE, CONDITION_VM_GUEST_SNAPSHOT_LIFESPAN, CONDITION_VM_GUEST_TOOLS_NOT_RUNNING, CONDITION_HV_GUEST_CHECKPOINT_SIZE, CONDITION_HV_GUEST_CHECKPOINT_LIFESPAN, CONDITION_SOFTWARE, CONDITION_WINDOWS_PROCESS_STATE, CONDITION_WINDOWS_PROCESS_RESOURCE_CPU, CONDITION_WINDOWS_PROCESS_RESOURCE_MEMORY, CONDITION_MAC_PROCESS_STATE, CONDITION_MAC_PROCESS_RESOURCE_CPU, CONDITION_MAC_PROCESS_RESOURCE_MEMORY, CONDITION_MAC_DEAMON, CONDITION_CUSTOM_FIELD, CONDITION_PENDING_REBOOT
+    [].sourceConfigUid | string/uuid | Source configuration/policy element reference
+    [].sourceName | string | Source configuration/policy element name
+    [].subject | string | Alert subject
+    [].userId | integer/int32 | User identifier
+    [].psaTicketId | object | Related PSA ticket ID
+    [].ticketTemplateId | integer/int32 | PSA ticket template
+    [].data | object | Alert data
+    [].device | object | Device information.
+    [].priority | string | 
+    [].severity | string | 
+    [].conditionName | string | 
+    [].conditionHealthStatus | string |  | enum: UNKNOWN, HEALTHY, NEEDS_ATTENTION, UNHEALTHY
+    [].useGlobalHealthStatus | boolean | 

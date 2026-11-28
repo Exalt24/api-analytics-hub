@@ -1,0 +1,188 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/Entities/TimeEntriesEntity.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Entities / TimeEntries
+TimeEntries
+This entity describes an Autotask Time Entry. A time entry allows an Autotask resource to enter time against a Ticket or Task and to enter General or Regular time, for example, in-house meeting, travel, or training time. Users enter time through a number of modules including Home, Contracts, CRM, Projects, Service Desk, and Timesheets.
+NOTE You can refer to the Online Help to find root and child access URLs of the entity you wish to query. Refer to Finding resource and child access URLs of REST API entities for more information.
+Entity details
+Entity Name:  	TimeEntries
+Entity Path:
+/atservicesrest/v1.0/TimeEntries
+Can Create:
+Can Update:
+Can Query:
+Can Delete:
+Can Have UDFs:
+IMPORTANT Requests to this entity require special handling. Refer to the Entity URLs and relationships section of this article for details.
+Entity URLs and relationships
+If this entity has a Parent relationship, you must perform all Create, Update, and Delete actions on the parent entity.
+If this entity is a child of a parent, you can leverage our Swagger instance to find the URLs you should use in your API calls. For more information, refer to Finding resource and child access URLs of REST API entities.
+To learn how to access Swagger, refer to Using Swagger UI to explore REST API requests.
+Parent 	None
+Children 	TimeEntries
+URLs 	TimeEntries​/query (GET, POST)
+TimeEntries​/{id} (GET, DELETE)
+TimeEntries​/query​/count (GET, POST)
+TimeEntries (PUT, POST, PATCH)
+TimeEntries​/entityInformation (GET)
+TimeEntries​/entityInformation​/fields (GET)
+TimeEntries​/entityInformation​/userDefinedFields (GET)
+Conditions and requirements
+General
+The Autotask API measures date-time values in UTC. As a result, entries for some zones will frequently overlap UTC midnight. You may need to enable the Allow time entries to span over midnight system setting to prevent errors for these zones.
+This entity respects the Can view non-billable time entries system security setting. If the API user does not have this permission, the entity will not return records in situations when the isNonBillable field contains a value of true.
+TimeEntries respects Autotask Proxy Time Entry; that is, when Proxy Time Entry is enabled, TimeEntries create and update are not limited to the TimeEntries resource.
+When the Proxy Time Entry system setting is set to Enabled for timesheet approvers, a timesheet approver for the TimeEntries resource can create and update a time entry.
+When the system setting is set to Enabled for timesheet approvers and Administrators, timesheet approvers can create and update Time Entries for those resources whose timesheets they approve, and Administrators can create and update Time Entries for any active resource.
+When the Proxy Time Entry setting is disabled, only TimeEntries.resourceID may edit his or her time entry.
+The entity will not respect any After Hours work type conditions enforced in the Autotask GUI.
+TimeEntries.hoursWorked must be >0 and <= 24.
+A time entry may only be added to a timesheet with the status of New or Rejected (not Submitted, Approved. etc.).
+A time entry cannot be updated if it has been approved and posted.
+A time entry will be rounded if the system settings governing rounding are enabled.
+TimeEntries entities can be deleted as long as all the following conditions apply:
+The time entry is not a Taskfire time entry
+The time entry is not yet posted
+The timesheet the time entry appears on is unsubmitted
+The time entry is not a time off request subject to pre-approval
+The API user created the time entry on another user's behalf.
+Resources without access to the Service Desk module can only create or update TimeEntries for the tickets assigned to them.
+A resource can enter time on a task based on the permission granted by the resource's security level; that is, the assigned security level's Projects permission setting "Can enter time on." Security levels are assigned via the Security tab of the Resource Management page.In the Autotask Onlne Help, refer to Configure Custom Security Levels. and Add, Edit or Copy a Resource.
+All TimeEntries made through the API are in Coordinated Universal Time (UTC).
+The Web Services TimeEntries entity does not support the Autotask interface feature "Bill Immediately". All task and ticket time entries created and updated through the REST API must be approved and posted.
+Time entries cannot be added to tasks associated with projects whose timeEntryType (projectType) is set to Archived, Template, or Baseline.
+Special field attributes
+Field 	Conditions and Requirements
+billingApprovalDateTime
+billingApprovalLevelMostRecent
+billingApprovalResourceID
+The TimeEntries fields billingApprovalDateTime, billingApprovalLevelMostRecent, and billingApprovalResourceID are updated automatically on creation of a new BillingItemApprovalLevel entity row that references TimeEntries.id.
+NOTE This field ignores whether or not an entry has been posted or invoiced.
+billingApprovalResourceID
+billingApprovalDateTime
+billingApprovalResourceID and billingApprovalDateTime must both either be null or contain a value at the same time. One cannot be populated without the other having a value.
+billingCodeID
+billingCodeID must reference an active Work Type (General) allocation code.
+A General TimeEntry cannot be created with an billingCodeID unless that billingCodeID matches the internalBillingCodeID.
+If no billingCodeID is provided for a time entry of type GeneralActivity or InternalActivity, or the billingCodeID does not equal an internalBillingCodeID, the API will set the billingCodeID to the internalBillingCodeID.
+billingCodeID
+contractID
+A billingCodeID and/or contractID value requires a ticketID or taskID value. Allocation Codes (Work Type) and Contracts must be associated with a task or ticket.
+A time entry cannot be created without an billingCodeID and/or contractID if its associated task, issue or ticket has one; the time entry will automatically inherit the values. If the intention is to have a time entry without an billingCodeID or contractID, it must be updated after it is created.
+billingCodeID
+contractID
+isNonBillable
+showOnInvoice
+On create, if no value is provided for the billingCodeID, contractID, isNonBillable, or showOnInvoice fields, the field will be populated by the value inherited from the associated task, issue, or ticket.
+On update, if no value is provided for billingCodeID, contractID, isNonBillable, or showOnInvoice fields, the fields do not inherit the value from the associated task, issue, or ticket. It is presumed that they were changed to show no value.
+User cannot pass through billingCodeID, Contract, isNonBillable, or showOnInvoice values without the required Security Level permissions. No permissions are required to leave any of the four fields blank.
+contractID
+contractID must reference a contract that is active for the associated account or its parent.
+If the contract specified on the time entry excludes a Role or billingCodeID (Work Type) specified on the time entry, the default exclusion contract is applied. If the original contract does not specify a default exclusion contract, no contract will be applied.
+If a time entry is created or updated with a contractID and the ticket's sub-issue type is excluded on the contract, then the time entry's contractID will be updated to that of the exclusion contract, if it exists. If it does not exist, the contractID will be set to null.
+dateWorked
+The dateWorked field is required if no value is supplied for the startDateTime field.
+If the startDateTime is provided without a dateWorked value, the dateWorked value will equal the startDateTime value (converted to the time zone of the resource associated with the ResourceID).
+If the user viewing through the UI has a different timezone than the resource associated to the time entry (TimeEntries.resourceID), the Time Entry History dateWorked value may not appear to be correct. This behavior also occurs when time entries are made by the resource via the UI.
+The API will set this field's value to midnight for create and update calls.
+dateWorked, endDateTime, hoursWorked, resourceID, roleID, showOnInvoice, startDateTime, taskID, ticketID
+These ticket time entry fields are not editable when the timesheet is in a submitted status. Other fields can still be edited if the user has access to edit time entries from the Approve & Post page in the Autotask UI.
+hoursWorked
+If TimeEntries.hoursWorked is left empty, the API calculates a value from the start & end times; that is, the value of TimeEntries.hoursWorked = TimeEntries.endDateTime – TimeEntries.startDateTime.
+impersonatorUpdaterResourceID
+Even impersonating an administrator, the API user cannot delete a time entry the administrator created via proxy time entry for a third user.
+internalBillingCodeID
+On a General time entry (not for task/tickets) the internalBillingCodeID value must be present and it must be of type "InternalActivity" or "GeneralActivity".
+"Floating Holiday" time is allowed only if the Floating Holidays system setting is enabled and the Floating Holiday internal allocation code is set to Display in Regular Time (Admin > Site Setup > Company Setup > Internal Allocation Codes tab > Display in Regular Time is selected for Floating Holiday)
+"Personal Time" time is allowed only if the Personal Time system setting is enabled and the Personal Time internal allocation code is set to Display in Regular Time (Admin > Site Setup > Company Setup > Internal Allocation Codes tab > Display in Regular Time is selected for Personal Time)
+"Sick Time" time is allowed only if the Sick Time system setting is enabled and the Sick Time internal allocation code is set to Display in Regular Time (Admin > Site Setup > Company Setup > Internal Allocation Codes tab > Display in Regular Time is selected for Sick Time)
+"Vacation Time" time is allowed only if the Vacation Time system setting is enabled and the Vacation Time internal allocation code is set to Display in Regular Time (Admin > Site Setup > Company Setup > Internal Allocation Codes tab > Display in Regular Time is selected Vacation Time)
+internalNotes
+When you use the API to update this field, the REST API will return the text-only version of its content. If you send the content back, the Rich Text and all images that it contains will be lost. You cannot use the API to create items that contain Rich Text, but you can add Rich Text later via a supported method.
+To learn more, refer to The Rich Text editor.
+isInternalNotesVisibleToComanaged 	This field defaults to false on create.
+isNonBillable
+A False value for TimeEntry.isNonBillable requires a TimeEntries.ticketID or TimeEntries.taskID value. Time entries that are not associated with a Task or Ticket must be non-billable.
+Non-billable time
+General time (not customer-facing) will always be Non-Billable and will never show on invoice.
+resourceID
+roleID
+An attempt to create a time entry using a Resource + Role combination with an inactive Role will trigger an error.
+You can update an existing time entry that has a Resource + Role combination that uses an inactive Role.
+roleID
+On General Time Entry (not for task/tickets) the roleID will always be the default role for the resource, regardless of what value is provided.
+For General Time Entry (not for task/tickets) the roleID defaults to the resource’s default roleID.
+A Task Time Entry must have a valid roleID for the Resource and Task.
+Ticket and Task Time Entries must include a roleID that is valid for the resourceID. The roleID must be the same as ticketID.assignedResourceroleID or taskID.assignedResourceroleID except when the system setting to "Allow users to modify Role when creating/editing time entries on tickets" is enabled.
+showOnInvoice
+A True value for showOnInvoice requires a ticketID or taskID value. Time entries that are not associated with a Task or Ticket cannot display on an invoice.
+showOnInvoice cannot = True if the contractID references a Flat Rate or Recurring Service type contract.
+startDateTime
+endDateTime
+Task time entries must have TimeEntries.startDateTime and TimeEntries.endDateTime values, that is, they must use start and stop time, when the associated Project is set to "Requires Start/Stop Times".
+TimeEntries.startDateTime must be < TimeEntries.endDateTime.
+status
+Time entries may not be created for a ticketID whereTicket.Status = isComplete if the Service Desk system setting "Prohibit time entry on tickets whose status is Complete" is enabled.
+summaryNotes
+A ticket time entry must have summaryNotes.
+The summaryNotes field is required on tasks whether or not the system setting "Require user to enter summary notes when entering project task time and regular time" is enabled.
+When you use the API to update this field, the REST API will return the text-only version of its content. If you send the content back, the Rich Text and all images that it contains will be lost. You cannot use the API to create items that contain Rich Text, but you can add Rich Text later via a supported method.
+To learn more, refer to The Rich Text editor.
+taskID, ticketID
+If the time entry is associated with a task or ticket that has been completed, your permission to add or edit a time entry is governed by the following system settings:
+Allow time entry on completed tasks
+Allow time entry on completed tickets
+type
+To limit the return to only ticket time entries or only task time entries, you must specify a Type value. Picklist values for Type equal 2 (ITServiceRequest) for use with ticketID or 6 (ProjectTask) for use with taskID.
+Field definitions
+About this table
+The following table describes the standard Autotask fields for this entity. Refer to the following articles for more information about working with these fields:
+The entityInformation REST API call
+Making basic query calls to the REST API
+Advanced query features of the REST API
+To learn how to query picklist endpoints, refer to Understanding picklists.
+Notes
+For string datatypes, the number in parentheses ( ) indicates the maximum number of characters allowed.
+LT indicates Local Term.
+If this entity has child collections, they will appear in a Child collection access URLs or an Entity URLs and relationships drop-down in the Entity details section of this article.
+You can call the /query/count/ endpoint of a resource to determine how many records a collection holds.
+NOTE  The billingCodeID field represents the value displayed as "Work Type" in the Autotask interface.
+Field Name 	Datatype 	Read-Only 	Is Required 	Reference Name 	Picklist
+billingApprovalDateTime 	datetime
+billingApprovalLevelMostRecent 	integer 	   	  	BillingItemApprovalLevels
+billingApprovalResourceID 	integer 	  	  	BillingItemApprovalLevels
+billingCodeID 	integer 	  	  	BillingCodes
+contractID 	integer 	  	  	Contracts
+contractServiceBundleID 	long  	  	  	ContractServiceBundles
+contractServiceID 	long  	  	  	ContractServices
+createDateTime 	datetime
+creatorUserID 	integer
+dateWorked 	datetime
+endDateTime 	datetime
+hoursToBill 	decimal
+hoursWorked 	decimal
+id 	long
+impersonatorCreatorResourceID 	 integer 	   	  	Resources
+impersonatorUpdaterResourceID 	 integer 	   	  	Resources
+internalBillingCodeID 	integer 	  	  	ProjectCharges
+internalNotes 	string (32000)
+isInternalNotesVisibleToComanaged
+boolean
+isNonBillable 	boolean
+lastModifiedDateTime 	datetime
+lastModifiedUserID 	integer
+offsetHours 	decimal
+resourceID 	integer 	  	   	Resources
+roleID 	integer 	  	   	Roles
+showOnInvoice 	boolean
+startDateTime 	datetime
+summaryNotes 	string (32000)
+taskID 	integer 	  	  	Tasks
+ticketID 	integer 	  	  	Tickets
+timeEntryType 	integer
+Additional resources
+Using Postman to explore the REST API
+Using Swagger UI to explore REST API requests
+Working with attachments in the REST API

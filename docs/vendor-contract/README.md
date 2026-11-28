@@ -86,3 +86,17 @@ Events acted on (descriptions from the events types page): `payment_intent.succe
 - How Stripe itself rounds a proration. The module's rule (half up, each line rounded alone) is its own and is documented in [billing.md](../billing.md).
 - That the event `data.object` of a newer API version keeps the fields the fake sends. The invoice's subscription is read from `parent.subscription_details.subscription` or `subscription`, as the subscriptions page describes the newer and older shapes.
 - That `Idempotent-Replayed` is sent on a replayed refund as well as a replayed payment intent; the page states it in general.
+
+## MSP connectors
+
+The ConnectWise Manage, Autotask and NinjaOne connectors are written from the pages below, read in real Chromium on 2026-11-29 and saved as text (a page with collapsed sections was saved from its full text, so the collapsed parts are in the file). What each page says and what it leaves out is in [../MSP_SOURCES.md](../MSP_SOURCES.md). Nothing was run against a live account.
+
+### ConnectWise Manage
+
+ConnectWise's own developer documentation needs a login that refuses a free mailbox address at registration, so none of these is a ConnectWise page. See the first file.
+
+| Saved file | What it is |
+|---|---|
+| [connectwise/connectwise-developer-portal-not-retrieved.txt](connectwise/connectwise-developer-portal-not-retrieved.txt) | what was tried at developer.connectwise.com and what it answered |
+| [connectwise/connectwise-manage-openapi-extract.txt](connectwise/connectwise-manage-openapi-extract.txt) | an extract of the Manage OpenAPI file as kept in the open source connectwise-rest client (github.com/covenanttechnologysolutions/connectwise-rest, generator/manage-json/manage.json) |
+| [connectwise/connectwise-pagination-the-lazy-administrator.txt](connectwise/connectwise-pagination-the-lazy-administrator.txt) | a third party blog post showing real headers (thelazyadministrator.com, 2024-06-06) |

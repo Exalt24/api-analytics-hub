@@ -1,0 +1,74 @@
+URL: https://www.autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_Advanced_Query_Features.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Calls / Advanced query features of the REST API
+Advanced query features of the REST API
+This article describes advanced concepts for querying resource data in Autotask by making GET and POST requests to the REST API.
+We recommend reading this article after you have familiarized yourself with the key principles discussed in our Introduction to REST API calls article. For basic query syntax, refer to Making basic query calls to the REST API.
+To help you learn how to construct requests to the Autotask REST API, Datto provides a customizable REST API request collection for use with Postman. For more information, refer to Sample requests.
+Overview
+The Autotask REST API features advanced call syntaxes that enable users to specify certain fields to return, obtain record counts, and paginate results. Select a topic to learn more.
+NOTE You can refer to the Online Help to find root and child access URLs of the entity you wish to query. Refer to Finding resource and child access URLs of REST API entities for more information.
+BEFORE YOU BEGIN Examples in this article may use the webservices[n].autotask.net placeholder. In such instances, substitute [n] for the zone of your user, as described in Autotask API zones and WSDL versions > Find your zone's API URL for the REST API or Autotask API zones and WSDL versions > Find your zone's WSDL file URL for SOAP API version 1.6.
+Index
+Specifying fields to return
+Obtaining a record count
+Specifying the maximum records to return
+Paginating results
+GET response with pagination
+POST response with pagination
+Specifying fields to return
+By using the IncludeFields operator with GET or POST, you can customize your search results to return specified fields only. This operator works in conjunction with a comma-separated list of the field names included in a filter expression. For search results that contain more than 500 results, you must include Id as a field. You can include any object fields that the entity contains, including user-defined fields (UDFs). Click each description's name to view demonstration code and an explanation of the operator shown.
+IncludeFields syntax
+To use this query, replace each of the following placeholders with the values described.
+NameOfField: Enter the name of the entity field against which you would like to run the query
+{ "IncludeFields":[ "NameOfField1", "NameOfField2", "NameOfField..." ] }
+IncludeFields example
+The following example queries the Id, isactive, companyName, and phone fields of the Companies entity. It specifies that the results to display should only include those in which the CompanyName value is equal to ACME Corp.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query?search={"IncludeFields": ["Id", "isactive","companyName", "phone"],"filter":[{"op":"eq","field":"CompanyName","value":"ACME Corp"}]}
+Obtaining a record count
+You can use a GET or POST query to obtain a count of the number records for a specified filter expression. Click each description's name to view demonstration code and an explanation of the operator shown.
+Record count syntax
+To use this query, replace each of the following placeholders with the values described.
+EntityName: The name of the REST API entity that you'd like to query
+FilterOperators: The filter operators against which you'd like to run the query; to learn more about operators, refer to Making basic query calls to the REST API
+Basic URL syntax
+https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/query/count
+URL syntax with filter operators
+https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/query/count?search={"filter": [ {FilterOperators }]}
+Count companies example
+The following example queries the Companies entity for a count of the number of records in which the CompanyName value is equal to ACME Corp.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query/count?search={"filter":[{"op":"eq","field":"CompanyName","value":"ACME Corp"}]}
+Specifying the maximum records to return
+You can include a MaxRecords value with your request to specify the maximum number of records you'd like the API to return. The valid range of values for MaxRecords is 1 to 500 per page of results. Click each description's name to view demonstration code and an explanation of the operator shown.
+NOTE If you specify and then change the MaxRecords value provided in the GET request body when using a previous or next page URL, the API will ignore that value, and the value you supplied for the original query will persist.
+MaxRecords syntax
+To use this query, replace each of the following placeholders with the values described.
+EntityName: The name of the REST API entity that you'd like to query
+RecordsNumber: The maximum number of records you'd like this query to return
+FilterOperators: The filter operators against which you'd like to run the query; to learn more about operators, refer to Making basic query calls to the REST API
+https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/query?search={"MaxRecords":RecordsNumber, "filter": [ {FilterOperators }]}
+MaxRecords example
+The following example queries the Companies entity for a maximum of 10 records in which the id field exists.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query?search={"MaxRecords":10, "filter": [ {"op" : "exist", "field" : "id" }]}
+Paginating results
+You can make use of the pagination URLs provided by a query response to view the next set or previous set of results.
+IMPORTANT Do not change the query method, the MaxRecords or IncludeFields values, or any filter criteria while using paging URLs. Unexpected results may occur. The prevPageUrl and nextPageUrl are based on the initial query. You should only provide the original filter when calling them.
+Pagination limits
+Pagination can track up to 50 pages at a time. If your query is very large and returns more than 50 pages, you will still be able to navigate forward through all returns, but you will only be able to navigate backward through the last 50 pages you viewed.
+For example, if your query returns 100 pages and you navigate to page 55, you will only be able to navigate back as far as page 5 before looping back to page 1. Information for older pages will be lost.
+Syntax
+The following example illustrates the format of pagination fields. The count value specifies the number of records on the current page, while the requestCount value indicates the total number of records requested in the query. The prevPageUrl and nextPageUrl fields provide pagination controls in the form of 'previous page' and 'next page' queries. Pagination values will always be either a URL or a null value.
+"pageDetails": { "count": 20, "requestCount": 500, "prevPageUrl": null, "nextPageUrl": "https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query/next?paging=%7b%22pageSize%22%3a10%2c%22previousIds%22%3a%5b-1%5d%2c%22nextIds%22%3a%5b29683805%5d%7d&search=%7b%22MaxRecords%22%3a10%2c+%22filter%22%3a+%5b+%7b%22op%22+%3a+%22exist%22%2c+%22field%22+%3a+%22id%22+%7d%5d%7d" }
+On query, the Autotask API returns records up to the MaxRecords limit set for the API call, sorted by internal ID from lowest to highest. If your query is likely to return more records than the number set as the MaxRecords value, and you want to receive all of those records, you can create looping queries as an alternative to pagination controls. Set up queries where each query filters for an id value that is greater than the maximum value received in the previous query.
+Whenever possible, use strong filters to limit the number of records that the API returns. Doing so can improve performance when driving a user interface directly from the API.
+Standard GET and POST responses with pagination results will look similar to the queries shown below. Click each query's name to view the example.
+GET response with pagination
+{ "items": [ { "id": 29683613, "companyName": "PAHO/WHO FCU", "userDefinedFields": [] }, { "id": 29683625, "companyName": "HamptonRoads Bankshares, Inc.", "userDefinedFields": [] }, ... { "id": 29683805, "companyName": "NHCAA - Nat'l Health Care AntiFraud Assoc", "userDefinedFields": [] } ], "pageDetails": { "count": 10, "requestCount": 10, "prevPageUrl": null, "nextPageUrl": "https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query/next?paging=%7b%22pageSize%22%3a10%2c%22previousIds%22%3a%5b-1%5d%2c%22nextIds%22%3a%5b29683805%5d%7d&search=%7b%22MaxRecords%22%3a10%2c+%22IncludeFields%22%3a%5b%22ID%22%2c+%22companyname%22%5d%2c%22filter%22%3a+%5b+%7b%22op%22+%3a+%22exist%22%2c+%22field%22+%3a+%22id%22+%7d%5d%7d" } }
+POST response with pagination
+{ "items": [ { "id": 29687294, "firstName": "Tom", "lastName": "Smith", "userDefinedFields": [] }, { "id": 29687323, "firstName": "Michelle", "lastName": "Smith", "userDefinedFields": [] }, ... { "id": 29813867, "firstName": "Katie", "lastName": "Jones", "userDefinedFields": [] } ], "pageDetails": { "count": 10, "requestCount": 10, "prevPageUrl": "https://webservices[n].autotask.net/atservicesrest/v1.0/Contacts/query/previous?paging=%7b%22pageSize%22%3a10%2c%22previousIds%22%3a%5b29686487%2c29687214%5d%2c%22nextIds%22%3a%5b29687214%2c29813867%5d%7d", "nextPageUrl": "https://webservices[n].autotask.net/atservicesrest/v1.0/Contacts/query/next?paging=%7b%22pageSize%22%3a10%2c%22previousIds%22%3a%5b29686487%2c29687214%5d%2c%22nextIds%22%3a%5b29687214%2c29813867%5d%7d" } }
+Additional resources
+Using Postman to explore the REST API
+Using Swagger UI to explore REST API requests
+Working with attachments in the REST API

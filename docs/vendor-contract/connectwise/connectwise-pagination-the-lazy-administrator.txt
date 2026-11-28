@@ -1,0 +1,111 @@
+URL: https://www.thelazyadministrator.com/2024/06/06/how-the-connectwise-manage-api-handles-pagination-with-powershell/
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+WHAT THIS IS: a third party blog post (not ConnectWise) that shows real request and response headers of the ConnectWise Manage API. It is the only saved source for the clientId header, the Link header, forward-only paging and the _info fields.
+
+How The ConnectWise Manage API Handles Pagination with PowerShell
+How The ConnectWise Manage API Handles Pagination with PowerShell
+June 6, 2024  Brad Wyatt  Comments  3 comments
+Table of Contents
+Query Parameters
+Pagination
+Navigable
+Forward-Only
+FollowRelLink
+If you have ever worked with the Microsoft Graph API, you may be familiar with how it handles pagination, which is returning an @odata.nextLink property in the response containing a URL to the following results page.
+Learnto Code
+I was initially confused when I started working with the ConnectWise PSA API. Although I could specify a pageSize and page parameter, there never seemed to be an indication of where to go for the next page of results. This write-up will show you several ways to do pagination within the API and how to form your headers and requests for each type.
+Discover more
+Try Office Apps
+Upgrade IT
+Try Helpdesk Tools
+The documentation for pagination from Connectwise can be found here.
+Query Parameters
+The first item to discuss is query parameters. Query parameters are key-value pairs that filter, sort, or paginate  data an API returns. Below is a table of the query parameters we will use when paginating data and what each one does.
+Learnto Code
+Query Parameter	Description
+Page	Specifies which page of results you are querying.
+PageSize	How many items are returned per page. The max is 1,000
+PageID	Used for Forward-Only pagination. Treated like an additional condition of Id > pageId
+Pagination
+Navigable
+The first type of pagination is Navigable. Navigable pagination is a method in APIs where the response includes links (usually in the headers or the body) to navigate to other pages of data. These links typically include URLs to the next, previous, first, and last pages, allowing clients to move through large sets of results easily.
+Learnto Code
+Below is what the response will look like
+Key Value --- ----- Cache-Control {no-cache} Pragma {no-cache} Strict-Transport-Security {max-age=31536000; includeSubDomains} x-server-name {SERVCWAPI01} x-cw-request-id {c923476-8265-4a343-231-4a1c2340b} X-Frame-Options {SAMEORIGIN} Link {<https://SERVERNAME/v4_6_release/apis/3.0/company/companies?pageSize=1000&page=2>; rel="next", <https://SERVERNAME… api-current-version {2024.1} X-Content-Type-Options {nosniff} X-XSS-Protection {1; mode=block} Content-Security-Policy {frame-ancestors 'self' blob: *.myconnectwise.net *.connectwisedev.com; default-src 'self' 'unsafe-inline' 'u… Referrer-Policy {strict-origin-when-cross-origin} Date {Fri, 07 Jun 2024 01:02:41 GMT} Content-Length {445381} Content-Type {application/json; charset=utf-8} Expires {-1}
+With ConnectWise, the next link will be returned with the headers under “Link.” PowerShell’s Invoke-Restmethod does not include the header response by default, but we can get them if we include the ResponseHeadersVariable parameter.
+$Url = "https://SERVERNAME/v4_6_release/apis/3.0/company/companies?page=1&pageSize=1000" $InvokeRestMethodParams = @{  Method = "Get"  URI = $Url  ErrorAction = "SilentlyContinue"  Verbose = $false  ResponseHeadersVariable = "responseHeaders"  Headers = @{  "Authorization" = "Basic [BASE64 AUTHSTRING]"  'clientId' = '[CLIENTID]'  }  } $companies = Invoke-RestMethod @InvokeRestMethodParams
+To view the response headers, you can call the variable, which, in my example, would be $responseHeaders.
+Unfortunately, you would need to do some regex magic to get just the link URL out of the key-value pair. However, you may have noticed that the URL increments the page by 1. Knowing this, we can recursively use Invoke-RestMethod and increment the page by 1. We will know we are on the last page of results if the page has fewer results than the previous page.
+Below, I created a function that will return all ConnectWise Companies using this method. The highlighted lines will recursively do an API call to get the next page of 1,000 companies, increment the page by 1, and then do it again until it gets to a page with fewer results than prior.
+function Get-CWCompanies {  [cmdletbinding()]  param(  [Parameter(Position = 0, mandatory)]  [system.string]$clientID,  [Parameter(Position = 1, mandatory)]  [system.string]$base64Auth,  [Parameter(Position = 2, mandatory)]  [system.string]$server  )  begin {  # Initialize pagination variables  [system.int32]$page = 1  [system.int32]$pageSize = 1000  $allResults = @()   Write-Verbose "Getting all companies"  $Url = "https://$server/v4_6_release/apis/3.0/company/companies?page=$page&pageSize=$pageSize"  $InvokeRestMethodParams = @{  Method = "Get"  URI = $Url  ErrorAction = "SilentlyContinue"  Verbose = $false  Headers = @{  "Authorization" = "Basic $base64Auth"  'clientId' = $clientID  }  }  }  process {  $response = Invoke-RestMethod @InvokeRestMethodParams  # Loop to handle pagination  do {  Write-Verbose "Working on page: $page"  # Make the API request  try {  $response = Invoke-RestMethod @InvokeRestMethodParams  }  catch {  Write-Error -Message "Failed to get ConnectWise Companies. Error: $_"  }  # Append results to the collection  $allResults += $response   # Increment the page number  $page++  $Url = "https://$server/v4_6_release/apis/3.0/company/companies?page=$page&pageSize=$pageSize"  $InvokeRestMethodParams['URI'] = $Url  # Check if the response contains fewer items than the page size (indicating the last page)  $isLastPage = ($response.Count -lt $pageSize)  } while (-not $isLastPage)  }  end {  # Check if the response is null (indicating an error occurred)  if ($null -eq $allResults) {  Write-Warning -Message "API call returned null. Check previous error logs for details."  }  else {  $allResults | Sort-Object Name  }  } }
+Forward-Only
+Forward-Only was released in 2018.5 and does not make use of the query parameter, “Page” because, technically, all results are on page 1. To use this method, you must include pagination-type: forward-only in your request header. The forward-only method will return a single link in the Link property, and that will be the URL for the next page of  data. Below is an example of the call; notice the header now includes pagination-type.
+$Url = "https://SERVERNAME/v4_6_release/apis/3.0/company/companies?pageSize=1000" $InvokeRestMethodParams = @{  Method = "Get"  URI = $Url  ErrorAction = "SilentlyContinue"  Verbose = $false  ResponseHeadersVariable = "responseHeaders"  Headers = @{  "Authorization" = "Basic [BASE64 AUTHSTRING]"  'clientId' = '[CLIENTID]'  'pagination-type' = 'forward-only'  }  }  $companies = Invoke-RestMethod @InvokeRestMethodParams
+The new response header is as follows:
+Key Value --- ----- Cache-Control {no-cache} Pragma {no-cache} Strict-Transport-Security {max-age=31536000; includeSubDomains} x-server-name {SERVCWAPI01} x-cw-request-id {03252345f3-80e5-4234-b679-9a2342359} X-Frame-Options {SAMEORIGIN} Link {<https://SERVERNAME/v4_6_release/apis/3.0/company/companies?pageSize=1000&page=1&pageId=21723>; rel="next"} api-current-version {2024.1} X-Content-Type-Options {nosniff} X-XSS-Protection {1; mode=block} Content-Security-Policy {frame-ancestors 'self' blob: *.myconnectwise.net *.connectwisedev.com; default-src 'self' 'unsafe-inline' 'u… Referrer-Policy {strict-origin-when-cross-origin} Date {Fri, 07 Jun 2024 01:23:14 GMT} Content-Length {443531} Content-Type {application/json; charset=utf-8} Expires {-1}
+Since we don’t care about this response header for either method, we can still use the function from the previous method. But what if we could remove the logic of incrementing the page and looping Invoke-Restmethod?
+FollowRelLink
+Invoke-RestMethod contains a parameter called FollowRelLink. This is not included in  Windows PowerShell but is available in PowerShell Core. The –FollowRelLink parameter for Invoke-RestMethod in PowerShell automatically follows relational links (like “next”) in the response headers to retrieve subsequent pages of data in a paginated API response. This simplifies handling pagination by allowing you to fetch all pages of results continuously without manually parsing links.
+One thing to note when using the parameter is that it will create sets of results as an array for each page. In the example below, I will use -FollowRelLink to automatically get all of the data, but then use the count property, you will see that I only have 7 results. But each 7 contains 1,000 companies within.
+$Url = "https://SERVERNAME/v4_6_release/apis/3.0/company/companies?pageSize=1000" $InvokeRestMethodParams = @{  Method = "Get"  URI = $Url  ErrorAction = "SilentlyContinue"  Verbose = $false  FollowRelLink = $true  Headers = @{  "Authorization" = "Basic [BASE64 AUTHSTRING]"  'clientId' = '[CLIENTID]'  'pagination-type' = 'forward-only'  } } $companies = Invoke-RestMethod @InvokeRestMethodParams
+I can see that it returns 7 results using the count property on the companies array.
+But if I call the ID property and then the Length (or the Count) property, I will see that I have all of my results.
+Below in a new function which I can still use to get all companies, I will remove the loop and, in the process block, ‘unpack’ my paged results into a single array for simplicity.
+function Invoke-CWManageGetRequest {  <#  .SYNOPSIS  Performs GET requests to ConnectWise Manage API endpoints.   .DESCRIPTION  The Invoke-CWManageGetRequest function facilitates GET requests to ConnectWise Manage API endpoints.   It handles authentication, pagination, and allows for optional query parameters to filter or customize the request.   .PARAMETER authcompanyID  Your ConnectWise Manage company ID for authentication   .PARAMETER clientID  Your ConnectWise Manage client ID for API authentication   .PARAMETER endpoint  The ConnectWise Manage API endpoint to query (e.g., "company/configurations", "service/tickets")   .PARAMETER publicKey  Your ConnectWise Manage API public key   .PARAMETER privateKey  Your ConnectWise Manage API private key   .PARAMETER query  Optional query string to filter or customize the request (e.g., "conditions=status/id=1&pageSize=1000")   .PARAMETER server  Your ConnectWise Manage server URL (e.g., "cwm-01.ntiva.com")   .PARAMETER TimeoutSeconds  Optional timeout value in seconds for the API request (default: 30)   .INPUTS  None. Pipeline input not accepted.   .OUTPUTS  System.Collections.ArrayList   .EXAMPLE  $RequestParam = @{  endpoint = "company/configurations"  clientID = "YOUR-CLIENT-ID"  query = "conditions=type/name='Server' and status/id=1"  authcompanyID = "YOUR-COMPANY-ID"  publicKey = "YOUR-PUBLIC-KEY"  privateKey = "YOUR-PRIVATE-KEY"  server = "your-server.connectwise.com"  }  Invoke-CWManageGetRequest @RequestParam   This example retrieves all active server configurations from ConnectWise Manage.   .NOTES  Author: Bradley Wyatt  Version: 1.0  Last Modified: 2/6/2025 #>  [OutputType([pscustomobject])]  [CmdletBinding()]  Param(  [Parameter(Mandatory)]  [ValidateNotNullOrEmpty()]  [string]$endpoint,   [Parameter(Mandatory)]  [ValidateNotNullOrEmpty()]  [string]$clientID,   [Parameter()]  [string]$query,   [Parameter(Mandatory)]  [ValidateNotNullOrEmpty()]  [string]$authcompanyID,   [Parameter(Mandatory)]  [ValidateNotNullOrEmpty()]  [string]$publicKey,   [Parameter(Mandatory)]  [ValidateNotNullOrEmpty()]  [string]$privateKey,   [Parameter(Mandatory)]  [ValidateNotNullOrEmpty()]  [string]$server,   [Parameter()]  [ValidateRange(1, 300)]  [int]$TimeoutSeconds = 30  )   begin {  # Construct base URL  $baseUrl = "https://{0}/v4_6_release/apis/3.0" -f $server  $fullUrl = if ($query) {  "{0}/{1}?{2}" -f $baseUrl, $endpoint.TrimStart('/'), $query  }  else {  "{0}/{1}" -f $baseUrl, $endpoint.TrimStart('/')  }  Write-Verbose "URL: $fullUrl"    $apiKey = "{0}+{1}:{2}" -f $authcompanyID, $publicKey, $privateKey   $InvokeRestMethodParams = @{  Method = "Get"  URI = $fullUrl  ErrorAction = "Stop"  TimeoutSec = $TimeoutSeconds  FollowRelLink = $true  Headers = @{  "Authorization" = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($apiKey)))"  'pagination-type' = 'forward-only'  "clientId" = $clientID  }  }  }   process {  try {  $response = Invoke-RestMethod @InvokeRestMethodParams  #If the response is paginated, retrieve all pages and combine them into a single array  if ($response[0].Count -gt 1) {  $Fullresponse = @( $response.ForEach({ $_.ForEach({ $_ }) }) )  }  #If the response is not paginated, return the single page  else {  write-verbose "Single page returned with $($response.count) results"  $fullresponse = $response  }  }  catch {  Write-Error $_  }  }   end {  if ($fullResponse.Count -eq 0) {  Write-Warning "No data returned from ConnectWise Manage"  }  else {  Write-Verbose "Retrieved $($fullResponse.Count) items"  Write-Output $fullResponse  }  } }
+I would get all companies using the function above by running the following:
+$companyName = "A"   $RequestParam = @{  endpoint = "company/companies"  clientID = "453df-c9d435454-45713453456-f345f"  query = "conditions=name contains `"$companyName`""  authcompanyID = "test"  publicKey = "Wsdfdsfdsf"  privateKey = "3rsdfdsfdsfb"  server = "cwm.thelazyadmin.com"  verbose = $true  }  $companyInfo = Invoke-CWManageGetRequest @RequestParam
+Note: This will work for the Forward-Only method and Navigable
+Brad Wyatt
+My name is Bradley Wyatt; I am a 6x Dual-Microsoft Most Valuable Professional (MVP) in Microsoft Azure and Microsoft 365. I have given talks at many different conferences, user groups, and companies throughout the United States, ranging from PowerShell to DevOps Security best practices, and I am the 2022 North American Outstanding Contribution to the Microsoft Community winner.
+API, PowerShell
+API, Automation, Connectwise, PowerShell
+Post navigation
+PREVIOUS
+Upload a file to Connectwise and Attach it to a Service Ticket with PowerShell
+NEXT
+Automate Azure DevOps Work Item Updates with Azure Functions and the Azure DevOps API
+3 thoughts on “How The ConnectWise Manage API Handles Pagination with PowerShell”
+David Just says:
+June 24, 2024 at 6:06 am
+Great example!
+This is the way I handled pagination, not as elegant but it works
+Simple search function:
+function Search-Tickets {
+param ($SearchQuery, $CWBaseURL)
+$i = 1
+do {
+$Query = Invoke-RestMethod -uri “https://$CWBaseURL/v4_6_release/apis/3.0/service/tickets/search?pagesize=1000&page=$i” -Method POST -Headers $CWAuthHeader -Body $SearchQuery -ContentType ‘application/json’
+$i++
+$Query | foreach {
+[pscustomobject]@{
+TicketID = $_.id
+Board = $_.board.name
+Company = $_.company.name
+Type = $_.type.name
+SubType = $_.subType.name
+Summary = $_.Summary
+“Total Hours” = $_.”Total Hours”
+Contact = $_.contact.Name
+ContactEmail = $_.contact.email
+Status = $_.Status.name
+DateEntered = $_.’_info’.dateEntered
+LastUpdated = $_.’_info’.lastUpdated
+“Entered By” = $_.’_info’.enteredBy
+Owner = $_.owner.name
+Resources = $_.Resources
+Notes = $null
+}
+}
+}
+until ($Query.count -lt 1)
+}
+Reply
+Emerson says:
+January 25, 2025 at 3:04 pm
+Thank you for your post. It really helped.
+Reply
+TommyBoich says:
+April 24, 2025 at 7:34 am
+hi
+Reply

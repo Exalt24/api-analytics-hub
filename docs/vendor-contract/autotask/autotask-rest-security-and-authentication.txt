@@ -1,0 +1,42 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/General_Topics/REST_Security_Auth.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / About the REST API / REST API security and authentication
+REST API security and authentication
+Before you can start using the Autotask REST API, you'll need to review the following security requirements and environment prerequisites to ensure that your implementation is ready to receive API queries.
+IMPORTANT Failed authentication to the REST API will result in the return of a 401 error. If you observe this failure state, verify that the user name, password, and integration key combination that you are using is valid and that the user account has the correct permissions to access the API.
+Only resources with an API User (API-only) security level can access the API
+You'll need to use the API User (API-only) security level to access the REST API. It provides full system administrator access to Autotask modules, features, and data via the Autotask REST API, with no access to the Autotask UI. Refer to REST API best practices > Copy the API user or use caution when changing its security levels for more information.
+There is no per-seat charge for this security level and no limit to the number of resources that you can assign to an API-only user security level. A key benefit of the API user is that you do not have to provide full Autotask user credentials to your integration partners; also, partners can have individualized credentials. This functionality makes it easier for you to keep track of what each integration is doing. Coupled with the tracking identifier, Datto can more efficiently help you diagnose and address any issues that might come up.
+For more information, refer to API tracking identifier.
+API user security configuration
+The API User (API-only) system security level provides full system administrator access to Autotask modules, features, and data. However, it is possible to modify copies of the system security level to restrict access to certain modules, features, and data. As a result, the API user with a restricted license would receive no response to an API call, even though the data exists in your database.
+EXAMPLE The API user is unable to retrieve an invoice even though the invoice ID exists in your database.
+API users require a tracking identifier
+The REST API requires a tracking identifier for API-only users. Identifiers are critical for Autotask to be able to provide optimal service to all API users. They are also a valuable tool for integrators working with multiple API-only users and building various integrations.
+You can assign or self-generate identifiers from the Security tab of the API-only user's Resource Management page when you're adding a new API-only user or editing an API-only user that does not yet have an identifier assigned.
+There are two types of identifiers, Vendor and Custom.
+Vendor identifiers: You can select these identifiers from a menu and assign them to an Autotask integrations partner.
+Custom (Internal Integration) identifiers are for customers who develop and use integrations for their internal use. They automatically generate on the Security tab and then display on that tab. The Custom (Internal Integration) tracking ID allows access to only the user's database.
+TIP Tracking identifiers appear on the Manage Resource page, Security tab. API-only users do not have access to the UI, so you will have to ask a user with the HR Security level to provide the tracking ID to you.
+Example: Supplying required headers
+Username "apiuser@example.com" Secret "abc123" APIIntegrationcode "ASHJKLFDKAHKASLFH85LSA905H" ContentType "application/json"
+For details about assigning API tracking identifiers, refer to API tracking identifier.
+Impersonating resources and contacts
+Resource impersonation & contact impersonation
+Impersonation allows API users to add items on behalf of a specific resource or contact. The entity being impersonated must allow impersonation and have permission to perform the action as defined in the corresponding sections of the Edit Security Level page. If you do not configure impersonation, any object created by the API will be attributed to "API User."
+You'll need to configure resource and contact impersonation individually. To learn how to do so, and for more information about impersonation security levels, refer to Allow impersonation of resources with this security level.
+Using impersonation in the API
+If you want your integration users' names to show on the entity, follow these steps:
+You must add the id of the person to impersonate as a header on the request with the ImpersonationResourceId key value.
+Both the integration user and the API-only user must have security level permission to add or edit the entity.
+The integration user's security level must allow impersonation of the resource.
+The API-only user's security level must allow impersonation on the entity type.
+Example: Impersonation
+This example adds an impersonated user to a request's headers.
+Username "apiuser@example.com" Secret "abc123" APIIntegrationcode "ASHJKLFDKAHKASLFH85LSA905H" ContentType "application/json" ImpersonationResourceId 2635
+For more impersonation examples, refer to Working with attachments in the REST API.
+TLS 1.2 encryption protocol
+To remain aligned with industry-standard best practices, Datto requires TLS 1.2 protocol for inbound connections to Autotask.net, as well as incoming calls to the API. This requirement applies to partner integrations and Autotask customers who develop personal integrations.
+NOTE The Autotask REST API does not currently support Single Sign-On (SSO). If you are using SSO with Autotask, the API will recognize your Autotask credentials used before SSO. The password will not expire.

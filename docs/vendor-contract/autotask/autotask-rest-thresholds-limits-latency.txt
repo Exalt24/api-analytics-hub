@@ -1,0 +1,66 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/General_Topics/REST_Thresholds_Limits.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / About the REST API / REST API supportability, query thresholds, and latency
+REST API supportability, query thresholds, and latency
+This article describes the limits of supportability and data rate thresholds that apply to the REST API.
+Overview
+Datto provides an API that is available to all customers. To deliver a high-quality and consistent experience across a diverse range of businesses and platforms, specific scopes of support and query load-balancing apply to the service.
+Select a topic to learn more.
+Limits of API support
+Datto Technical Support can validate that API calls and responses work correctly and that any errors you receive are not the result of a defect.
+Many different development tools are available to work with REST architectural standards. Due to the wide variety of development tools available and the custom-tailored nature of API queries to their client environments, we cannot assist you with the creation or troubleshooting of your application code.
+We encourage you to grow your knowledge by reaching out to other developers via the Kaseya Community. If you're a seasoned API user, we encourage you to visit the Community and share your knowledge with others.
+For more information, refer to our If you find a defect in the API... article.
+Attachment limits
+To ensure a consistent quality of service for all users, the API uses the following thresholds when processing attachments:
+The maximum attachment file size indicated in the Autotask Online Help does not apply to the API. The API size limit for individual attachment files is 6 to 7 MB, with a maximum of 10,000,000 bytes within a five-minute period. If your integration exceeds either of these limits, you'll receive an error message indicating condition. If the integration exceeds 10,000,000 bytes within a five-minute span, the API will also stop accepting attachment creation calls for five minutes.
+NOTE The API size limit for individual attachments is less than the 10 MB limit for individual attachment files when working through the Autotask UI.
+Attachment types are limited to the file types allowed in Autotask. For more details, refer to Add attachments.
+Call conditions limit
+You can include up to 500 OR conditions in a single call to the API. If a call contains more than 500 OR statements, you will receive the API response, "Invalid query syntax. Queries are limited to 500 or fewer 'OR' conditions."
+API call threshold
+To ensure an acceptable response time for all REST API users and prevent inadvertent coding errors from crippling the system, Autotask sets a limit of 10,000 on the number of external requests allowed per hour between an individual database and the API. On receipt of a request, the API will check the number of requests it has received for that database (counting all integrations) within the past 60 minutes. Also, a usage-based latency will apply as you approach the threshold, and you will receive a notification that latency is in effect.
+The threshold is generous, and you should not see an impact with normal API usage.
+However, it is possible to reach the threshold if you are running multiple high-usage integrations or one integration that is calling the API on multiple threads. If you should reach the limit, you will see an error message and experience a temporary suspension of your API service.
+IMPORTANT Call batching is not available for the REST API at this time.
+Who receives API Threshold Exceeded notifications?
+In addition to the error message returned through the API, Autotask sends an email notification if usage exceeds the API threshold. The following order of preference applies:
+If you set up an "Unsuccessful Ticket Creation" email address for an ATES mailbox configured to receive human-readable notifications, then Autotask will send a warning to that email. If you configured multiple addresses, the application will send a warning notification to all of them.
+If Autotask cannot find the email address described above, it will send the warning to your Support email address.
+If the application cannot find a Support email address, it will send the warning to the primary email address of the API user responsible for the violation.
+Use the API Activity by Hour report to monitor usage and thresholds
+You can view API activity and threshold information by using the API Activity by Hour report in Autotask.
+Querying the API to determine usage and thresholds
+You can query the API to determine your database threshold and monitor how close you are to reaching it. To do so, send a GET request as follows:
+Syntax example
+https://webservices[n].autotask.net/atservicesrest/v1.0/ThresholdInformation
+If the call is successful, you will see a response containing the threshold data definition and current count.
+Example output
+{ "externalRequestThreshold": 10000, "requestThresholdTimeframe": 60, "currentTimeframeRequestCount": 2 }
+The externalRequestThreshold is the limit of external requests allowed in the period defined by the requestThresholdTimeframe value. In the above example, the period shown is 60 minutes.
+The currentTimeFrameRequestCount represents the total number of REST API and SOAP API calls received by the target Autotask database (the implementation your integration connects to) within the requestThresholdTimeframe. This count includes all API traffic to that database, not just requests made by the individual API user.
+Usage-based latency
+As you approach your threshold, the REST API will add a usage-based latency. The service calculates latency to prevent the number of calls within an hour from reaching the threshold amount. This preferred model allows applications to continue processing rather than being interrupted by a suspension of service.
+The service bases latency on the number of requests submitted as a percentage of the number of requests allowed, as follows:
+0% to 49.99%, latency = 0 sec
+50.00% to 74.99%, latency = .5 sec
+75.00+%, latency = 1 sec
+EXAMPLE If the threshold is 10,000 requests per hour, at 5,000 requests, the API will add .5 seconds to each request, up to 7,499. At 7,500 requests, the latency increases to 1 second.
+Thread limiting
+Limits on simultaneous API execution threads and multi-thread latency apply to the Autotask web services API. For important details about how they impact integration development, review our API thread limiting article.
+Execution timeout
+To prevent an inadvertent coding error from consuming too many server resources, Autotask has a five-minute execution timeout for all REST API calls.
+If your service becomes suspended
+In addition to an error message returned through the API, Autotask sends an email notification if usage exceeds the threshold. The following order of preference applies.
+If you have configured an Unsuccessful Ticket Creation email address for your ATES mailbox under Incoming Email Processing, and the configuration of the address allows receipt of human-readable notifications, the warning will route to that email address. If multiple addresses are present, Autotask will send the alert to all of them.
+If the email address described above is not present, the message will route to your Support Email Address.
+If no Support Email Address is present, the email will route to the primary email address of the API user responsible for the violation.
+Limited returns
+On query, Autotask returns no more than 500 records per entity at once, sorted by internal ID. If your query is likely to return over 500 results, and you want to get all those records, you must create looping queries. Set up queries where each query filters for id value > the maximum value received in the previous query.
+Whenever possible, paginate query results and use strong filters to limit the number of records returned. Doing so can improve performance when driving a user interface directly from the API. Refer to Advanced query features of the REST API for more information.
+Rich Text content support
+Unless otherwise noted, API entities do not support the creation or editing of Rich Text content. If an unsupported entity receives a request to update a field that contains Rich Text, the API will update the text-only version of the field and overwrite the data in the Rich Text field with plain text.
+When querying a field that has Rich Text, the API will return the text-only version of the field. If the user sends content back to an unsupported entity, the Rich Text and all images it contains will be lost. You cannot use the API to create items that contain Rich Text, but you can add Rich Text later via a supported method.
+To learn more, refer to The Rich Text editor.

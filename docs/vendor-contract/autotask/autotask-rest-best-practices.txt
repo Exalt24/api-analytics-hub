@@ -1,0 +1,98 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/General_Topics/REST_BestPractices.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / About the REST API / REST API best practices
+REST API best practices
+This article provides best practices for interacting with the Autotask REST API.
+Overview
+To ensure the effectiveness of your API integrations, we recommend that you observe the following best-practices when working with the REST API. Select a topic to continue.
+Keep in mind that well-formed requests can still fail
+Well-formed requests can still fail if there are too many concurrent processes locking that table/entity in a database, due to high usage by users in the UI or other integrations.
+Serialize your requests
+If there is a lot of API usage for your target database, serializing requests will minimize the chance of concurrency issues.
+Get to know your API user
+API User accounts are essential to all integrations. Two different types of API users are available, each with distinct access privileges. Review our Defining an API User article to understand the characteristics of API users and determine which type is right for your environment.
+Do not require password updates for API users
+By default,  API User (API-only) security levels only are exempted from the Password Expiration Requirement. We recommend that you do not change this setting for any copies of this security level because API users cannot log into the UI to change their password and require the assistance of an Autotask administrator.
+IMPORTANT If the password expires, the integration will stop working.
+Copy the API user or use caution when changing its security levels
+The API User (API-only) system security level provides full system administrator access to Autotask modules, features, and data.
+We recommend that you copy the API User security level and adjust it to meet the needs of the integration that you are creating.
+However, if you need to, you can modify the system security level to restrict access to specific modules, features, and data. As a result, the API user with a restricted license would get no response to an API call, even though the data exists in your database.
+EXAMPLE The API user is unable to retrieve an invoice even though the invoice ID exists in your database, because the API user is not assigned to the line of business with which the invoice is associated.
+Know your zones
+Autotask has multiple geographically-allocated zones; however, a customer can be located in any zone. The zone number appears in the customer's Autotask URL.
+The web services are specific to the customer's zone. Autotask releases do not co-occur across all zones. For this reason, there will be some unavoidable differences between versions. This difference is most noticeable between the localized and English versions.
+To avoid problems when you make your code available to customers in multiple zones, do the following:
+To determine the proper zone (and accompanying URL) to use for all API interactions, set up your application so that the REST API's ZoneInformation request is the first made. This request does not require authentication.
+For a list of Web Service URLs for critical Autotask zones, refer to Autotask API zones and WSDL versions > Find your zone's API URL for the REST API.
+Do not use ZoneInformation to...
+Do not use the ZoneInformation request to validate that you have the correct username and password for API access. The call does not require authentication.
+Use multiple queries to retrieve over 500 records
+When constructing queries, be aware that Autotask will return only 500 records at once, sorted by the id value. If there are over 500 records that meet your criteria, you must create multiple queries where each query filters for id value > the maximum value received in the previous query. You can also paginate your search results to limit the number of results that appear per page. Review Making basic query calls to the REST API to learn more.
+The API will only retain history for the 50 most recently viewed pages. For more information, refer to Advanced query features of the REST API > Pagination limits.
+Use LastModifiedDate to increase query efficiency
+Many API users regularly use API queries to update Autotask data cached in an external system. Cached data is then used by applications, for example, dashboards that allow users to access selected data quickly. With a maximum return of 500 records at once, users with extensive databases require multiple calls. This option is time-intensive and, when traffic volume is high, it can tax the API resources.
+An alternative to returning all records is to formulate queries to return only records that have changed since the last query. You can do this for selected entities using the LastModifiedDate or LastActivityDate fields.
+LastModifiedDate stores the most recent date and time that the entity was updated or changed.
+LastActivityDate stores both the most recent date and time that the entity was modified, as described for LastModifiedDate, and the most recent date and time that any activity related to the entity occurred. For example, this information might include a note or time entry added to the entity.
+Not all entities have these fields exposed. Except for the Contact entity, no entity has more than one of the two fields available. You can determine if the available fields meet your needs.
+The following table indicates which entities have LastModifiedDate or LastActivityDate fields exposed.
+NOTE  The field names for some entities use only Date while others use DateTime. Both names return the same data, and it is always a datetime data type.
+Entity 	Use this field
+Company 	 LastActivityDate
+CompanyNote 	LastModifiedDate
+CompanyToDo 	LastModifiedDate
+Contact  	LastActivityDate and LastModifiedDate
+Contract
+LastModifiedDateTime
+ContractNote  	LastActivityDate
+Phase  	LastActivityDateTime
+Project 	LastActivityDateTime
+ProjectNote  	LastActivityDate
+Service  	LastModifiedDate
+ServiceBundle  	LastModifiedDate
+ServiceCall  	LastModifiedDateTime
+Task  	LastActivityDateTime
+TaskNote 	 LastActivityDate
+Ticket  	LastActivityDate
+TicketNote  	LastAcivityDate
+TimeEntry 	LastModifiedDateTime
+StatusLastModifiedDate
+Three entities include a StatusLastModifiedDate field: ContractCharge, ProjectCharge, and TicketCharge. The StatusLastModifiedDate field indicates changes to the cost status only, for use with the procurement workflow. These entities do not have an option to determine if or when other fields were modified.
+Entity 	Use this field
+ContractCharge 	StatusLastModifiedDate
+ProjectCharge 	StatusLastModifiedDate
+TicketCharge 	StatusLastModifiedDate
+Check your database usage threshold and monitor the volume of your activity
+To maintain optimum response time for all users, Autotask sets a limit on the number of external requests allowed per hour between an individual database and the API. Most users will never exceed the threshold. If you do exceed the limit, your service will temporarily become suspended. Refer to our REST API supportability, query thresholds, and latency article for more information.
+Avoid populating Autotask entity 'External' fields with data generated by an external integration
+Some Autotask entities provide an optional 'External' field. Our users often utilize values in these fields to associate items with an external numbering system or code. That data is typically required by downstream stages of the user’s business workflow, such as mapping to items in an integrated accounting system. Whether and how these fields are used by databases varies.
+As a best practice, external integrations should refrain from populating these fields with data generated by the integration. If the integration is creating data in Autotask that does not map directly to an existing entity field, the integration should use a user-defined field for that purpose. Refer to our UserDefinedFieldDefinitions and UserDefinedFieldListItems articles for more information.
+Use the Ticket.Source field to identify your tickets
+The ticket entity Source field is not a required field, but it does have a default value. If you do not provide a source value on create, the field populates with the default value.
+If the customer does not assign a default source, Client Portal becomes the default. All Autotask systems have Client Portal and Insource as sources. The Autotask user can add as many additional sources as they wish.
+As a best practice, we suggest that you specify a Source to represent your integration. Have your integration users add the source name to their Autotask list of ticket sources ( > Admin > Features & Settings > Service Desk > Sources). Then, your integration can populate Ticket.Source with your source name when creating tickets. Doing so will identify tickets created by your integration. The customer can also use the source name in Autotask workflow rules to manage incoming tickets received from your integration.
+Use the correct date-time formatting
+To ensure a correct date and time conversion via the API, be sure to submit date-time values in the correct format. Refer to Introduction to REST API calls > Timestamp format for more information.
+Mulitple languages should have multiple testing environments
+Different languages have different needs. For example, some integrations will search picklist strings for specific string matches to determine the numeric identifier needed to populate into a field. But, the system-provided picklist string values can change based on the language supported. As a best practice, if your integration supports multiple languages, you should be testing each language in a separate sandbox.
+Use ExecuteCommand instead of URLs
+You can use URLs to bring up pages in the Autotask UI. But you have to study the UI and build the URLs, and the URLs can change over time. That's why Autotask provides the ExecuteCommand.
+ExecuteCommand uses simple browser-level commands to access specific pages in Autotask programmatically. For example, you can use the Ticket Detail by Ticket Number ExecuteCommand to provide a link to open an Autotask ticket detail. Learn more about ExecuteCommand API.
+If you're using multi-currency
+When an Autotask user has multi-currency enabled, it will likely have an impact on integrations that include quoting, purchasing, and any form of billing and financials. Review our Multi-currency articles for information about conditions that apply with the Multi-currency module enabled.
+GET to know the metadata
+If you're working with an entity that has one or more fields with a picklist, you need to know what's in the picklists. You need GET. Not sure if you can delete an entity? Use GET to find out. User-defined fields are specific to a customer, so to find out anything about them, you need GET.
+GET, when used in combination with the following entity paths, can return just about anything you need to know about an Autotask entity. Refer to our Finding resource and child access URLs of REST API entities article to learn more.
+Use webhooks instead of polling
+Webhooks are an efficient way to exchange information between applications.
+Traditional API calls provide information in response to a query. To get updated information via an API call, you have to keep polling the application.
+With the polling approach, code must handle checking for a large number of records, often caching data and comparing fields to determine what has changed.
+Imagine that only 2% of the time, you receive a positive answer. All that network traffic, so little to show for it.
+Webhooks, on the other hand, work on a "Don't call me, I'll call you if I have something new" basis. By using webhooks instead of regular API calls, you can significantly reduce the number of inbound calls against our API platform, which will increase performance for all API users.
+Webhooks also allow you to build integrations faster and for a lower cost. You do not have to design them like a polling application, and you can often implement them with less coding. Webhooks for actions like creating and updating can be specific to that action.
+Additional advantages:
+Near real-time notifications: The polling time interval currently limits the speed with which you can discover that a change occurred. Webhooks provide almost instantaneous notifications of changes.
+Reduced risk of hitting the API threshold: Your chance of reaching the API maximum call threshold is reduced by the reduction in polling.

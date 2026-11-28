@@ -1,0 +1,109 @@
+URL: https://www.autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_EntityInformationCall.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Calls / The entityInformation REST API call
+The entityInformation REST API call
+The entityInformation API call enables you to query the Autotask API and view details about a REST API entity. The information returned includes the entity's name, actions that the API can perform on it, and whether or not the entity supports webhooks and user-defined fields (UDFs).
+You can also use an extended version of the entityInformation call to return comprehensive information about a REST API entity's fields.
+There are two different requests you can make with the call: entityInformation and entityInformation/fields.
+NOTE To learn about the SOAP API versions of these calls, refer to The getEntityInfo() SOAP API call and The getFieldInfo() SOAP API call.
+entityInformation
+This call returns details about the entity itself. Field details are not included.
+EXAMPLE GET https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/entityInformation
+The information returned is as follows:
+Data 	Datatype 	Description
+name
+string
+The name of the entity. For example, ticket, note, company.
+canCreate
+boolean
+Indicates whether objects can be created on the specified entity using the API. The access varies by Autotask end user permission level.
+canDelete
+boolean
+Indicates whether the specified entity can be deleted using the API. The access varies by Autotask end user permission level.
+canQuery
+boolean
+Indicates whether objects on the specified entity can be queried using the API. While all entities can be queried, the access varies by Autotask end user permission level.
+canUpdate
+boolean
+Indicates whether objects on the specified entity can be updated using the API. The access varies by Autotask end user permission level.
+userAccessForCreate
+boolean
+Indicates the API user's permission to Create objects on the specified entity: 0 (None), 1 (All), 2 (Restricted). Refer to Autotask security, below.
+userAccessForDelete
+boolean
+Indicates the API user's permission to Delete objects on the specified entity: 0 (None), 1 (All), 2 (Restricted). Refer to Autotask security, below.
+userAccessForQuery
+boolean
+Indicates the API user's permission to Query objects on the specified entity: 0 (None), 1 (All), 2 (Restricted). Refer to Autotask security, below.
+userAccessForUpdate
+boolean
+Indicates the API user's permission to Update objects on the specified entity: 0 (None), 1 (All), 2 (Restricted). Refer to Autotask security, below.
+hasUserDefinedFields
+boolean
+True or False. Indicates whether the specified entity for your organization contains user defined fields (UDFs). For more information about UDFs, refer to REST API: User-defined fields (UDFs).
+If your organization uses UDFs with an entity, the entityInformation call does not return the UDFs. You must use the entityInformation/userDefinedFields call to return a listing and descriptions of the UDFs.
+supportsWebhookCallouts
+boolean
+True or False. Indicates if the entity supports webhook callouts. To learn more about webhooks, refer to <EntityName>Webhooks (REST API).
+entityInformation/fields
+The call entityInformation/fields call returns comprehensive information about the entity's regular fields. General entity details are not included.
+To see user-defined fields, use entityInformation/userDefinedFields.
+EXAMPLE GET https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/entityInformation/fields
+The information returned is as follows:
+Data 	Datatype 	Description
+name
+string
+Name of the field element. This value is not what you see in the UI.
+dataType
+string
+The field element data type
+integer: Whole number with no decimal places
+string: Can contain alpha-numeric and most special characters (note: some fields have specific lengths)
+double: Like integer but can contain decimal places
+dateTime: Contains the date and time as one value like a time stamp
+date: Date only, no time
+boolean: True (Yes) (1) or False (No) (0)
+length 	integer 	For string datatypes, the maximum number of allowed characters.
+isRequired
+boolean
+True or False. Returns true if the element is required to update or create.
+isReadOnly 	boolean 	True or False. Returns true if the element cannot be updated or created.
+isQueryable 	boolean 	True or False. Returns true if the element can be searched on.
+isReference  	boolean 	True or False. Returns true if the field contains the id value of another entity type.
+referenceEntityType
+string
+If the isReference value is true, indicates the entity type of the reference.
+isPickList 	boolean 	True or False. Returns true if the element is a picklist, specifically a drop-down list.
+picklistValues
+pickListValue
+If isPicklist = true for the current field, you can query this endpoint to return the values of the picklist.
+picklistParentValueField
+string
+If isPicklist = true for the current field, and if the value for the current field depends upon another field for this entity, then picklistParentFieldName holds the name of the field. Use the known value for this field to filter the picklistValues for the current field.
+isSupportedWebhookField 	boolean 	True or False. Reflects whether the field is a webhook-capable field that can either trigger a callout or is always part of the information (Payload) sent to the WebhookURL.
+Working with picklists
+When querying entity fields, if the isPickList field returns a value of true, the element it represents is a drop-down list. By querying the picklistValues and the picklistParentValueField endpoints, you can audit the picklist's attributes.
+To learn more, refer to our Understanding picklists article.
+Autotask security
+In Autotask, the security level controls access to features and data. Autotask provides basic security levels, for example, System Administrator or Manager, that are pre-set to provide access to Autotask modules like Service Desk and Projects. Autotask administrators can then modify or copy the basic security levels to create custom security levels. The custom security levels set additional controls over access to features and data within the assigned modules.
+The data returned by userAccessFor fields corresponds to the levels of permissions assigned through basic and custom security levels:
+0 (None) indicates the user can never perform the action (even when the entity allows the action).
+1 (All) indicates the user can always perform the action.
+2 (Restricted) indicates that the user can perform the action under specific conditions. These conditions normally correspond to security level permission settings like "Mine" or "My Territory," which allow access to only those items with which the user is associated. For example, a "Mine" permission on the Companies entity requires that the logged in user must be the account owner or a member of the account team. A "My Territory" permission includes the "Mine" permissions and also includes users that are associated with the same territory as the account.
+TIP The Full Access security level ensures access to all modules and features. By default, the  API User (system) (API-only) security level grants full access permissions, but copies of this security level may have been modified. The API user must have access to the appropriate Autotask module for the entity type and sufficient rights to perform the specified API call.
+For additional details on Autotask custom security levels, refer to the Help topic Create or edit a custom security level.
+Site-Wide Restrict Deletion Installed Module
+For legal or accounting reasons, some companies choose to enable the Autotask "Site-Wide Restrict Deletion" installed module. This module prevents any user from deleting Companies, Tickets, or Time Entries. Site-Wide Restrict Deletion applies to the Web Services API.
+Sample responses
+Example entityInformation request and response
+Request
+GET https://webservices[n].autotask.net/atservicesrest/v1.0/Currency/entityInformation
+Response
+{ "info": { "name": "Currency", "canCreate": false, "canDelete": false, "canQuery": true, "canUpdate": true, "userAccessForCreate": "None", "userAccessForDelete": "None", "userAccessForQuery": "None", "userAccessForUpdate": "None", "hasUserDefinedFields": false, "supportsWebhookCallouts": false } }
+Example entityInformation/fields request and response
+Request
+GET https://webservices[n].autotask.net/atservicesrest/v1.0/Currency/entityInformation/fields
+Response (truncated)
+"fields": [ { "name": "currencyNegativeFormat", "dataType": "string", "length": 10, "isRequired": true, "isReadOnly": true, "isQueryable": true, "isReference": false, "referenceEntityType": "", "isPickList": false, "picklistValues": null, "picklistParentValueField": "", "isSupportedWebhookField": false }, { "name": "displaySymbol", "dataType": "integer", "length": 0, "isRequired": true, "isReadOnly": true, "isQueryable": true, "isReference": false, "referenceEntityType": "", "isPickList": true, "picklistValues": [ { "value": "1", "label": "", "isDefaultValue": false, "sortOrder": 0, "parentValue": "", "isActive": true, "isSystem": true },

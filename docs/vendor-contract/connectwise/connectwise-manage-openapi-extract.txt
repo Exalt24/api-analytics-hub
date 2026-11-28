@@ -1,0 +1,287 @@
+URL: https://github.com/covenanttechnologysolutions/connectwise-rest/blob/master/generator/manage-json/manage.json
+WHAT THIS IS: the ConnectWise Manage OpenAPI file ('Connectwise Manage Public Endpoints') as it is kept in the open source connectwise-rest library's generator folder. It is NOT a page of developer.connectwise.com, which was not readable (see connectwise-developer-portal-not-retrieved.txt). Whether it is a faithful copy of ConnectWise's own swagger is not something this repository can check.
+FETCHED: 2026-11-29 (GitHub API, raw file, 7,793,777 bytes)
+
+EXTRACT, made by a script from that file: info, servers, the security scheme, and for the calls the connector makes the parameters and the response schemas, copied unchanged. Nothing was added.
+The file carries no rate limit text, no 429 response and no pagination text: its page, pageSize and pageId parameters have empty descriptions.
+
+info: Connectwise Manage Public Endpoints version 2026.11
+servers: [{"url": "http://na.myconnectwise.net/v4_6_release/apis/3.0"}]
+securitySchemes: {"basicAuth": {"type": "http", "scheme": "basic"}}
+
+GET /system/info  (getSystemInfo)  summary: Get Info
+  query conditions | string | description: ''
+  query childConditions | string | description: ''
+  query customFieldConditions | string | description: ''
+  query orderBy | string | description: ''
+  query fields | string | description: ''
+  query page | integer/int32 | description: ''
+  query pageSize | integer/int32 | description: ''
+  query pageId | integer/int32 | description: ''
+  header clientId | string | required | description: ''
+  response 200: Info content types ['application/vnd.connectwise.com+json; version=2026.11']
+
+GET /service/tickets  (getServiceTickets)  summary: Get List of ConnectWise.Apis.v3_0.v2015_3.Service.Ticket.Ticket             To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  query conditions | string | description: ''
+  query childConditions | string | description: ''
+  query customFieldConditions | string | description: ''
+  query orderBy | string | description: ''
+  query fields | string | description: ''
+  query page | integer/int32 | description: ''
+  query pageSize | integer/int32 | description: ''
+  query pageId | integer/int32 | description: ''
+  header clientId | string | required | description: ''
+  response 200: List of ConnectWise.Apis.v3_0.v2015_3.Service.Ticket.Ticket content types ['application/vnd.connectwise.com+json; version=2026.11']
+
+GET /time/entries  (getTimeEntries)  summary: Get List of TimeEntry
+  query conditions | string | description: ''
+  query childConditions | string | description: ''
+  query customFieldConditions | string | description: ''
+  query orderBy | string | description: ''
+  query fields | string | description: ''
+  query page | integer/int32 | description: ''
+  query pageSize | integer/int32 | description: ''
+  query pageId | integer/int32 | description: ''
+  header clientId | string | required | description: ''
+  response 200: List of TimeEntry content types ['application/vnd.connectwise.com+json; version=2026.11']
+
+schema Ticket:
+  id | integer/int32 | 
+  summary | string | Max length: 100;
+  recordType | string | 
+  board | BoardReference | 
+  status | ServiceStatusReference | 
+  workRole | WorkRoleReference | 
+  workType | WorkTypeReference | 
+  company | CompanyReference | 
+  site | SiteReference | 
+  siteName | string | Max length: 156;
+  addressLine1 | string | Max length: 50;
+  addressLine2 | string | Max length: 50;
+  city | string | Max length: 50;
+  stateIdentifier | string | Max length: 50;
+  zip | string | Max length: 12;
+  country | CountryReference | 
+  contact | ContactReference | 
+  contactName | string | Max length: 62;
+  contactPhoneNumber | string | Max length: 20;
+  contactPhoneExtension | string | Max length: 15;
+  contactEmailAddress | string | Max length: 250;
+  type | ServiceTypeReference | 
+  subType | ServiceSubTypeReference | 
+  item | ServiceItemReference | 
+  team | ServiceTeamReference | 
+  owner | MemberReference | 
+  priority | PriorityReference | 
+  serviceLocation | ServiceLocationReference | 
+  source | ServiceSourceReference | 
+  requiredDate | string/date-time | 
+  budgetHours | number/double | 
+  opportunity | OpportunityReference | 
+  agreement | AgreementReference | 
+  agreementType | string | 
+  severity | string | Required On Updates;
+  impact | string | Required On Updates;
+  externalXRef | string | Max length: 100;
+  poNumber | string | Max length: 50;
+  knowledgeBaseCategoryId | integer/int32 | 
+  knowledgeBaseSubCategoryId | integer/int32 | 
+  allowAllClientsPortalView | boolean | 
+  customerUpdatedFlag | boolean | 
+  automaticEmailContactFlag | boolean | 
+  automaticEmailResourceFlag | boolean | 
+  automaticEmailCcFlag | boolean | 
+  automaticEmailCc | string | Max length: 1000;
+  initialDescription | string | Only available for POST, will not be returned in the response.
+  initialInternalAnalysis | string | Only available for POST, will not be returned in the response.
+  initialResolution | string | Only available for POST, will not be returned in the response.
+  initialDescriptionFrom | string | 
+  contactEmailLookup | string | 
+  processNotifications | boolean | Can be set to false to skip notification processing when adding or updating a ticket (Defaults to True).
+  skipCallback | boolean | 
+  closedDate | string | 
+  closedBy | string | 
+  closedFlag | boolean | 
+  actualHours | number/double | 
+  approved | boolean | 
+  estimatedExpenseCost | number/double | 
+  estimatedExpenseRevenue | number/double | 
+  estimatedProductCost | number/double | 
+  estimatedProductRevenue | number/double | 
+  estimatedTimeCost | number/double | 
+  estimatedTimeRevenue | number/double | 
+  billingMethod | string | 
+  billingAmount | number/double | 
+  hourlyRate | number/double | 
+  subBillingMethod | string | 
+  subBillingAmount | number/double | 
+  subDateAccepted | string | 
+  dateResolved | string | 
+  dateResplan | string | 
+  dateResponded | string | 
+  resolveMinutes | integer/int32 | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  resPlanMinutes | integer/int32 | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  respondMinutes | integer/int32 | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  respondByGoalUTC | string/date-time | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  resplanGoalUTC | string/date-time | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  resolutionGoalUTC | string/date-time | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  escalationLastUpdateMinutes | integer/int32 | To obtain the current SLA times for an active ticket, please use the /service/tickets/calculateSLA endpoint for multiple tickets or /service/tickets/{id} for individual tickets.
+  isInSla | boolean | 
+  knowledgeBaseLinkId | integer/int32 | 
+  resources | string | 
+  parentTicketId | integer/int32 | 
+  hasChildTicket | boolean | 
+  hasMergedChildTicketFlag | boolean | 
+  knowledgeBaseLinkType | string | 
+  billTime | string | 
+  billExpenses | string | 
+  billProducts | string | 
+  billTicketSeparately | boolean | 
+  billTicketOnlyAfterClosed | boolean | 
+  billUnapprovedTimeAndExpenses | boolean | 
+  restrictDownPayment | boolean | 
+  predecessorType | string | 
+  predecessorId | integer/int32 | 
+  predecessorClosedFlag | boolean | 
+  lagDays | integer/int32 | 
+  lagNonworkingDaysFlag | boolean | 
+  estimatedStartDate | string/date-time | 
+  duration | integer/int32 | 
+  location | SystemLocationReference | 
+  department | SystemDepartmentReference | 
+  mobileGuid | string/uuid | 
+  sla | SLAReference | 
+  slaStatus | string | 
+  requestForChangeFlag | boolean | 
+  currency | CurrencyReference | 
+  mergedParentTicket | TicketReference | 
+  integratorTags | array | 
+  _info | object | 
+  escalationStartDateUTC | string | 
+  escalationLevel | integer/int32 | 
+  minutesBeforeWaiting | integer/int32 | 
+  respondedSkippedMinutes | integer/int32 | 
+  resplanSkippedMinutes | integer/int32 | 
+  respondedHours | number/double | 
+  respondedBy | string | 
+  resplanHours | number/double | 
+  resplanBy | string | 
+  resolutionHours | number/double | 
+  resolvedBy | string | 
+  minutesWaiting | integer/int32 | 
+  customFields | array | 
+
+schema TimeEntry:
+  id | integer/int32 | 
+  company | CompanyReference | 
+  companyType | string | 
+  chargeToId | integer/int32 | If chargeToId is not specified, we asume you enter time against the company specified
+  chargeToType | string | If chargeToId is not specified, we asume you enter time against the company specified
+  member | MemberReference | 
+  locationId | integer/int32 | 
+  businessUnitId | integer/int32 | 
+  businessGroupDesc | string | 
+  location | OwnerLevelReference | 
+  department | BillingUnitReference | 
+  workType | WorkTypeReference | 
+  workRole | WorkRoleReference | 
+  agreement | AgreementReference | 
+  agreementType | string | 
+  activity | ActivityReference | 
+  opportunityRecid | integer/int32 | 
+  projectActivity | string | 
+  territory | string | 
+  timeStart | string/date-time | 
+  timeEnd | string/date-time | 
+  hoursDeduct | number/double | 
+  actualHours | number/double | 
+  billableOption | string | Required On Updates;
+  notes | string | 
+  internalNotes | string | 
+  addToDetailDescriptionFlag | boolean | 
+  addToInternalAnalysisFlag | boolean | 
+  addToResolutionFlag | boolean | 
+  emailResourceFlag | boolean | This is an action flag. To update this value use the /service/tickets endpoint automaticEmailResourceFlag field
+  emailContactFlag | boolean | This is an action flag. To update this value use the /service/tickets endpoint automaticEmailContactFlag field
+  emailCcFlag | boolean | This is an action flag. To update this value use the /service/tickets endpoint automaticEmailCcFlag field
+  emailCc | string | To update this value use the /service/tickets endpoint automaticEmailCc field
+  hoursBilled | number/double | 
+  invoiceHours | number/double | 
+  hourlyCost | string | 
+  enteredBy | string | 
+  dateEntered | string/date-time | 
+  invoice | InvoiceReference | 
+  mobileGuid | string/uuid | 
+  hourlyRate | number/double | This field may only be Updated, it is defaulted on Create
+  overageRate | number/double | 
+  agreementHours | number/double | 
+  agreementAmount | number/double | 
+  agreementAdjustment | number/double | 
+  adjustment | number/double | 
+  invoiceReady | integer/int32 | 
+  timeSheet | TimeSheetReference | 
+  status | string | 
+  ticket | TicketReference | 
+  project | ProjectReference | 
+  phase | ProjectPhaseReference | 
+  ticketBoard | string | 
+  ticketStatus | string | 
+  ticketType | string | 
+  ticketSubType | string | 
+  invoiceFlag | boolean | 
+  extendedInvoiceAmount | number/double | 
+  locationName | string | 
+  taxCode | TaxCodeReference | 
+  _info | object | 
+  customFields | array | 
+
+schema PriorityReference:
+  id | integer/int32 | 
+  name | string | 
+  sort | integer/int32 | 
+  level | string | 
+  _info | object | 
+
+schema BoardReference:
+  id | integer/int32 | 
+  name | string | 
+  _info | object | 
+
+schema ServiceStatusReference:
+  id | integer/int32 | 
+  name | string | 
+  sort | integer/int32 | 
+  _info | object | 
+
+schema ServiceTypeReference:
+  id | integer/int32 | 
+  name | string | 
+  _info | object | 
+
+schema ServiceSubTypeReference:
+  id | integer/int32 | 
+  name | string | 
+  _info | object | 
+
+schema MemberReference:
+  id | integer/int32 | 
+  identifier | string | 
+  name | string | 
+  dailyCapacity | number/double | 
+  _info | object | 
+
+schema CompanyReference:
+  id | integer/int32 | 
+  identifier | string | 
+  name | string | 
+  _info | object | 
+
+schema TicketReference:
+  id | integer/int32 | 
+  summary | string | 
+  _info | object | 
+
+schema SLAReference:
+  id | integer/int32 | 
+  name | string | 
+  _info | object | 

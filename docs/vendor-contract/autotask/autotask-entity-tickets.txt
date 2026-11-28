@@ -1,0 +1,260 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/Entities/TicketsEntity.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Entities / Tickets
+Tickets
+This entity describes an Autotask Ticket. Tickets define service requests within the Autotask system. Autotask users manage Tickets through a number of modules including Service Desk, Home, CRM, and Contracts. They can click New Ticket on the Autotask interface sub-navigation menu to open the New Ticket window.
+NOTE You can refer to the Online Help to find root and child access URLs of the entity you wish to query. Refer to Finding resource and child access URLs of REST API entities for more information.
+Entity details
+Entity Name:  	Tickets
+Entity Path:
+/atservicesrest/v1.0/Tickets
+Can Create:
+Can Update:
+Can Query:
+Can Delete:
+Can Have UDFs:
+Supports webhooks:
+IMPORTANT Requests to this entity require special handling. Refer to the Entity URLs and relationships section of this article for details.
+Entity URLs and relationships
+If this entity has a Parent relationship, you must perform all Create, Update, and Delete actions on the parent entity.
+If this entity is a child of a parent, you can leverage our Swagger instance to find the URLs you should use in your API calls. For more information, refer to Finding resource and child access URLs of REST API entities.
+To learn how to access Swagger, refer to Using Swagger UI to explore REST API requests.
+Parent 	None
+Children 	TicketAdditionalConfigurationItems, TicketAdditionalContacts, TicketAttachments, TicketChangeRequestApprovals, TicketCharges, TicketChecklistItems, TicketChecklistLibraries, TicketNotes, TicketRmaCredits, TicketSecondaryResources, TicketTagAssociations
+URLs 	Tickets​/query (GET, POST)
+Tickets​/{id} (GET)
+Tickets​/query​/count (GET, POST)
+Tickets (PUT, POST, PATCH)
+Tickets​/entityInformation (GET)
+Tickets​/entityInformation​/fields (GET)
+Tickets​/entityInformation​/userDefinedFields (GET)
+Although you can query this entity, it contains one or more fields that are not queryable. If you attempt to query these fields, you will receive an error message.
+creatorType
+lastActivityPersonType
+NOTE  The API will not allow you to add a primary resource that is already assigned as a secondary resource. You also will not be able to add a secondary resource that is already assigned as a secondary resource. Refer to TicketSecondaryResources for more information.
+Conditions and requirements
+General
+This entity will be read-only if the module with which it is associated is not active. If the RMA module is inactive, the API will disallow setting the Ticket Category to RMA. For more information, refer to Activations.
+The REST API stores and returns all time data in Coordinated Universal Time (UTC).
+The Ticket entity can have no more than 300 UDFs. Refer to UserDefinedFieldDefinitions.
+A Resource + Role combination assigned to a ticket must be associated with at least one Service Desk Queue.
+The API can complete a ticket that has one or more incomplete 'Important' Checklist items. There is no warning.
+The Ticket entity will respect the View, Add, and Edit permissions assigned to the logged in end user EXCEPT the 'Mine + Companies' setting. 'Mine + Companies' will be treated as 'None.' For more information on granular ticket security, refer to the Online Help topic: Create or edit a custom security level.
+Updates are allowed on a Ticket with an inactive attribute value if that value is not being changed. A new inactive attribute value cannot be assigned.
+Three read-only fields, monitorID, monitorTypeID, and rMMAlertID are currently available for use by the Autotask RMM integration only.
+IMPORTANT When the API receives a request to update a field that contains Rich Text, the API will update the text-only version of the field and overwrite the data in the Rich Text field with plain text. All text formatting and images will be lost. Refer to The Rich Text editor to learn more.
+Contact impersonation validation rules for creating entities
+The API user security level has access to contact impersonation for tickets.
+The ticket must be associated to either the contact's account or any of its child accounts.
+The contact is active.
+The contact's account is active.
+NOTE If the API user does not have the Contacts impersonation option enabled, it will be unable to specify custom values for the AttachedByContactID and the CreatedByContactID fields. Any entities or attachments that the account creates will be attributed to "API User." Refer to Web Services API security settings.
+Special field attributes
+Field 	Conditions and Requirements
+assignedResourceroleID
+Autotask allows Role to be inactivated.
+You can update an existing Ticket that has a Resource + Role combination that uses an inactive role.
+An attempt to create a Ticket using a Resource + Role combination with an inactive Role will trigger an error.
+billingCodeID
+billingCodeID is required on create and update if your company has enabled the Autotask system setting that requires a Work Type on a Ticket.
+The billingCodeID field must reference a Work Type allocation code.
+changeApprovalBoard 	changeApprovalBoard must reference an active Change Approval Board.
+changeApprovalStatus
+changeApprovalStatus can only be set to Requested or Assigned. All other statuses, Not Assigned, Partially Approved, Approved, or Rejected can only be set by the system.
+If changeApprovalStatus = Assigned, user can change it to Requested (only).
+If changeApprovalStatus = Requested, user can change it to Assigned (only)
+changeApprovalType
+If a value is not provided for changeApprovalType:
+If the ticket type = Change Request, then changeApprovalType is set to the default value.
+If the ticket type is not = Change Request and a current changeApprovalType value exists on the entity, then the field is cleared. This allows the field to be cleared for tickets that are not Change Request type tickets.
+Otherwise, do nothing.
+changeInfoFields 	changeInfoFields are available regardless of whether they are active or inactive.
+companyID
+ticket.companyID cannot be changed if the ticket has an associated and posted TimeEntry, TicketCharge, or Expense.
+If the ticket has no associated posted items and ticket.companyID is changed, any associated (non-posted) Contract, TimeEntries, or TicketCosts are set to Null, along with any Service or ServiceBundle items associated with the TimeEntries or TicketCosts. expenseItem.companyID is updated and expenseItem.projectID, expenseItem.taskID, or expenseItem.ticketID is set to Null.
+configurationItemID
+On create, if configurationItemID is populated, the configurationItem.companyID must = ticket.companyID
+On update, configurationItem.ID cannot be updated to an configurationItem where configurationItem.companyID ≠ ticket.companyID.
+If the ticket category = 'RMA', the configurationItemID is required. That configurationItem must also reference a Product that is isEligibleForRma.
+NOTE If the configurationItem value is not being updated, and for some reason it is already associated with a Company that is different from the Ticket Company, the update will not fail.
+contactID
+For the contactID field, Contact.companyID must = ticket.companyID or the parentCompanyID of ticket.companyID.
+update is allowed on a Ticket with an inactive contactID value if that value is not being changed, or if a new active value is assigned. A new inactive contactID value cannot be assigned on create or update.
+If the ticket category = 'RMA', and no value is supplied for the Contact field, it will be set to the contact of the supplied asset.
+contractID
+If a ticket is created or updated with a sub-issue type that is excluded from the associated contract, the ticket's contractID will be updated to that of the exclusion contract, if it exists. If it does not exist, the contractID will be set to null.
+creatorResourceID 	creatorResourceID can return a contactID. creatorType specifies whether the creatorResourceID refers to a Resource or a Contact.
+description
+When you use the API to update this field, the REST API will return the text-only version of its content. If you send the content back, the Rich Text and all images that it contains will be lost. You cannot use the API to create items that contain Rich Text, but you can add Rich Text later via a supported method.
+To learn more, refer to The Rich Text editor.
+dueDateTime
+This field is required unless the supplied ticket category or the user's default ticket category has both the Due Date and Due Time configured.
+If the ticket category has only the due date or only the due time configured, then the API ticket.dueDateTime will be required, and not supplying a value will return an error message.
+If the ticket is created from a Datto RMM alert and the Autotask ticket category has a Due Date and Time configured, then we will clear the dueDateTime field on the alert supplied by Datto RMM, and apply the default from the Autotask ticket category.
+isAssignedToComanaged
+This field is set in the UI via resource assignment or through options such as "Assign to Co-Managed" or "Transfer to Service Provider." If the API changes a resource assignment, it may cause the isAssignedToComanaged value to change.
+issueType, subIssueType
+issueType and subIssueType are never required in the API. They are required in the UI only if the system setting 'Require Issue and Sub-Issue on tickets' is enabled.
+subIssueType is associated with an Issue and the available subIssueType picklist items are specific to the associated issueType. When a subIssueType value is provided, the associated issueType value must also be provided.
+isVisibleToComanaged
+If you do not specify a value for this field, the API will use the ticket category's default co-managed visibility setting. However, if the ticket category is set to "Not Visible," the user does not supply a value for isVisibleToComanaged, and the assignedResourceID is a co-managed resource, the system will automatically set IsVisibleToComanaged to "true." But, if you supply a "false" value, the API will surface an error.
+lastActivityPersonType 	lastActivityPersonType values indicating whether the initiator of the last activity was a resource or a contact. This field is not filterable for tickets in the API.
+lastTrackedModificationDateTime
+Tracks updates to any field except changes to the lastActivityDate, lastCustomerNotificationDateTime, lastCustomerVisibleActivityDateTime. UDF changes are included in the criteria for updating lastTrackedModificationDate.
+opportunityID 	For the opportunityID field, Opportunity.companyID must = ticket.companyID.
+priority
+On create, priority must be an active priority.
+If the current priority is inactive, update is allowed if the priority value is not changed, or if priority is changed to an active value.
+problemTicketId 	problemTicketId cannot = ticketID of a ticket that is already associated with a problemTicketId; that is, an incident ticket already associated with a problem ticket cannot become a problem ticket.
+projectID 	projectID must be associated with the same company as the ticket (ticket.companyID).
+queueID
+queueID requirement - The ticket's category (Ticket.ticketCategory) will determine whether or not Ticket.queueID is required, based on the category's 'Queue is Required' setting. If queueID does not meet the requirement specified by the associated ticket category's 'Queue is Required' setting, as listed below, an error will occur.
+If setting equals 'Always', the API will always require the queueID value.
+If setting equals 'Never' then the API will not require the queueID value.
+If setting equals 'RequiredWhenPrimaryResourceIdBlank', then the API will produce an error when both the queueID and resourceID fields are empty.
+rmaStatus
+This field is editable for tickets whose ticket category is 'RMA.' ◦
+Attempting to edit this field on a ticket with a different ticket category will result in the supplied value being ignored.
+If a ticket is created with the 'RMA' ticket category via the API and no value is supplied for this field, the ticket category default value for the field will be used.
+rmaType
+This field is editable for tickets whose ticket category is 'RMA.'
+Attempting to edit this field on a ticket with a different ticket category will result in the supplied value being ignored.
+serviceLevelAgreementID
+The ticket SLA is defaulted in using the following logic:
+Check the asset. If the asset is associated to an SLA, then use that ID.
+If there is no Asset SLA, then check the Contract Service or Bundle SLA. If the Contract Service or Bundle is associated to an SLA, then use that ID.
+If there is no Contract Service or Bundle SLA, then check the Contract. If the Contract is associated to an SLA, then use that ID.
+If no asset or contract SLA, then check the Ticket Category. If the ticket category is associated to an SLA, then use that ID.
+serviceLevelAgreementPausedNextEventHours 	serviceLevelAgreementPausedNextEventHours (read-only) is calculated as the time differential between the most recent time the ticket status changed to Waiting Customer and the time of the next SLA target. Calculated in hours only. Field is cleared when ticket comes out of Waiting Customer status and is recalculated every time ticket goes back into Waiting Customer status.
+source 	ticket.source is not required; however, in the UI the Source field defaults to 'Other', so for tickets created through the UI, the value for ticket.source is never Null. If no value is provided for ticket.source when a ticket is created via the API, the default Source value is returned on update. For additional information, refer to REST API best practices.
+ticket.companyID 	If ticket.companyID is updated then ticket.companyLocation must have companyID = ticket.companyID.
+ticketCategory
+The Ticket entity will support the Ticket Category:
+If no ticketCategory is passed in, the API will use the logged in resource's default category; if the resource does not have a default category, the API will use the Company's system default ticket category.
+ticketCategory default values will be applied unless another value is passed in.
+Ticket cannot be created with an inactive ticketCategory.
+On update, a ticketCategory cannot be updated to another ticketCategory that is inactive.
+In Picklist, an inactive ticketCategory displays in italic text.
+The API does not respect the ticketCategory's 'required' and 'available list item' settings, with the exception of the 'Queue is Required' setting.
+When a ticket category is applied and it changes the value of changeApprovalType, the field will be updated even if the ticket type does not = ChangeApproval.
+While this is not possible in the UI, in the API, you can create tickets with a ticket category of 'API.'
+The following fields are not editable when ticket category is RMA: companyID, configurationItemID, ticketType.
+ticketNumber
+On create, you can specify a ticket number prefix for this resource.
+The prefix must follow the format 'TYYYYMMDD.' For example, 'T20200615.'
+The 'YYYYMMDD' value must be a date less than or equal to today's date.
+If the API receives an invalid prefix, it will automatically generate one and assign it to the resource.
+You cannot change a resource's ticket number prefix once created.
+Autotask will automatically assign the record number that follows the prefix. For example, 'T20200615.0674.'
+ticketType
+Tickets with no ticketType specified are set automatically to Service Request.
+Tickets where Type = Service Request cannot be associated with a ProblemTicket ID. If ticketType = Service Request and the ticket also specifies a problemTicketId, the ticket type is updated to Service Request. An error message indicates that Service Request tickets cannot be associated with a problem ticket.
+ticketType must = Incident before the ticket can be associated with a problemTicketId.
+If ticketType = Problem and incidents are associated with the ticket, ticketType cannot be changed to Incident or Service Request until the incidents are disassociated from the ticket.
+You cannot create a ticket with ticketType = Problem and specify a ProblemTicket ID or specify problemTicketId for an existing Ticket with ticketType=Problem; that is, a ticket that is already a problem ticket cannot become an incident to another problem ticket.
+If ticketType = ChangeRequest, problemTicketId cannot have a value.
+If a ticket has ticketType not equal to 'Change Request' and it has data in one or more the fields that are exclusive to Change Request tickets, then the ticket can be saved. Although the data will remain intact and will be reportable, it will not be viewable in the ticket in Autotask. This includes the following fields: changeApprovalBoard, changeApprovalType, changeApprovalStatus, changeInfoField1, changeInfoField2, changeInfoField3, changeInfoField4, changeInfoField5.
+The ChangeManagement module must be enabled to create a new ticket with ticketType = Change Request. Any existing Change Request tickets can be edited. Other fields related to change request will accept values when Change Management is not enabled, but that data will not be available through the UI.
+If the ticket catgeory = 'RMA', the ticketType is set to 'Change Request', regardless of the value that is supplied.
+Field definitions
+About this table
+The following table describes the standard Autotask fields for this entity. Refer to the following articles for more information about working with these fields:
+The entityInformation REST API call
+Making basic query calls to the REST API
+Advanced query features of the REST API
+To learn how to query picklist endpoints, refer to Understanding picklists.
+Notes
+For string datatypes, the number in parentheses ( ) indicates the maximum number of characters allowed.
+LT indicates Local Term.
+If this entity has child collections, they will appear in a Child collection access URLs or an Entity URLs and relationships drop-down in the Entity details section of this article.
+You can call the /query/count/ endpoint of a resource to determine how many records a collection holds.
+Field Name 	Datatype 	Read-Only 	Is Required 	Reference Name 	Picklist
+apiVendorID 	integer
+assignedResourceID 	integer 	  	  	Resources
+assignedResourceroleID 	integer 	  	  	Roles
+billingCodeID 	integer 	  	  	BillingCodes
+changeApprovalBoard 	integer
+changeApprovalStatus 	integer
+changeApprovalType 	integer
+changeInfoField1 	string (8000)
+changeInfoField2 	string (8000)
+changeInfoField3 	string (8000)
+changeInfoField4 	string (8000)
+changeInfoField5 	string (8000)
+companyID 	integer 	  	   	Companies
+companylocationID 	integer 	  	  	CompanyLocations
+completedByResourceID 	integer 	   	  	Resources
+completedDate 	datetime
+configurationItemID 	integer 	  	  	ConfigurationItems
+contactID 	integer 	  	  	Contacts
+contractID 	integer 	  	  	Contracts
+contractServiceBundleID 	long 	  	  	ContractServiceBundles
+contractServiceID 	long 	  	  	ContractServices
+createDate 	datetime
+createdByContactID
+integer
+Contacts
+creatorResourceID 	integer 	   	  	Resources
+creatorType 	integer
+currentServiceThermometerRating 	 integer
+description 	string (8000)
+dueDateTime 	datetime
+estimatedHours 	decimal
+externalID 	string (50)
+firstResponseAssignedResourceID 	integer 	   	  	Resources
+firstResponseDateTime 	datetime
+firstResponseDueDateTime 	datetime
+firstResponseInitiatingResourceID 	integer 	   	  	Resources
+hoursToBeScheduled 	decimal
+id 	long
+impersonatorCreatorResourceID  	 integer 	   	  	Resources
+isAssignedToComanaged
+boolean
+issueType 	integer
+isVisibleToComanaged
+boolean
+lastActivityDate 	datetime
+lastActivityPersonType 	integer
+lastActivityResourceID 	integer 	   	  	Resources
+lastCustomerNotificationDateTime 	datetime
+lastCustomerVisibleActivityDateTime 	datetime
+lastTrackedModificationDateTime 	datetime
+monitorID
+(Datto RMM integration only) 	long
+monitorTypeID
+(Datto RMM integration only) 	integer
+opportunityID 	integer 	  	  	Opportunities
+previousServiceThermometerRating 	 integer
+priority 	integer
+problemTicketId 	integer 	  	  	Tickets
+projectID 	integer 	  	  	Projects
+purchaseOrderNumber 	string (50)
+queueID 	integer
+resolution 	string (32000)
+resolutionPlanDateTime 	datetime
+resolutionPlanDueDateTime 	datetime
+resolvedDateTime 	datetime
+resolvedDueDateTime 	datetime
+rmaStatus 	integer
+rmaType
+integer
+rMMAlertID
+(Datto RMM integration only) 	string
+(50)
+serviceLevelAgreementHasBeenMet 	boolean
+serviceLevelAgreementID 	integer
+serviceLevelAgreementPausedNextEventHours 	decimal
+serviceThermometerTemperature 	 integer
+source 	integer
+status 	integer
+subIssueType 	integer
+ticketCategory 	integer
+ticketNumber 	string (50)
+ticketType 	integer
+title 	string (255)
+Additional resources
+Using Postman to explore the REST API
+Using Swagger UI to explore REST API requests
+Working with attachments in the REST API

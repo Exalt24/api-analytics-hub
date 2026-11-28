@@ -1,0 +1,193 @@
+URL: https://autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_Basic_Query_Calls.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Calls / Making basic query calls to the REST API
+Making basic query calls to the REST API
+This article describes foundational concepts for querying resource data in Autotask by making GET and POST requests to the REST API.
+We recommend reading this article after you have familiarized yourself with the key principles discussed in our Introduction to REST API calls article. For advanced query syntax, refer to Advanced query features of the REST API.
+To help you learn how to construct requests to the Autotask REST API, Datto provides a customizable REST API request collection for use with Postman. For more information, refer to Sample requests.
+Overview
+You can query the REST API by entity ID or by using filter expressions. Querying by entity ID will return the single entity result that corresponds with the ID value. Using filters enables you to query just the data that you need.
+The REST API supports a variety of filter operators. You can also group filter expressions by using AND & OR expressions.
+BEFORE YOU BEGIN Examples in this article may use the webservices[n].autotask.net placeholder. In such instances, substitute [n] for the zone of your user, as described in Autotask API zones and WSDL versions > Find your zone's API URL for the REST API or Autotask API zones and WSDL versions > Find your zone's WSDL file URL for SOAP API version 1.6.
+Index
+Before you begin
+Anatomy of a query response
+GET by ID
+Filter operators
+GET with filter
+Comparison operators
+Non-comparison operators
+List operators
+UDF comparison operator
+Grouping syntax for OR & AND
+Querying with POST
+Additional resources
+Before you begin
+There are several key concepts to keep in mind when working with query calls.
+Call requirements and use cases
+When supplying boolean values to the REST API, you must specify either true or false. Any other values, including those which are null, will return an error message.
+Filter expressions use the JSON data format.
+The filter concepts described in this article are also portable to GET commands with URL query strings and to POST commends with filter criteria passed in the body of the message.
+You can use User Defined Fields (UDFs) as part of your filters. The filter expression needs to indicate when a field is a UDF.
+GET query strings have a limit of 2048 characters. URL elements count against the total character limit.
+POST is appropriate for more complex queries and does not have the same query string length limits of a GET.
+Querying on protected UDFs is case sensitive.
+VB entities allow one UDF per query.
+For C# implemented entities, the number of unique UDFs in a query filter is limited to five UDFs. However, you can use the same UDF in the query many times, with multiple conditionals and OR statements, while not counting against the limit of 5 UDFs.
+You can include up to 500 OR conditions in a single call to the API. If a call contains more than 500 OR statements, you will receive the API response, "Invalid query syntax. Queries are limited to 500 or fewer 'OR' conditions."
+Entities that support UDFs
+SOAP 	REST
+Account  	Companies
+AccountLocation  	CompanySiteConfigurations
+Contact  	Contacts
+Contract  	Contracts
+InstalledProduct  	ConfigurationItems
+Opportunity  	Opportunities
+Product  	Products
+Project  	Projects
+SalesOrder  	SalesOrders
+ServiceBundles
+Services
+Subscription  	Subscriptions
+Task  	Tasks
+Ticket  	Tickets
+Each entity has a maximum number of active user-defined fields that you can define. For more information, refer to Managing user-defined fields.
+IMPORTANT You can only query by one user-defined field at a time.
+To learn how to make PUT, PATCH, and POST requests to entities that support UDFs, refer to Creating resources via POST request in the REST API, Updating data via PUT request with the REST API and Updating data via PATCH request with the REST API.
+Anatomy of a query response
+All queries to the Autotask REST API share certain common elements. Click each description's name to view demonstration code and an explanation of the elements shown.
+Query response syntax
+FieldName values: The names of the fields returned from the entity
+FieldData values: The data contained in the returned fields; if a field contains no data, the API will return a null value or a zero length string
+UDF values: The names of user-defined fields (UDFs) returned by the query to the entity; UDFs will only appear for entities that have user-defined fields
+Count: The number of records returned by this query
+requestCount: The maximum number of records the request is capable of returning
+prevPageUrl and nextPageUrl: Pagination controls for query results; these values will always be either a URL or a null value; to learn more, refer to Advanced query features of the REST API > Paginating results.
+{ "items": [ { "FieldName 1": FieldData, "FieldName 2": FieldData, "FieldName n": FieldData, "userDefinedFields": [ {"Name":"UDF 1", "value": FieldData}, {"Name":"UDF 2", "value": FieldData}, ... {"Name":"UDF n", "value": FieldData} ] } ], "pageDetails": { "count": <count>, "requestCount": <maxpages value>, "prevPageUrl": <https URL or null>, "nextPageUrl": <https URL or null >, } }
+Query response example
+{ "items": [ { "id": 29858517, "companyName": " Union Second Market Bank", "createDate": "2017-05-27T19:04:30.307", "isActive": true, "userDefinedFields": [ { "name": "CustomerRanking", "value": "Golden" }, { "name": "CustomerSize", "value": null } ] }, { "id": 30070091, "companyName": "100% Recycled Paperboard Industries", "createDate": "2018-03-22T16:00:52.78", "isActive": true, "userDefinedFields": [ { "name": "CustomerRanking", "value": "Not Golden" }, { "name": "CustomerSize", "value": 50 } ] } ], "pageDetails": { "count": 2, "requestCount": 500, "prevPageUrl": null, "nextPageUrl": null } }
+GET by ID
+In this basic query, the call to the API passes the ID of an object and returns a single entity result. Click each description's name to view demonstration code and an explanation of the operator shown.
+GET URL syntax
+To use this query, replace each of the following placeholders with the values described.
+EntityName: The name of the REST API entity that you'd like to query
+ObjectID: The numerical ID number of the object you want to view
+GET https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/ObjectID
+URL example
+The following example queries the Companies entity for the details of the object with an ID of 0.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/0
+Filter operators
+Most calls to the API will require the use of one or more filter operators to indicate the type of query you'd like the API to perform. The table below lists the available operators and their definitions.
+Operator 	Definition
+eq 	Requires that the field value match the exact criteria provided
+noteq 	Requires that the field value be anything other than the criteria provided
+gt/gte 	Requires that the field value be greater than or equal to the criteria provided
+lt/lte 	Requires that the field value be less than or equal to the criteria provided
+beginsWith 	Requires that the field value begin with the defined criteria
+endsWith 	Requires that the field value end with the defined criteria
+contains 	Allows for the string provided as criteria to match any resource that contains the string in its value
+exist 	 Enter exist to query for fields in which the data you specify is not null.
+notExist
+Enter notExist to query for fields in which the specified data is null.
+in 	With this value specified, the query will return only the values in the list array that match the field value you specify.
+notIn 	With this value specified, the query will only return the values in the list array that do not match the field value you specify.
+GET with filter
+The syntax for most GET filter expressions follows the convention shown below. Click the description's name to view demonstration code and an explanation of the syntax shown.
+GET syntax
+To use this query, replace each of the following placeholders with the values described.
+EntityName: Enter the name of the REST API entity that you'd like to query.
+FilterExpression: Enter the filter expressions you'd like to send for your query, as described in the later sections of this article. You may include operator values from the list of filter operators.
+GET https://webservices[n].autotask.net/atservicesrest/v1.0/EntityName/query?search={"filter":[{FilterExpression}]}
+Comparison operators
+In a comparison operator, the query compares the value against the specified operator. The below examples demonstrate simple comparison operators. Click each description's name to view demonstration code and an explanation of the operator shown.
+Name comparison operator
+This query searches specified fields of an entity for a specific value and returns results that align with the parameters of the call.
+JSON syntax
+To use this query, replace each of the following placeholders with the values described.
+SelectedOperator: Designate the type of search you'd like to perform by entering an operator value from the list of filter operators
+NameOfField: Enter the name of the entity field against which you would like to run the query
+DesiredValue: Provide the value you'd like to search for or against
+{ "filter": [ { "op": "SelectedOperator", "field": "NameOfField", "value": "DesiredValue" } ] }
+JSON example
+This example shows an operator designed to return records whose CompanyName field is equal to the value ACME Corp.
+{ "filter": [ { "op": "eq", "field": "CompanyName", "value": "ACME Corp" } ] }
+URL example
+This example is the above query in URL format.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query?search={"filter":[{"op":"eq","field":"CompanyName","value":"ACME Corp"}]}
+Non-comparison operator
+A non-comparison operator queries for the specified criteria without comparing it against any operators other than exist or notExist. The below examples demonstrate simple non-comparison operators. We recommend using POST to execute calls for complicated queries that have long filter expressions.
+Click each of the headers below to view example syntax.
+Non-comparison query
+JSON syntax
+To use this query, replace each of the following placeholders with the values described.
+SelectedOperator:
+Enter exist to query for fields in which the NameOfField does exist.
+Enter notExist to query for fields in which the NameOfField does not exist.
+NameOfField: Enter the name of the entity field against which you would like to run the query
+{ "op": "SelectedOperator", "field": "NameOfField" }
+JSON example
+This example returns all records in which the ID field exists.
+{ "op": "exist", "field": "id" }
+URL example
+This example is the above query in URL format.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query?search={ "filter":[{"op" : "exist", "field" : "id" }]}
+List operator
+When working with lists, the operator may be either in or notIn. With in specified, the query will return only the values in the list array that match the specified field value. For not in, the query will only return the values in the list array that do not match the field. The below examples demonstrate simple list operators. While you may use GET or POST with these operators, we recommend using POST to execute complicated queries that have long filter expressions.
+Click each description's name to view its details.
+List query
+JSON syntax
+To use this query, replace each of the following placeholders with the values described.
+SelectedOperator: Designate the type of search you'd like to perform by entering an operator value from the list of filter operators
+NameOfField: Enter the name of the entity field against which you would like to run the query
+DesiredValue: Provide the value you'd like to search for or against
+{ "filter":[ {"op": "SelectedOperator", "field": "NameOfField", "value": DesiredValue } ] }
+JSON example
+The following query returns any company that is a customer (1), prospect (2), or vendor (7). In this example, the Company type is a picklist.
+{ "filter": [ { "op": "in", "field": "CompanyType", "value": [ 1, 3, 7 ] } ] }
+URL example
+This example is the above query in URL format.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query?search={"filter":[{"op":"in","field":"CompanyType","value":[1,3,7]}]}
+UDF comparison operator
+You can include user-defined fields (UDFs) in your query. By specifying a udf value of true, you indicate to the API that the field you provide in your query is user-defined. The udf expression must always follow the field expression in the API call.
+IMPORTANT You can only query by one user-defined field at a time.
+If you attempt to call a UDF without including the udf value in your query, the call may result in an error state. It is not necessary to include the udf value if you are not calling a user-defined field.
+JSON Syntax
+To use this query, replace each of the following placeholders with the values described.
+SelectedOperator: Designate the type of search you'd like to perform by entering an operator value from the list of filter operators
+NameOfField: Enter the name of the entity field against which you would like to run the query
+DesiredValue: Provide the value you'd like to search for or against
+{ "filter": [ { "op": "SelectedOperator", "field": "NameofField", "udf": true, "value": "DesiredValue" } ] }
+JSON Example
+This example returns all records which contain the user-defined CustomerRanking field if it contains the exact value of Golden.
+{ "filter": [ { "op": "eq", "field": "CustomerRanking", "udf": true, "value": "Golden" } ] }
+URL Example
+This example is the above query in URL format.
+https://webservices[n].autotask.net/atservicesrest/v1.0/Companies/query?search={"filter":[{"op":"eq","field":"CustomerRanking","udf":true,"value":"Golden"}]}
+Grouping syntax for OR & AND
+You can use grouping to allow for combinations of AND & OR operators within nested groups. You can perform these operations with GET or POST requests. Click each description's name to view demonstration code and an explanation of the operator shown.
+Grouping query
+JSON syntax
+To use this query, replace each of the following placeholders with the values described.
+GroupingOperator fields: Designate the type of search you'd like to perform by entering an operator value. When working with grouping operators, you may select AND or OR.
+FilterExpression fields: Enter the filter expressions you'd like to send for your query, as described in the earlier sections of this article. You may include operator values from the list of filter operators.
+{ "filter":[ { "op": "GroupingOperator", "items": [ {FilterExpression1}, {FilterExpression2}, {FilterExpression3}, {"op": GroupingOperator", "items": [ {FilterExpressionA}, {FilterExpressionB}, {FilterExpressionC} ] } ] } ] }
+JSON example
+The following example searches for all records where the value of the firstname field is equal to John or the value of the lastname field is equal to Jones.
+{ "filter": [ { "op": "or", "items": [ { "op": "eq", "field": "firstname", "value": "John" }, { "op": "eq", "field": "lastname", "value": "Jones" } ] } ] }
+URL example
+This example is the above query in URL format.
+https://webservices[n].autotask.net/atservicesrest/v1.0/contacts/query?search={"includeFields": ["Id", "isactive","firstname", "lastname"], "filter":[{ "op": "or","items":[{"op":"eq","field":"firstname","value":"John"},{"op":"eq","field":"lastname","value":"Jones"}]}]}
+Querying with POST
+You can use POST to pass an advanced query via URL. In the base POST request, you call the query endpoint of the desired entity. In the body of the request, you specify the query parameters. Click the description's name to view demonstration code and an explanation of the operator shown.
+POST example
+The following example searches for contacts who are active with a lastname value of Smith or Jones and active contacts whose firstname value is Chris and lastname value is Brady.
+POST call
+POST https://webservices[n].autotask.net/v1.0/Contacts/query
+POST body
+{ "filter": [ { "op": "eq", "field": "IsActive", "value": true }, { "op": "or", "items": [ { "op": "eq", "field": "lastname", "value": "Smith" }, { "op": "eq", "field": "lastname", "value": "Jones" }, { "op": "and", "items": [ { "op": "eq", "field": "firstname", "value": "Chris" }, { "op": "eq", "field": "lastname", "value": "Brady" } ] } ] } ] }
+Additional resources
+Using Postman to explore the REST API
+Using Swagger UI to explore REST API requests
+Working with attachments in the REST API

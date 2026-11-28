@@ -1,0 +1,11 @@
+WHAT WAS TRIED, on 2026-11-29, to read ConnectWise's own developer documentation (https://developer.connectwise.com), and what came back. Nothing here is ConnectWise documentation.
+
+1. The pages under /Products/ConnectWise_PSA/ (Developer_Guide, REST, and the rate limiting best practice page) loaded with HTTP 200 and said, in this order:
+   "You do not have permission to view this page - please try signing in."
+   The developer network needs an account to read them.
+
+2. The registration form (https://register.developer.connectwise.com/, Developer Registration, step 1 of 3) asks for a name, a company name, the product, a relationship (Current Partner, Prospective Customer, Complementary Vendor, ISV, Other) and an email address. With a free mailbox address it answered, in red under the email field:
+   "We noticed that you are not using a corporate email address. Please use a corporate email account to register. If you do not have access to a corporate email, please reach out to API@ConnectWise.com."
+   No account was made and no way round that rule was tried.
+
+3. So no ConnectWise page that states the rate limit, the 429 behaviour, the conditions syntax, the paging rules or the ticket fields could be saved. The nearest saved files are the OpenAPI file in connectwise-manage-openapi-extract.txt and the blog post in connectwise-pagination-the-lazy-administrator.txt, both written by someone other than ConnectWise or at least not read from its portal.

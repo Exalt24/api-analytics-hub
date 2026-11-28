@@ -1,0 +1,45 @@
+URL: https://www.autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_API_Calls.htm
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+REST API / API Calls
+Introduction to REST API calls
+This article series provides an index of fundamental concepts to help you get started with building REST API calls.
+We recommend reviewing the information described in the following sections before applying the concepts discussed in our Making basic query calls to the REST API and Advanced query features of the REST API articles.
+To help you learn how to construct requests to the Autotask REST API, Datto provides a customizable REST API request collection for use with Postman. For more information, refer to Sample requests.
+For example syntax, you can also refer to the resources listed in the Next steps section of this article.
+Overview
+Call syntax
+Calls to the REST API follow the GET, PUT, PATCH, POST, and DELETE models. All syntax examples in the Online Help use JSON and Swagger; however, the principles presented by our documentation are universal and portable to other languages not explicitly detailed.
+Boolean values
+When supplying boolean values to the REST API, you must specify either true or false. Any other values, including null values, will return an error message.
+Timestamp format
+The REST API stores and returns all time data in Coordinated Universal Time (UTC). For an explanation of UTC, refer to Coordinated Universal Time external link).
+To ensure correct date and time conversion via the API, submit date-time values in the format yyyy-mm-ddThh:mm:ss.ms.
+How datetime fields are handled in the API when the UI does not allow you to specify a time
+EXAMPLE When making a ContractServiceAdjustments call, the effectiveDate is submitted as 2023-10-09T02:00:00.00, that is, 2 AM on October 9. Because the API intakes calls in UTC, if that call is made to a US database (UTC + 5), it would seem to change the effective date to October 8th at 9 PM, due to the time zone conversion.
+However, because there is no time field in the UI for service adjustments, we don't convert timezone datetime values for date-only fields, we just set the time portion to midnight and accept the date value. In the example above, the datetime would be saved in the database as 2023-10-08T00:00:00.00.
+Responses with pagination
+API responses can return a maximum of 500 results at a time. If your query returns more than 500 results, they will split across multiple pages. This behavior is called pagination.
+When you make requests that can return one or more results, the response you receive will contain a property named pageDetails that describes the number of results on the current page. You'll also see URLs that indicate if there is a previous or next page to which you can navigate.
+Refer to our Advanced query features of the REST API article for more information about setting up paginated queries.
+NOTE The pageDetails property will be present even if the results do not span multiple pages. If no previous or next page navigation is possible, the corresponding prevPageUrl or nextPageUrl value will be NULL.
+IMPORTANT When working with paginated results, you can use the nextPageUrl value to check for results on additional pages until you encounter a NULL value. Doing so ensures that you have requested the results from all available pages.
+Thresholds and limitations
+Datto provides an API that is available to all users. Due to the variety of development avenues available to our customers, and to maintain an acceptable level of service for all API users, specific scopes of support and data rate thresholds may apply. Refer to our REST API supportability, query thresholds, and latency article to learn more.
+Exploring the API
+The following third-party applications can help you explore the REST API and debug your queries:
+Using Postman to explore the REST API
+Using Swagger UI to explore REST API requests
+Entities
+For an overview of the entities you can call via the REST API, review our Autotask REST API resources article.
+Next steps
+Refer to the following articles to learn about API call formatting and usage:
+Making basic query calls to the REST API
+Advanced query features of the REST API
+Creating resources via POST request in the REST API
+Performing a DELETE operation with the REST API
+Finding resource and child access URLs of REST API entities
+Updating data via PATCH request with the REST API
+Updating data via PUT request with the REST API
+Querying user zone information via the REST API

@@ -1,0 +1,114 @@
+URL: https://www.ninjaone.com/docs/application-programming-interface-api/oauth-token-configuration/
+STATUS: 200
+FETCHED: 2026-11-29 (Chromium, textContent so collapsed sections are included)
+
+API OAuth Token Configuration
+Already a NinjaOne customer? Log in to view more guides and the latest updates.
+API OAuth Token Configuration
+Knowledge Management
+Last Updated September 6, 2026
+Table of contents
+Topic
+Environment
+Description
+Additional Resources
+Topic
+This article explains how to use OAuth 2.0 to authenticate requests to NinjaOne Public API.
+Environment
+NinjaOne Public API
+Description
+The NinjaOne Public API uses OAuth 2.0 to authenticate requests. OAuth 2.0 allows applications to access NinjaOne resources (such as monitoring information) made available via the Application Programming Interface (API).
+Only system administrators may configure OAuth tokens for the NinjaOne Public API. To start using the OAuth protocol for your app’s authentication with NinjaOne, you must first have an OAuth app credential from NinjaOne. The OAuth app will set up an authorization grant for you. OAuth 2.0 supports various grant types. However, NinjaOne Public API only supports authorization code and implicit grant types.
+If you have any questions about API configuration, documentation, or OAuth Tokens, you can contact our API Team at api@ninjarmm.com.
+Generate an OAuth Client Application
+To generate an OAuth client app ID in NinjaOne, perform the following steps.
+Navigate to API settings at Administration → Apps → API.
+Open the Client app IDs tab and click + Add client app.
+Figure 1: Add a new client app configuration in NinjaOne
+Select an option from the Application Platform drop-down menu to generate more data fields.
+Certain grant types may not be available depending on your selection in this step.
+Use the following table to help you fill out the applicable fields.
+Field	Description
+Name	Enter the title that will be displayed as the client application name in the consent screen.
+This name will be displayed in the Administration → Apps → API → OAuth Tokens in NinjaOne.
+Redirect URLs	Enter one or more addresses where NinjaOne will send OAuth responses. This is not configurable when using the Native application platform option.
+Scopes
+These options allow access to all Public API Resources of a certain type.
+Monitoring: Grants read-only access to monitoring data and organization structure.
+Management: Allows modification of device and organization information, including creating new organizations, adding new devices, running scripts, and others.
+Control: Activates remote access via API.
+Allowed Grant Types
+NinjaOne uses OAuth 2.0 grant types for the client application acting on behalf of a user.
+Authorization code: The Authorization Code is a temporary code that the client will exchange for an access token. NinjaOne obtains the code for the authorization server, where the user can view what information the client requests and approve or deny the request.
+Client credentials: This flow bypasses the code exchange step and is an alternative to the authorization code. Instead, the access token is immediately returned to the client in the query string fragment.
+After the configuration is complete, click Save.
+To edit or delete a client app ID, move your mouse cursor over the row and select the applicable option.
+Figure 2: Edit or delete a client app configuration in NinjaOne
+Additional Resources
+Refer to NinjaOne Documentation: Public API to learn more about using the API with NinjaOne.
+Products
+RMM
+Endpoint Management
+Patch Management
+Vulnerability Management
+Remote
+MDM
+PSA
+Billing
+Ticketing
+Documentation
+Backup
+Email Archiving
+Browser Management
+Product Roadmap
+Resources
+Resource Center
+Blog
+IT Hub
+IT Video Hub
+Script Hub
+Demo Center
+Dojo Docs
+Developer API
+System Status
+Trust Center
+Company
+About Us
+Leadership
+Community
+FAQ
+In the News
+Careers
+License
+Compliance
+Privacy Notice
+HIPAA
+ISO 27001
+Bug Bounty
+Australian Cyber Security Centre’s Essential Eight
+Cyber Essentials
+Modern Slavery Statement
+CA Privacy Rights
+Your Privacy Choices
+Trademarks
+Contact Info
+North America: +1 888 542-8339
+Germany: +49 30-76758700
+UK: +44 20 3880 9027
+France: +33 800 91 09 90
+Spain: +34 930 03 80 68
+Italy: (+39) 800 974 708
+Australia: +61 1800 490 516
+Brazil: +55 (11) 2395-1802
+Mexico: + 52 800-099-0732
+Japan: +81 3 6843 9163
+sales@ninjaone.com
+© Copyright NinjaOne 2026
+Terms of Use
+Fair Use Policy
+Contact Us
+Cookie Preferences
+Linkedin-in     Youtube     Facebook-f     Instagram     Discord     X-twitter
+© Copyright NinjaOne 2026 Terms of use
+Contact Us
+Cookie Preferences
