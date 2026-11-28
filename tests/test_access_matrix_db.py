@@ -177,7 +177,7 @@ def test_every_user_resource_and_action_is_allowed_or_denied_by_the_database_as_
     assert any(got.values()) == (scope != "none")
 
 
-def test_the_cells_with_no_operation_are_none_for_every_role_in_the_databases_own_copy_of_the_table():
+def test_the_cells_with_no_operation_are_none_for_every_role_in_the_databases_own_copy_of_the_table(world):
     rows = owner("select count(*) from access_matrix where scope <> 'none' and (resource, action) in (%s)" % ", ".join("('%s', '%s')" % c for c in sorted(matrix.NO_OPERATION)))
     assert rows == 0
 
