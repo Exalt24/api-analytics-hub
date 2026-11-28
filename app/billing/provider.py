@@ -134,8 +134,10 @@ def form_fields(params: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def bank_debit_params(payment_method_type: str, currency: str, customer: str | None, mandate: str | None) -> dict[str, Any]:
-    """The extra PaymentIntent fields for a US bank account debit (ACH): `payment_method_types[0]=us_bank_account`, the `customer` the bank account is attached to and the `mandate`
-    the customer accepted. Nothing for a card. A debit is in US dollars, and without a customer and a mandate the provider refuses it, so it is refused here first."""
+    """The extra PaymentIntent fields for a US bank account debit (ACH): the `customer` the bank account is attached to and the `mandate` the customer accepted. Nothing for a card.
+    The payment method token is itself the us_bank_account, so no `payment_method_types` is sent: stripe-mock 0.206.0, which checks every request against Stripe's OpenAPI spec,
+    REFUSES that parameter on a PaymentIntent create ("additional properties are not allowed"), and the first version of this request that sent it was caught by that check.
+    A debit is in US dollars, and without a customer and a mandate the provider refuses it, so it is refused here first."""
     if payment_method_type == "card":
         return {}
     if payment_method_type != "us_bank_account":
@@ -144,7 +146,7 @@ def bank_debit_params(payment_method_type: str, currency: str, customer: str | N
         raise ValueError("a bank debit is in US dollars, got %r" % (currency,))
     if not customer or not mandate:
         raise ValueError("a bank debit needs the customer the bank account belongs to and the mandate the customer accepted")
-    return {"payment_method_types": ["us_bank_account"], "customer": customer, "mandate": mandate}
+    return {"customer": customer, "mandate": mandate}
 
 
 def _text(value: Any) -> str:

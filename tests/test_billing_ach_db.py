@@ -66,8 +66,8 @@ def test_a_bank_debit_is_processing_when_created_and_the_wallet_is_not_credited(
     assert res.status == "processing" and pi["status"] == "processing" and not pi["latest_charge"]
     assert (c["spendable"], c["billing_transaction"], c["billing_entry"]) == (0, 0, 0)
     assert (row["payment_method_type"], row["customer_ref"], row["mandate_ref"], row["credited_minor"], row["currency"].strip()) == ("us_bank_account", CUSTOMER, MANDATE, 0, USD)
-    # the shape of the request: the type as an array, the customer and the mandate, and no automatic payment methods
-    assert sent["payment_method_types"] == {"0": "us_bank_account"} and sent["customer"] == CUSTOMER and sent["mandate"] == MANDATE and sent["confirm"] == "true"
+    # the shape of the request: the bank account token, the customer and the mandate, confirmed now
+    assert sent["payment_method"] == ACH_PM and sent["customer"] == CUSTOMER and sent["mandate"] == MANDATE and sent["confirm"] == "true"
 
 
 def test_a_card_top_up_is_unchanged_by_the_bank_debit_support(world):
@@ -76,7 +76,7 @@ def test_a_card_top_up_is_unchanged_by_the_bank_debit_support(world):
         res = await payments.start_topup(rig.db, rig.provider, world.a.tenant, amount_minor=2000, currency=USD, payment_method="pm_fake_ok", key="card-1")
         return res, rig.fake.requests[-1]["params"]
     res, sent = with_portal(go)
-    assert res.status == "succeeded" and "payment_method_types" not in sent and "customer" not in sent and "mandate" not in sent
+    assert res.status == "succeeded" and "customer" not in sent and "mandate" not in sent
 
 
 # ---- succeeded: credited once, by the event -----------------------------------------------------------------------------------------------

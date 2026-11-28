@@ -77,8 +77,7 @@ class StripeSdkProvider:
         params = {"amount": amount_minor, "currency": currency.lower(), "payment_method": payment_method, "confirm": True, "metadata": metadata,
                   "automatic_payment_methods": {"enabled": True, "allow_redirects": "never"}}
         if payment_method_type != "card":
-            # a bank debit names its payment method type, and Stripe refuses that together with automatic_payment_methods
-            del params["automatic_payment_methods"]
+            # a bank debit adds the customer the account belongs to and the mandate they accepted; the payment method token is itself the us_bank_account
             params.update(bank_debit_params(payment_method_type, currency, customer, mandate))
         try:
             pi = await self._client.v1.payment_intents.create_async(params=params, options={"idempotency_key": idempotency_key})

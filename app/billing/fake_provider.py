@@ -19,7 +19,7 @@ FAILURES YOU CAN SCRIPT, each used up in order:
     stripe.search_lag = True                   search finds nothing yet, as the page says it may
 The card tokens are invented: `pm_fake_ok` succeeds, `pm_fake_declined` is refused with card_declined / insufficient_funds. No card number appears anywhere.
 
-BANK DEBIT (ACH), written from Stripe's "ACH Direct Debit" page: a PaymentIntent with `payment_method_types[0]=us_bank_account` needs a `customer` and a `mandate` and is in `usd`; the
+BANK DEBIT (ACH), written from Stripe's "ACH Direct Debit" page and checked against stripe-mock's spec: a PaymentIntent for a us_bank_account payment method needs a `customer` and a `mandate` and is in `usd`; the
 intent does NOT succeed when it is confirmed, it goes to `processing` (the debit takes days to clear). The test then plays what the bank does later:
     stripe.settle_ach(pi_id)                          processing -> succeeded (a charge exists now); returns the intent for the succeeded event
     stripe.fail_ach(pi_id, code="insufficient_funds") processing -> requires_payment_method with a last_payment_error (an ACH return); returns the intent for payment_failed
@@ -167,8 +167,7 @@ class FakeStripe:
         currency = params.get("currency", "")
         if currency != currency.lower() or len(currency) != 3:
             return 400, {"error": {"type": "invalid_request_error", "param": "currency", "message": "currency is a three letter lowercase code"}}
-        types = list((params.get("payment_method_types") or {}).values())
-        if "us_bank_account" in types:
+        if str(params.get("payment_method", "")).startswith("pm_fake_ach"):
             return self._create_bank_debit(params, amount, currency)
         pi_id = self._next("pi")
         pi = {"id": pi_id, "object": "payment_intent", "amount": amount, "currency": currency, "metadata": params.get("metadata") or {},
@@ -197,7 +196,7 @@ class FakeStripe:
             return 400, {"error": {"type": "invalid_request_error", "code": "resource_missing", "param": "payment_method", "message": "No such PaymentMethod: %r" % params.get("payment_method")}}
         pi_id = self._next("pi")
         pi = {"id": pi_id, "object": "payment_intent", "amount": amount, "currency": currency, "metadata": params.get("metadata") or {}, "payment_method": params["payment_method"],
-              "payment_method_types": ["us_bank_account"], "customer": params["customer"], "mandate": params["mandate"],
+              "customer": params["customer"], "mandate": params["mandate"],
               "status": "processing" if params.get("confirm") == "true" else "requires_confirmation", "last_payment_error": None, "latest_charge": None}
         self.payment_intents[pi_id] = pi
         return 200, pi
