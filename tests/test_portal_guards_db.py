@@ -84,7 +84,7 @@ async def update_as(rig, world, label: str, sql: str, *args) -> str:
 
 # ---- row level security is on, and forced, on every new table ---------------------------------------------------------------------------------
 
-def test_every_new_table_has_row_level_security_enabled_and_forced_and_a_policy():
+def test_every_new_table_has_row_level_security_enabled_and_forced_and_a_policy(world):
     with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute("select c.relname, c.relrowsecurity, c.relforcerowsecurity, (select count(*) from pg_policy p where p.polrelid = c.oid) from pg_class c where c.relname = any(%s)", (list(NEW_TABLES),))
         rows = {r[0]: r[1:] for r in cur.fetchall()}

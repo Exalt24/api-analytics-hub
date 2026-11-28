@@ -170,6 +170,37 @@ Nothing was sent to api.stripe.com, and this project has no Stripe account or ke
 
 Both directions are tested in `tests/test_billing_stripe_sdk.py` and `tests/test_billing_stripe_sdk_db.py`: a good signature credits once, and a bad or stale signature, a replayed event id, an event for another amount and an event type we do not act on credit nothing more. The seeded simulation (`test_billing_simulation.py`) also runs five worlds with the SDK as the provider and the verifier. Eleven guards in `tests/mutation_check.py` aim at these tests alone ([the saved output](test-runs/2026-10-31-stripe-sdk-mutation.txt)). To run the stripe-mock tests locally start it with `docker run --rm -d -p 127.0.0.1:12111:12111 stripe/stripe-mock` (they skip when it is not running; `STRIPE_MOCK_URL` points elsewhere). CI runs it as a service container and fails if it did not start.
 
+## Bank debit (ACH), invoices and commissions
+
+Migrations `022` to `024` add a US bank account (`us_bank_account`) as a way to pay, invoices with line items, and a sales rep's commission. They run through the same provider interface, ledger, idempotency keys and signed events as everything above. Who may do what to them is the [access matrix](access-matrix.md); the partner side of the same portal is [fulfillment.md](fulfillment.md).
+
+**A bank debit does not credit anything when it is created.** `start_topup(..., method_type="us_bank_account", customer=..., mandate=...)` sends the confirmed PaymentIntent with the customer the account belongs to and the mandate they accepted (a debit is in US dollars only, and both are required: refused here before the provider is called, and by a table constraint). The provider answers `processing`, never `succeeded`, because the debit takes days to clear. The payment row is `processing` and the ledger has nothing. The wallet is credited only by the signed `payment_intent.succeeded` event (or by `refresh_payment` asking the provider), and only once.
+
+| What happens at the bank | What we do |
+|---|---|
+| the debit clears (`payment_intent.succeeded`) | credit the wallet once; a repeat of the event, or a second event object for the same payment, writes nothing |
+| the bank returns it after processing (`payment_intent.payment_failed`) | record a failed payment with the provider's code, queue a notice, credit nothing; a repeat writes nothing |
+| the answer to the create call is lost | the SDK retries with the same key; one debit exists at the provider |
+| a late failure after a success | ignored: a success is never undone |
+
+A return after the debit has already succeeded (an unauthorised debit comes back as a dispute for up to 60 days) is **not handled**.
+
+**The request shape was checked by stripe-mock, and it caught a mistake.** The first version sent `payment_method_types[0]=us_bank_account` with the customer and the mandate, written from memory of Stripe's ACH page. stripe-mock 0.206.0, which validates every request against Stripe's OpenAPI spec, refused it with "additional properties are not allowed": the spec has no `payment_method_types` on a PaymentIntent create. The payment method token is itself the `us_bank_account`, so the request now carries `payment_method`, `customer` and `mandate` and no type; `tests/test_billing_stripe_sdk_ach.py` accepts that against stripe-mock, shows stripe-mock refusing the old shape, and reads the form the SDK actually put on the wire (the fields, the `Idempotency-Key` header, the same key on a retry).
+
+**Invoices** (`invoices.py`, `billing_invoice`, `billing_invoice_line`): draft (lines may change) to open (finalized: the total is the sum of the lines and is fixed, checked by a trigger) to paid, or void from draft or open. The moves are the rows of `billing_invoice_transition`, enforced by a trigger that also asks the access matrix for the action each move needs. A paid invoice is never voided; it is refunded.
+
+- **Pay from the wallet.** The wallet is debited and revenue credited in the transaction that marks the invoice paid; not enough credit writes nothing and answers `insufficient_funds`.
+- **Pay by card.** A PaymentIntent for the total through the existing provider interface (same key, same retries). The invoice is settled from the provider's answer or from the signed event, whichever comes first; the other finds it paid. The wallet is never touched (a table constraint: a payment made for an invoice cannot credit the wallet).
+- **Pay by bank debit.** The same, but the invoice stays **open** and the payment `processing` until the signed event. A return leaves the invoice open, books nothing and lets it be paid again under a new key. While a payment is in flight the invoice can be neither paid again nor voided (a unique index allows one live payment for an invoice, and the code says so first).
+- **Refund** in full or in part, never past the total. A wallet payment is refunded to the wallet at once. A card or bank debit payment asks the provider for a refund of the payment's intent (the refund that already exists, with a key derived from ours, so asking twice refunds once), logs the request in `billing_invoice_refund` with the provider's refund id, and books it when `charge.refunded` arrives, as for a top-up: the event carries the refunded total, so an older, repeated or equal total reverses nothing and a total above the invoice total is held.
+- **Void** a draft or an open invoice with no payment in flight.
+
+Why the invoice is ours and not a Stripe Invoice object: paying from the wallet is something Stripe cannot see, so the invoice is a record in our ledger and only card and bank debit payments go to the provider, through PaymentIntents. No Stripe `invoices` call is made.
+
+**Commissions** (`commissions.py`): when an invoice is paid, the sales rep assigned to its clinic earns `total * rate_bp // 10000` (basis points, integer minor units, rounded down; the rate is the assignment's at that moment and is stored on the row). A refund reverses it to the commission on what is still paid, worked from the cumulative refund so rounding cannot drift: after any run of partial refunds the net is exactly the commission on the part still paid, and after a full refund it is zero. A clinic with no rep earns nobody anything. The table is append only, one accrual for each invoice, the net of an invoice cannot go below zero, and `billing_invoice_discrepancies()` (part of `reconcile`) reports a commission that is not the rate, a paid invoice with no ledger payment, a refunded total the ledger does not hold and an unpaid invoice with a ledger payment.
+
+**Proved by** `tests/test_billing_ach_db.py` (15 tests), `tests/test_billing_stripe_sdk_ach.py` (9), `tests/test_billing_invoices_db.py` (35: every route above, the ledger invariants for the two new kinds of transaction, 12 seeded random worlds of 14 steps checked against a model of the wallet, each invoice and each commission, with the books reconciled after each) and `tests/test_portal_guards_db.py`.
+
 ## Tests and mutation controls
 
 Eleven test files (`tests/test_billing_*.py`, plus `tests/billing_fixtures.py`; the two SDK files are described above):
@@ -191,6 +222,8 @@ Eleven test files (`tests/test_billing_*.py`, plus `tests/billing_fixtures.py`; 
 - **No currency conversion.** A wallet is for one currency; an invoice in another currency than its plan is held, and a plan change cannot change currency.
 - **No scheduler.** Nothing renews a subscription, retries a held event, expires a stuck payment or runs the reports on a clock; each is a function or a command.
 - **The receiver is not mounted on the HTTP API.** It is `webhooks.handle_http` and `scripts/billing.py simulate-webhook`; wiring it to a route and the signing secret to configuration is a few lines and is not done.
+- **A return after a bank debit succeeded is not handled.** A debit the bank returns after `payment_intent.succeeded` (an unauthorised debit comes back as a dispute for up to 60 days) is not modelled; the wallet would keep the credit. The portal's own partner webhook is mounted (`/api/portal/webhooks/fulfillment`); Stripe's is not.
+- **No Stripe Invoice objects.** Invoices are records in our ledger; card and bank debit payments for them go through PaymentIntents. Nothing creates, finalizes or voids an invoice at Stripe, and no hosted invoice page or PDF exists.
 - **It answers after it has applied the event**, where Stripe's page asks for a quick 2xx "before any complex logic". The work is one short database transaction; a slow handler would need the event queued first.
 - **Event order within one second is not resolved.** The page says not to use `created` for order; the state side does and applies events that share a second in arrival order. The remedy the page names (retrieve the subscription from the API) is not implemented. The money side does not depend on order.
 - **Access is not revoked** for a canceled or unpaid subscription (the module has no access control), and `invoice.paid` does not re-read the subscription before extending anything, as the page advises.
