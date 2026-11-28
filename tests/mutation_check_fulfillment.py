@@ -194,7 +194,7 @@ MUTATIONS = [
      "using (tenant_id = portal_tenant())", ["the_invoice_policies_refuse_on_their_own"], "a row is not even visible to update for a role without a right to it"),
     ("policy: any role reads invoice lines",
      "m023", "create policy billing_invoice_line_select on billing_invoice_line for select using (tenant_id = portal_tenant() and portal_allows('invoices', 'read', clinic_id));",
-     "create policy billing_invoice_line_select on billing_invoice_line for select using (tenant_id = portal_tenant());", ["a_clinic_pays_an_invoice_by_bank_debit", "an_invoice_is_made_and_finalized_by_an_admin"], "lines are as private as their invoice"),
+     "create policy billing_invoice_line_select on billing_invoice_line for select using (tenant_id = portal_tenant());", ["invoice_lines_are_written_only_by_a_role_that_may_create_invoices"], "lines are as private as their invoice"),
     ("policy: any role writes invoice lines",
      "m023", "create policy billing_invoice_line_write on billing_invoice_line for all using (tenant_id = portal_tenant() and portal_allows('invoices', 'create', clinic_id))\n    with check (tenant_id = portal_tenant() and portal_allows('invoices', 'create', clinic_id));",
      "create policy billing_invoice_line_write on billing_invoice_line for all using (tenant_id = portal_tenant())\n    with check (tenant_id = portal_tenant());", ["invoice_lines_are_written_only_by_a_role_that_may_create_invoices"], "only the role that makes an invoice makes its lines"),

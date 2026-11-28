@@ -140,6 +140,19 @@ Delivery is the hub's own outbox code: `inventory_alert_outbox` has the columns 
 
 The Inventory page groups the variants that need an order by supplier and writes one draft for each, as CSV, Excel or a tab separated paste for Google Sheets, through Server Actions with Zod checks. It reuses the Reports export code (the CSV cell quoting that defuses a formula, the integer money text, the ExcelJS workbook style, the download helper and the action result type). A line with no unit cost is written with a blank cost, never a zero, and the draft says how many lines the total leaves out. A draft is for a person to approve and send; nothing is sent to a supplier. "Create order" turns a draft into a tracked order.
 
+## A worked example
+
+The plan stored from the development store, as the page shows it:
+
+```
+variant               on hand  sold/day  cover  lead  reorder pt  order  class  label
+IPT Studio Tee - M         10      0.57   17.5    21          28     30  A      best seller (2.0x the prior 28 days)
+IPT Canvas Cap - Red      120      0.25  480.0    30          15      0  B      rising (7.0x)
+IPT Wool Sock - L           0      0.14    0.0    21           6     48  C      steady, out of stock
+-> alerts: sock out of stock; tee 17.5 days of cover against a 21 day lead time
+-> draft for Harbor Textiles, expected 2026-12-15: 48 x IPT-SOCK-L, 30 x IPT-TEE-M, $408.00
+```
+
 ## Not done
 
 - Seasonality is not modelled; a person enters promotions and that is the only demand adjustment. Nothing here claims otherwise.

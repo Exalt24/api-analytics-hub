@@ -21,7 +21,6 @@ import re
 import secrets
 import uuid
 from dataclasses import dataclass
-from typing import Any
 
 import asyncpg
 

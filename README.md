@@ -18,6 +18,7 @@ There are thirteen connectors. **Shopify Admin GraphQL** is verified against a r
 | Search Console | a stand-in server ([sources](docs/GSC_SOURCES.md)) |
 | Google Ads, TikTok Ads, Google Business Profile, Square, QuickBooks Online, Shopmonkey, Salesforce | a stand-in server each ([sources](docs/AD_AND_BUSINESS_SOURCES.md)) |
 | Harvest (time, budgets), Microsoft Graph (SharePoint, Teams, Excel) | a stand-in server each ([how](docs/harvest-graph.md)) |
+| A fulfilment partner's order API (outbound) | a stand-in server ([contract](docs/fulfillment.md)) |
 | n8n | a real n8n 2.44.6 container, seven runs read node by node |
 
 The dashboard front end is on Vercel (https://analytics-hub-pi.vercel.app).
@@ -98,6 +99,8 @@ Run against stand-ins, real Redis, Qdrant, RabbitMQ, Postgres and n8n ([output](
 
 `app/billing/` is a prepaid wallet with a double-entry ledger in integer minor units under forced row level security: an unbalanced transaction cannot commit and a wallet cannot go below zero. Top-ups, refunds, subscriptions and a signed webhook receiver run through a Stripe provider interface (the official SDK against stripe-mock), with an idempotency key on every money command: [docs/billing.md](docs/billing.md).
 
+- **Ordering portal, for a US healthcare ordering job.** Python, FastAPI, asyncpg and Postgres row level security: Stripe bank debit (ACH) and invoices, a partner fulfilment connector with signed status events and a hash chained audit log, and a four role access matrix enforced in the API and in the database. 368 tests, 182 breakages each caught: [bank debit and invoices](docs/billing.md#bank-debit-ach-invoices-and-commissions), [fulfilment](docs/fulfillment.md), [roles](docs/access-matrix.md).
+
 ---
 
 ## Monthly report
@@ -122,20 +125,11 @@ The Reports page in `web/` (Next.js App Router, strict TypeScript, Tailwind CSS 
 
 Run against the owner's Shopify development store, read only: 38 variants and 28 order lines, with five variants and 25 test orders made for the run and removed after it. Lead times and promotions are supplied as inputs, and the stockout adjustment is shown on a constructed history ([the run](docs/test-runs/2026-11-24-inventory-planning-dev-store.txt)).
 
-**Purchase order tracking.** An order is made from the plan's draft and moves through draft, ordered, confirmed, shipped, partly received, received or cancelled by a transition table the database enforces. It takes its expected date from the supplier's lead time, records what arrived on each line and raises one late alert through the outbox. What is still on order counts as inbound stock, with its date in the cover, so an order that lands in time raises no shortage and no second order ([rules and limits](docs/inventory-planning.md#purchase-order-tracking)).
+**Purchase order tracking.** An order is made from the plan's draft and moves through draft, ordered, confirmed, shipped, partly received, received or cancelled by a transition table the database enforces. What is still on order counts as inbound stock, so an order that lands in time raises no shortage and no second order ([rules and limits](docs/inventory-planning.md#purchase-order-tracking)).
 
 **Excel model with live formulas.** `inventory_plan.py workbook`, or the page's download, writes Inputs (service level, promotion factor and window, a row per supplier), Plan (supplier by `INDEX` and `MATCH`, then cover, safety stock, reorder point, order and shortage flag as formulas), Classes (`COUNTIFS`, `SUMIFS`) and Scenario (before and after the promotion factor). Each computed cell is recalculated in LibreOffice and compared with the Python plan, and a one unit change in an input fails the check ([run](docs/test-runs/2026-11-24-inventory-orders-and-workbook.txt), [how](docs/inventory-planning.md#the-plan-workbook)).
 
-```
-variant               on hand  sold/day  cover  lead  reorder pt  order  class  label
-IPT Studio Tee - M         10      0.57   17.5    21          28     30  A      best seller (2.0x the prior 28 days)
-IPT Canvas Cap - Red      120      0.25  480.0    30          15      0  B      rising (7.0x)
-IPT Wool Sock - L           0      0.14    0.0    21           6     48  C      steady, out of stock
--> alerts: sock out of stock; tee 17.5 days of cover against a 21 day lead time
--> draft for Harbor Textiles, expected 2026-12-15: 48 x IPT-SOCK-L, 30 x IPT-TEE-M, $408.00
-```
-
-Formulas, the rule for a day with no snapshot and the limits (seasonality is out of scope): [docs/inventory-planning.md](docs/inventory-planning.md).
+A worked example, the formulas, the rule for a day with no snapshot and the limits (seasonality is out of scope): [docs/inventory-planning.md](docs/inventory-planning.md#a-worked-example).
 
 ---
 
@@ -174,6 +168,7 @@ python -m pytest tests/ -q                # 8,511 tests, none failing; the skips
 python tests/mutation_check.py            # all 300 hand matched guards; edits source, so use a copy
 python tests/mutation_check_jobs.py       # the job pipeline's guards, run in a temporary copy
 python tests/mutation_check_inventory.py  # 114 inventory guards, each broken on purpose; use a copy
+python tests/mutation_check_fulfillment.py  # 182 portal guards (bank debit, invoices, roles, fulfilment); use a copy
 python live_check.py                      # against the real store
 cd web && npm test                        # 240 tests, 11 need the S3 stand-in ([docs/web-reports.md](docs/web-reports.md))
 cd web && npm run build && npx playwright test    # 21 browser tests in Chromium, Firefox and WebKit

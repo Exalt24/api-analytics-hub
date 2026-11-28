@@ -106,6 +106,14 @@ jobs:
           BILLING_REQUIRE_DB: "1"
           STRIPE_MOCK_REQUIRE: "1"
         run: python -m pytest tests/test_billing_signature.py tests/test_billing_proration.py tests/test_billing_provider.py tests/test_billing_stripe_sdk.py tests/test_billing_ledger_db.py tests/test_billing_payments_db.py tests/test_billing_webhooks_db.py tests/test_billing_stripe_sdk_db.py tests/test_billing_reports_db.py tests/test_billing_simulation.py tests/test_billing_demo_cli.py -q -rs
+      # The ordering portal (bank debit and invoices through the provider interface against the stand-in and stripe-mock, commissions, the four role access matrix in the API and in row level
+      # security generated from its one table, partner fulfilment against a stand-in partner server, and the mutation harness's own tests), named so a skipped suite shows in the log.
+      # BILLING_REQUIRE_DB and STRIPE_MOCK_REQUIRE make a service that did not start FAIL here instead of skipping, and -rs prints any skip reason.
+      - name: Ordering portal (bank debit, invoices, commissions, access matrix, partner fulfilment)
+        env:
+          BILLING_REQUIRE_DB: "1"
+          STRIPE_MOCK_REQUIRE: "1"
+        run: python -m pytest tests/test_billing_ach_db.py tests/test_billing_invoices_db.py tests/test_billing_stripe_sdk_ach.py tests/test_fulfillment_states.py tests/test_fulfillment_client.py tests/test_fulfillment_db.py tests/test_access_matrix.py tests/test_access_matrix_db.py tests/test_access_api_db.py tests/test_portal_guards_db.py tests/test_mutation_check_fulfillment.py -q -rs
       # The e-signature slice (hash chain and name rule, the signing rules against Postgres, the HTTP routes, the 50 seeded worlds, the mutation harness's own tests), named so a
       # skipped database suite shows in the log. ESIGN_REQUIRE_DB makes an unreachable Postgres FAIL here instead of skipping, and -rs prints any skip reason.
       - name: E-signatures (signing request, signature record, hash chained audit log, certificate)
