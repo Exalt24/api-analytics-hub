@@ -201,6 +201,7 @@ def _register_builtin() -> None:
     from .gsc import GSCConnector
     from .meta import MetaConnector
     from .gbp import GBPConnector
+    from .autotask import AutotaskConnector
     from .connectwise import ConnectWiseConnector
     from .harvest import HarvestConnector
     from .msgraph import MicrosoftGraphConnector
@@ -398,6 +399,28 @@ def _register_builtin() -> None:
                 "Leads and opportunities per day from SOQL queries on the REST API, paged by nextRecordsUrl: leads created and converted, opportunities created "
                 "and won, and the won amount. Refreshes its access token on a 401, once, behind a lock; stops before a call when fewer than 50 of the org's daily "
                 "calls are left (Sforce-Limit-Info); a 403 REQUEST_LIMIT_EXCEEDED is handed to the runner. Never run against a live org: none is held."
+            ),
+        )
+    )
+    registry.register(
+        ConnectorSpec(
+            platform="autotask",
+            label="Autotask PSA",
+            auth_kind=AuthKind.STATIC_TOKEN,
+            rate_limit_style=RateLimitStyle.REQUEST_COUNT,
+            supported_metrics=AutotaskConnector.supported_metrics,
+            credential_fields=(
+                CredentialField("username", "API user", secret=False, hint="the email address of the API User (API-only) resource; its zone is looked up from it"),
+                CredentialField("secret", "API user secret", hint="the API user's password"),
+                CredentialField("integration_code", "API tracking identifier", hint="the integration code on the API user's Security tab (27 characters)"),
+            ),
+            factory=AutotaskConnector,
+            max_history_days=None,
+            supports_backfill=True,
+            notes=(
+                "Tickets opened and completed per day, resolution goals missed, and technician time in seconds, from the Tickets and TimeEntries queries (500 a page, paged by nextPageUrl). "
+                "Looks up the user's zone first, serialises its requests, and stops before a call when fewer than 200 of the hour's 10,000 external requests are left "
+                "(ThresholdInformation). Written from Autotask's public developer help and tested against a stand-in server. Never run against a live database: none is held."
             ),
         )
     )

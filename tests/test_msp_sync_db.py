@@ -44,6 +44,9 @@ pytestmark = pytest.mark.skipif(not _reachable(), reason="Postgres not reachable
 
 import httpx  # noqa: E402
 
+from app.connectors.autotask import METRICS as AT_KEYS  # noqa: E402
+from app.connectors.autotask import AutotaskConnector  # noqa: E402
+from app.connectors.autotask_fake import FakeAutotask  # noqa: E402
 from app.connectors.common import Retrier  # noqa: E402
 from app.connectors.connectwise import METRICS as CW_KEYS  # noqa: E402
 from app.connectors.connectwise import ConnectWiseConnector  # noqa: E402
@@ -53,8 +56,9 @@ from app.sync.runner import SyncRunner  # noqa: E402
 
 START, END = date(2026, 10, 1), date(2026, 10, 8)
 MIGRATIONS = ("001_init.sql", "002_control_plane.sql", "003_api_keys.sql", "006_ga4_metrics.sql", "007_meta_metrics.sql", "013_ads_and_business_metrics.sql",
-              "017_salesforce_metrics.sql", "018_harvest_and_graph_metrics.sql", "025_connectwise_metrics.sql")
+              "017_salesforce_metrics.sql", "018_harvest_and_graph_metrics.sql", "025_connectwise_metrics.sql", "026_autotask_metrics.sql")
 CW_COMPANY, CW_PUBLIC, CW_PRIVATE, CW_CLIENT = "acme", "pub-db-SECRET", "priv-db-SECRET", "client-guid-db"
+AT_USER, AT_SECRET, AT_CODE = "api@example.com", "at-db-SECRET", "AT-DB-CODE-0123456789ABC"
 NOW = datetime(2026, 10, 20, 12, 0, tzinfo=timezone.utc)
 
 
@@ -90,7 +94,16 @@ def cw_server():
 
 
 @pytest.fixture(scope="module")
-def world(cw_server):
+def at_server():
+    with FakeAutotask(username=AT_USER, secret=AT_SECRET, code=AT_CODE) as fake:
+        for d in range(1, 8):
+            fake.add_ticket(d, dt(d), completed=dt(d, 15) if d % 2 else None, resolved_due=dt(d, 12))
+            fake.add_time(d, dt(d, 10), "1.5", ticket=d)
+        yield fake
+
+
+@pytest.fixture(scope="module")
+def world(cw_server, at_server):
     a, b = uuid.uuid4(), uuid.uuid4()
     ids = {}
     with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
@@ -102,7 +115,7 @@ def world(cw_server):
             cur.execute("select set_config('app.tenant_id', %s, false)", (str(tenant),))
             cur.execute("insert into tenant (id, slug, name) values (%s, %s, %s)", (tenant, label, label))
         cur.execute("select set_config('app.tenant_id', %s, false)", (str(a),))
-        for key, platform, account in (("a_cw", "connectwise", CW_COMPANY),):
+        for key, platform, account in (("a_cw", "connectwise", CW_COMPANY), ("a_at", "autotask", AT_USER)):
             cur.execute("insert into platform_connection (tenant_id, platform, external_account, display_name, credentials_enc) values (%s, %s, %s, %s, %s) returning id",
                         (a, platform, account, key, b"ciphertext"))
             ids[key] = cur.fetchone()[0]
@@ -112,6 +125,11 @@ def world(cw_server):
 def connectwise(server, private=CW_PRIVATE):
     return ConnectWiseConnector(api_url=server.api_url, company_id=CW_COMPANY, public_key=CW_PUBLIC, private_key=private, client_id=CW_CLIENT, client=http(),
                                 retrier=Retrier(sleep=no_sleep), clock=lambda: NOW)
+
+
+def autotask(server, secret=AT_SECRET):
+    return AutotaskConnector(username=AT_USER, secret=secret, integration_code=AT_CODE, zone_lookup_url=server.url, client=http(), retrier=Retrier(sleep=no_sleep),
+                             clock=lambda: NOW)
 
 
 async def sync(world, connection, connector, start=START, end=END):
@@ -181,9 +199,71 @@ def test_a_refused_connectwise_key_is_a_failed_run_with_its_code_and_writes_noth
     assert sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_cw"],))[0][0] == before
 
 
+# ---------------------------------------------------------------- Autotask
+
+@pytest.fixture(scope="module")
+def at_synced(world, at_server):
+    return run(sync(world, "a_at", autotask(at_server)))
+
+
+def test_the_autotask_sync_succeeds_and_writes_four_figures_for_each_of_seven_days(world, at_synced):
+    assert at_synced.status == "succeeded", (at_synced.error_code, at_synced.error_detail)
+    assert at_synced.rows_written == 4 * 7 and len(stored(world["a_at"])) == 4 * 7 and not at_synced.degraded_metrics
+
+
+def test_autotask_figures_are_counts_and_whole_seconds_with_no_currency(world, at_synced):
+    got = stored(world["a_at"])
+    assert got[("at_tickets_opened", 3)] == (1, None) and got[("at_tickets_closed", 3)] == (1, None) and got[("at_tickets_closed", 4)] == (0, None)
+    assert got[("at_time_seconds", 3)] == (5400, None)
+    assert got[("at_resolution_goals_missed", 3)] == (1, None), "ticket 3 completed at 15:00 against a 12:00 goal"
+    assert got[("at_resolution_goals_missed", 4)] == (1, None), "ticket 4 is open and its goal passed before the sync's clock"
+    assert {c for _, c in got.values()} == {None}
+
+
+def test_migration_026_gives_the_four_keys_their_units_and_the_currency_check_refuses_a_currency_on_them(world, at_synced):
+    rows = {r[0]: (r[1], r[2]) for r in sql("select key, unit, kind from metric where key = any(%s)", (list(AT_KEYS),))}
+    assert rows == {"at_tickets_opened": ("count", "delta"), "at_tickets_closed": ("count", "delta"), "at_resolution_goals_missed": ("count", "delta"),
+                    "at_time_seconds": ("seconds", "delta")}
+    for key in AT_KEYS:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            sql("insert into metric_snapshot (tenant_id, connection_id, metric_key, observed_on, value_numeric, currency) values (%s, %s, %s, '2026-10-21', 1, 'USD')",
+                (world["a"], world["a_at"], key))
+
+
+def test_a_second_autotask_sync_rewrites_the_same_rows_and_a_restated_ticket_replaces_the_stored_figure(world, at_server, at_synced):
+    before = sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_at"],))[0][0]
+    at_server.add_ticket(500, dt(3, 11))
+    at_server.add_time(500, dt(3, 12), "1.0", ticket=500)
+    out = run(sync(world, "a_at", autotask(at_server)))
+    assert out.status == "succeeded"
+    assert sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_at"],))[0][0] == before
+    got = stored(world["a_at"])
+    assert got[("at_tickets_opened", 3)] == (2, None) and got[("at_time_seconds", 3)] == (9000, None)
+
+
+def test_a_refused_autotask_secret_is_a_failed_run_with_its_code_and_writes_nothing(world, at_server, at_synced):
+    before = sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_at"],))[0][0]
+    out = run(sync(world, "a_at", autotask(at_server, secret="nobody-issued-this"), start=date(2026, 12, 1), end=date(2026, 12, 3)))
+    assert out.status == "failed" and out.error_code == "auth_revoked" and out.rows_written == 0
+    for secret in (AT_SECRET, AT_CODE, "nobody-issued-this"):
+        assert secret not in (out.error_detail or "")
+    assert sql("select count(*) from metric_snapshot where connection_id = %s", (world["a_at"],))[0][0] == before
+
+
+def test_an_hour_with_almost_no_requests_left_is_a_failed_rate_limited_run_that_queried_nothing(world, at_server, at_synced):
+    at_server.used = 9950
+    at_server.requests.clear()
+    try:
+        out = run(sync(world, "a_at", autotask(at_server), start=date(2026, 12, 5), end=date(2026, 12, 7)))
+    finally:
+        at_server.used = 0
+    assert out.status == "failed" and out.error_code == "rate_limited" and out.rows_written == 0
+    assert not any("/Tickets/query" in r.path for r in at_server.requests)
+
+
 # ---------------------------------------------------------------- all
 
-def test_row_level_security_keeps_each_tenants_rows_apart(world, cw_synced):
+def test_row_level_security_keeps_each_tenants_rows_apart(world, cw_synced, at_synced):
     async def read(tenant):
         db = Database(DSN, max_size=2)
         await db.connect()
@@ -193,5 +273,5 @@ def test_row_level_security_keeps_each_tenants_rows_apart(world, cw_synced):
         finally:
             await db.close()
 
-    assert {str(r["connection_id"]) for r in run(read(world["a"]))} == {str(world["a_cw"])}
+    assert {str(r["connection_id"]) for r in run(read(world["a"]))} == {str(world["a_cw"]), str(world["a_at"])}
     assert run(read(world["b"])) == []

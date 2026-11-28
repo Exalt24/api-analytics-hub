@@ -100,3 +100,23 @@ ConnectWise's own developer documentation needs a login that refuses a free mail
 | [connectwise/connectwise-developer-portal-not-retrieved.txt](connectwise/connectwise-developer-portal-not-retrieved.txt) | what was tried at developer.connectwise.com and what it answered |
 | [connectwise/connectwise-manage-openapi-extract.txt](connectwise/connectwise-manage-openapi-extract.txt) | an extract of the Manage OpenAPI file as kept in the open source connectwise-rest client (github.com/covenanttechnologysolutions/connectwise-rest, generator/manage-json/manage.json) |
 | [connectwise/connectwise-pagination-the-lazy-administrator.txt](connectwise/connectwise-pagination-the-lazy-administrator.txt) | a third party blog post showing real headers (thelazyadministrator.com, 2024-06-06) |
+
+### Autotask
+
+Autotask's public developer help (autotask.net/help/developerhelp), read on 2026-11-29. The saved files hold each page's full text from its breadcrumb line down.
+
+| Saved file | Page |
+|---|---|
+| [autotask/autotask-rest-security-and-authentication.txt](autotask/autotask-rest-security-and-authentication.txt) | REST API security and authentication (the three headers, the 401, the tracking identifier) |
+| [autotask/autotask-rest-zone-information.txt](autotask/autotask-rest-zone-information.txt) | Querying user zone information via the REST API |
+| [autotask/autotask-api-zones.txt](autotask/autotask-api-zones.txt) | Autotask API zones and WSDL versions (every zone's API URL) |
+| [autotask/autotask-rest-thresholds-limits-latency.txt](autotask/autotask-rest-thresholds-limits-latency.txt) | REST API supportability, query thresholds, and latency (10,000 an hour, ThresholdInformation) |
+| [autotask/autotask-api-thread-limiting.txt](autotask/autotask-api-thread-limiting.txt) | API thread limiting (three per endpoint and tracking identifier, 429) |
+| [autotask/autotask-rest-best-practices.txt](autotask/autotask-rest-best-practices.txt) | REST API best practices (serialize, 500 records, picklists, webhooks) |
+| [autotask/autotask-rest-introduction-to-calls.txt](autotask/autotask-rest-introduction-to-calls.txt) | Introduction to REST API calls (UTC, the timestamp format, pagination) |
+| [autotask/autotask-rest-basic-query.txt](autotask/autotask-rest-basic-query.txt) | Making basic query calls (filter operators, grouping, the answer's shape) |
+| [autotask/autotask-rest-advanced-query-features.txt](autotask/autotask-rest-advanced-query-features.txt) | Advanced query features (IncludeFields, MaxRecords, paging) |
+| [autotask/autotask-rest-entityinformation.txt](autotask/autotask-rest-entityinformation.txt) | The entityInformation REST API call (fields and picklistValues) |
+| [autotask/autotask-understanding-picklists.txt](autotask/autotask-understanding-picklists.txt) | Understanding picklists |
+| [autotask/autotask-entity-tickets.txt](autotask/autotask-entity-tickets.txt) | The Tickets entity (every field) |
+| [autotask/autotask-entity-timeentries.txt](autotask/autotask-entity-timeentries.txt) | The TimeEntries entity (every field) |
