@@ -178,3 +178,41 @@ async def credit_subscription(conn: asyncpg.Connection, tenant_id: str, *, paid_
                            provider_ref=provider_ref, at=at,
                            lines=lines)
     return Outcome("applied", tx, paid_minor, currency, available + credits_minor)
+
+
+async def pay_invoice(conn: asyncpg.Connection, tenant_id: str, *, invoice_id: str, amount_minor: int, currency: str, from_wallet: bool, actor: str,
+                      at: datetime | None = None) -> Outcome:
+    """Book the payment of an invoice: revenue is earned. Paid from the wallet, the wallet is debited (and `insufficient_funds` writes nothing); paid by card or bank debit, the money
+    came through the provider, so the provider clearing account is debited and the wallet is not touched. One payment for each invoice, whatever route reaches it."""
+    _check_amount(amount_minor)
+    provider_ref = "invoice:%s" % invoice_id
+    key = "invoice-payment:%s" % invoice_id
+    req = ledger.request_hash("invoice_payment", invoice_id=invoice_id, amount_minor=amount_minor, currency=currency, from_wallet=from_wallet)
+    accounts, available = await ledger.lock_wallet(conn, tenant_id, currency)
+    seen = await _seen(conn, tenant_id, "invoice_payment", key, req, provider_ref)
+    if seen is not None:
+        return await _replayed(conn, tenant_id, seen)
+    if from_wallet and amount_minor > available:
+        return Outcome("insufficient_funds", None, amount_minor, currency, available, shortfall_minor=amount_minor - available)
+    source = "wallet" if from_wallet else "provider_clearing"
+    tx = await ledger.post(conn, tenant_id, kind="invoice_payment", currency=currency, accounts=accounts, key=key, req_hash=req, actor=actor, provider_ref=provider_ref, at=at,
+                           lines=[Line(source, amount_minor), Line("platform_revenue", -amount_minor)])
+    return Outcome("applied", tx, amount_minor, currency, available - amount_minor if from_wallet else available)
+
+
+async def refund_invoice(conn: asyncpg.Connection, tenant_id: str, *, invoice_id: str, amount_minor: int, currency: str, to_wallet: bool, ref: str, actor: str,
+                         at: datetime | None = None) -> Outcome:
+    """Give back part or all of what an invoice earned: revenue goes down, and the money goes to the wallet (an invoice paid from the wallet) or back out through the provider (a card
+    or a bank debit). `ref` names this refund (our refund id for the wallet, the provider's refunded total for a provider refund), so the same refund is booked once."""
+    _check_amount(amount_minor)
+    provider_ref = "invoice:%s:refund:%s" % (invoice_id, ref)
+    key = "invoice-refund:%s:%s" % (invoice_id, ref)
+    req = ledger.request_hash("invoice_refund", invoice_id=invoice_id, amount_minor=amount_minor, currency=currency, to_wallet=to_wallet, ref=ref)
+    accounts, available = await ledger.lock_wallet(conn, tenant_id, currency)
+    seen = await _seen(conn, tenant_id, "invoice_refund", key, req, provider_ref)
+    if seen is not None:
+        return await _replayed(conn, tenant_id, seen)
+    sink = "wallet" if to_wallet else "provider_clearing"
+    tx = await ledger.post(conn, tenant_id, kind="invoice_refund", currency=currency, accounts=accounts, key=key, req_hash=req, actor=actor, provider_ref=provider_ref, at=at,
+                           lines=[Line("platform_revenue", amount_minor), Line(sink, -amount_minor)])
+    return Outcome("applied", tx, amount_minor, currency, available + amount_minor if to_wallet else available)

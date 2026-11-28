@@ -113,7 +113,8 @@ class Refund:
 
 
 class PaymentProvider(Protocol):
-    async def create_payment_intent(self, *, amount_minor: int, currency: str, payment_method: str, metadata: dict[str, str], idempotency_key: str) -> PaymentIntent: ...
+    # a card payment passes the five keywords below; a bank debit (payment_method_type="us_bank_account") also passes `customer` and `mandate`, and only then
+    async def create_payment_intent(self, *, amount_minor: int, currency: str, payment_method: str, metadata: dict[str, str], idempotency_key: str, **bank_debit: str) -> PaymentIntent: ...
     async def retrieve_payment_intent(self, payment_intent_id: str) -> PaymentIntent: ...
     async def find_payment_intent(self, metadata_key: str, metadata_value: str) -> PaymentIntent | None: ...
     async def create_refund(self, *, payment_intent_id: str, amount_minor: int, idempotency_key: str, metadata: dict[str, str] | None = None) -> Refund: ...
@@ -125,9 +126,25 @@ def form_fields(params: dict[str, Any]) -> list[tuple[str, str]]:
     for key, value in params.items():
         if isinstance(value, dict):
             out.extend(("%s[%s]" % (key, sub), _text(v)) for sub, v in value.items())
+        elif isinstance(value, (list, tuple)):
+            out.extend(("%s[%d]" % (key, i), _text(v)) for i, v in enumerate(value))
         elif value is not None:
             out.append((key, _text(value)))
     return out
+
+
+def bank_debit_params(payment_method_type: str, currency: str, customer: str | None, mandate: str | None) -> dict[str, Any]:
+    """The extra PaymentIntent fields for a US bank account debit (ACH): `payment_method_types[0]=us_bank_account`, the `customer` the bank account is attached to and the `mandate`
+    the customer accepted. Nothing for a card. A debit is in US dollars, and without a customer and a mandate the provider refuses it, so it is refused here first."""
+    if payment_method_type == "card":
+        return {}
+    if payment_method_type != "us_bank_account":
+        raise ValueError("a payment method type is card or us_bank_account, got %r" % (payment_method_type,))
+    if currency.lower() != "usd":
+        raise ValueError("a bank debit is in US dollars, got %r" % (currency,))
+    if not customer or not mandate:
+        raise ValueError("a bank debit needs the customer the bank account belongs to and the mandate the customer accepted")
+    return {"payment_method_types": ["us_bank_account"], "customer": customer, "mandate": mandate}
 
 
 def _text(value: Any) -> str:
@@ -201,8 +218,10 @@ class StripeStyleClient:
 
     # ------------------------------------------------------------------------------------------------- the four calls
 
-    async def create_payment_intent(self, *, amount_minor: int, currency: str, payment_method: str, metadata: dict[str, str], idempotency_key: str) -> PaymentIntent:
+    async def create_payment_intent(self, *, amount_minor: int, currency: str, payment_method: str, metadata: dict[str, str], idempotency_key: str,
+                                    payment_method_type: str = "card", customer: str | None = None, mandate: str | None = None) -> PaymentIntent:
         params = {"amount": amount_minor, "currency": currency.lower(), "payment_method": payment_method, "confirm": True, "metadata": metadata}
+        params.update(bank_debit_params(payment_method_type, currency, customer, mandate))
         try:
             body, resp = await self._send("POST", "/v1/payment_intents", params=params, idempotency_key=idempotency_key)
         except OutcomeUnknown:

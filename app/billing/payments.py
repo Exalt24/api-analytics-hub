@@ -13,6 +13,12 @@ THE FLOW OF A TOP-UP, and where each protection sits:
      whichever comes first. Both end in wallet.top_up, which is keyed on the provider's payment id, so the second route finds the first's transaction and
      writes nothing.
 
+A BANK DEBIT (ACH, method_type "us_bank_account") takes the same road with one difference that matters: the provider answers `processing`, never `succeeded`, because the debit takes days to
+clear. The row is `processing`, nothing is credited, and the wallet (or the invoice the payment was made for) is settled only by the signed `payment_intent.succeeded` event. A return after
+processing arrives as `payment_intent.payment_failed`: `settle_failed` records a failed payment and queues a notice, and nothing was ever credited. A repeat of either event writes nothing.
+
+A payment made for an invoice (purpose "invoice") never credits the wallet: `settle_succeeded` hands it to billing/invoices.py, which books the invoice's payment instead.
+
 A refund is asked of the provider with a key derived from ours (`request_refund`), and the ledger moves only when the provider's `charge.refunded` event
 arrives (`apply_refund`), reversing exactly the amount newly refunded. Posting from the answer to the request as well would be a second route to the same
 reversal.
@@ -27,6 +33,7 @@ from typing import Any, Mapping
 
 import asyncpg
 
+from app.access.engine import engine_actor
 from app.db import Database
 
 from . import ledger, wallet
@@ -60,8 +67,15 @@ _ADVANCE = """case when status = 'succeeded' then status
                     else $NEW end"""
 
 
-async def _set_status(conn: asyncpg.Connection, payment_id: str, new: str, *, provider_payment_id: str | None = None, code: str | None = None,
-                      message: str | None = None) -> asyncpg.Record:
+async def _set_status(conn: asyncpg.Connection, payment_id: str, new: str, **kw: Any) -> asyncpg.Record:
+    """Record what the provider answered on the payment row. This is the engine's own bookkeeping, so it runs as the engine (engine_actor) even when the transaction was opened for a
+    portal user: a clinic may create its payment but may never edit one, and the status here follows the provider, not the user."""
+    async with engine_actor(conn):
+        return await _set_status_as_caller(conn, payment_id, new, **kw)
+
+
+async def _set_status_as_caller(conn: asyncpg.Connection, payment_id: str, new: str, *, provider_payment_id: str | None = None, code: str | None = None,
+                                message: str | None = None) -> asyncpg.Record:
     return await conn.fetchrow(
         """update billing_payment set status = %s, provider_payment_id = coalesce(provider_payment_id, $3),
                failure_code = case when status = 'succeeded' then failure_code else coalesce($4, failure_code) end,
@@ -70,19 +84,31 @@ async def _set_status(conn: asyncpg.Connection, payment_id: str, new: str, *, pr
          where id = $1::uuid returning *""" % _ADVANCE.replace("$NEW", "$2"), payment_id, new, provider_payment_id, code, message)
 
 
-async def start_topup(db: Database, provider: PaymentProvider, tenant_id: str, *, amount_minor: int, currency: str, payment_method: str, key: str) -> PaymentResult:
-    """Ask the provider for `amount_minor` with a payment method token (never a card number). Safe to call again with the same key."""
+async def start_topup(db: Database, provider: PaymentProvider, tenant_id: str, *, amount_minor: int, currency: str, payment_method: str, key: str,
+                      method_type: str = "card", customer: str | None = None, mandate: str | None = None, purpose: str = "topup", invoice_id: str | None = None,
+                      clinic_id: str | None = None) -> PaymentResult:
+    """Ask the provider for `amount_minor` with a payment method token (never a card number). Safe to call again with the same key. `method_type` is card, or us_bank_account for a
+    bank debit (US dollars only, with the `customer` the account belongs to and the `mandate` they accepted). `purpose` invoice (with its `invoice_id` and `clinic_id`) makes a payment that
+    pays an invoice and never credits the wallet."""
     if not isinstance(amount_minor, int) or isinstance(amount_minor, bool) or amount_minor <= 0:
         raise ValueError("an amount is a positive integer in minor units, got %r" % (amount_minor,))
-    req = ledger.request_hash("start_topup", amount_minor=amount_minor, currency=currency, payment_method=payment_method)
+    if method_type not in ("card", "us_bank_account"):
+        raise ValueError("a payment method type is card or us_bank_account, got %r" % (method_type,))
+    if method_type == "us_bank_account" and (currency.upper() != "USD" or not customer or not mandate):
+        raise ValueError("a bank debit is in USD and needs the customer and the mandate")
+    if purpose not in ("topup", "invoice") or (purpose == "invoice") != (invoice_id is not None):
+        raise ValueError("a payment for an invoice names the invoice, and only that kind does")
+    extra = {} if method_type == "card" and purpose == "topup" else {"method_type": method_type, "customer": customer, "mandate": mandate, "purpose": purpose, "invoice_id": invoice_id}
+    req = ledger.request_hash("start_topup", amount_minor=amount_minor, currency=currency, payment_method=payment_method, **extra)
     async with db.tenant(tenant_id) as conn:
         row = await conn.fetchrow("select * from billing_payment where tenant_id = $1::uuid and idempotency_key = $2", tenant_id, key)
         created_now = False
         if row is None:
             row = await conn.fetchrow(
-                """insert into billing_payment (tenant_id, idempotency_key, request_hash, provider_idempotency_key, amount_minor, currency, payment_method_ref)
-                   values ($1::uuid, $2, $3, $4, $5, $6, $7) on conflict (tenant_id, idempotency_key) do nothing returning *""",
-                tenant_id, key, req, "pay-%s" % uuid.uuid4(), amount_minor, currency, payment_method)
+                """insert into billing_payment (tenant_id, idempotency_key, request_hash, provider_idempotency_key, amount_minor, currency, payment_method_ref,
+                                                payment_method_type, customer_ref, mandate_ref, purpose, invoice_id, clinic_id)
+                   values ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::uuid, $13::uuid) on conflict (tenant_id, idempotency_key) do nothing returning *""",
+                tenant_id, key, req, "pay-%s" % uuid.uuid4(), amount_minor, currency, payment_method, method_type, customer, mandate, purpose, invoice_id, clinic_id)
             created_now = row is not None
             if row is None:       # a concurrent copy of this very request won the insert; read what it wrote
                 row = await conn.fetchrow("select * from billing_payment where tenant_id = $1::uuid and idempotency_key = $2", tenant_id, key)
@@ -91,10 +117,13 @@ async def start_topup(db: Database, provider: PaymentProvider, tenant_id: str, *
     # a row already answered (processing, succeeded, failed) is returned as it is; created and unknown are asked again, with the SAME provider key
     if row["status"] not in ("created", "unknown"):
         return _result(row, replayed=True)
+    metadata = {"tenant_id": tenant_id, "payment_id": str(row["id"])}
+    if invoice_id is not None:
+        metadata["invoice_id"] = invoice_id
     try:
         pi = await provider.create_payment_intent(
             amount_minor=amount_minor, currency=currency, payment_method=payment_method,
-            metadata={"tenant_id": tenant_id, "payment_id": str(row["id"])}, idempotency_key=row["provider_idempotency_key"])
+            metadata=metadata, idempotency_key=row["provider_idempotency_key"], **_bank_debit_kwargs(row))
     except CardDeclined as exc:
         async with db.tenant(tenant_id) as conn:
             updated = await _set_status(conn, str(row["id"]), "failed", provider_payment_id=exc.payment_intent_id, code=exc.decline_code or exc.code, message=exc.message)
@@ -117,6 +146,13 @@ async def start_topup(db: Database, provider: PaymentProvider, tenant_id: str, *
     async with db.tenant(tenant_id) as conn:
         updated = await _set_status(conn, str(row["id"]), "succeeded" if pi.succeeded else "processing", provider_payment_id=pi.id)
     return _result(updated, replayed=not created_now)
+
+
+def _bank_debit_kwargs(row: asyncpg.Record) -> dict[str, str]:
+    """The extra provider arguments of a bank debit, from the stored row; nothing for a card, so a card call is exactly what it always was."""
+    if row["payment_method_type"] == "card":
+        return {}
+    return {"payment_method_type": row["payment_method_type"], "customer": row["customer_ref"], "mandate": row["mandate_ref"]}
 
 
 async def notify(conn: asyncpg.Connection, tenant_id: str, kind: str, subject_ref: str | None, message: str) -> None:
@@ -149,6 +185,9 @@ async def settle_succeeded(conn: asyncpg.Connection, tenant_id: str, intent: Map
             tenant_id, "provider:%s" % intent_id, ledger.request_hash("from_event", provider_ref=intent_id), "none", amount, currency, intent_id)
     if row["amount_minor"] != amount or row["currency"].strip() != currency:
         raise PaymentMismatch("payment %s asked for %d %s but the provider reports %d %s" % (intent_id, row["amount_minor"], row["currency"].strip(), amount, currency))
+    if row["purpose"] == "invoice":
+        from . import invoices      # here and not at the top: invoices.py imports this module
+        return await invoices.settle_invoice_payment(conn, tenant_id, row, intent_id, at=at)
     outcome = await wallet.top_up(conn, tenant_id, amount_minor=amount, currency=currency, provider_ref=intent_id, at=at)
     await conn.execute(
         """update billing_payment set status = 'succeeded', provider_payment_id = $2, credited_minor = $3, failure_code = null, failure_message = null,
@@ -188,7 +227,7 @@ async def refresh_payment(db: Database, provider: PaymentProvider, tenant_id: st
     else:
         try:
             pi = await provider.create_payment_intent(
-                amount_minor=row["amount_minor"], currency=row["currency"].strip(), payment_method=row["payment_method_ref"] or "",
+                amount_minor=row["amount_minor"], currency=row["currency"].strip(), payment_method=row["payment_method_ref"] or "", **_bank_debit_kwargs(row),
                 metadata={"tenant_id": tenant_id, "payment_id": payment_id}, idempotency_key=row["provider_idempotency_key"])
         except CardDeclined as exc:
             async with db.tenant(tenant_id) as conn:
@@ -218,6 +257,8 @@ async def request_refund(db: Database, provider: PaymentProvider, tenant_id: str
         row = await conn.fetchrow("select * from billing_payment where id = $1::uuid", payment_id)
     if row is None or row["status"] != "succeeded" or not row["provider_payment_id"]:
         raise BillingError("only a succeeded payment can be refunded")
+    if row["purpose"] == "invoice":
+        raise BillingError("a payment made for an invoice is refunded through its invoice")
     if amount_minor > row["credited_minor"] - row["refunded_minor"]:
         raise BillingError("%d is more than the %d still refundable on this payment" % (amount_minor, row["credited_minor"] - row["refunded_minor"]))
     provider_key = "rf-" + hashlib.sha256(("%s|%s" % (tenant_id, key)).encode()).hexdigest()[:48]
@@ -239,6 +280,9 @@ async def apply_refund(conn: asyncpg.Connection, tenant_id: str, charge: Mapping
     currency = row["currency"].strip()
     if str(charge.get("currency", "")).upper() != currency:
         return "held", "the refund is in %s and the payment in %s" % (str(charge.get("currency", "")).upper(), currency)
+    if row["purpose"] == "invoice":
+        from . import invoices
+        return await invoices.apply_provider_refund(conn, tenant_id, row, total, at=at)
     if total > row["credited_minor"]:
         return "held", "refunded total %d is more than the %d credited" % (total, row["credited_minor"])
     delta = total - row["refunded_minor"]

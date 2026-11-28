@@ -18,6 +18,12 @@ FAILURES YOU CAN SCRIPT, each used up in order:
                                                replay of a saved answer can be lost the same way
     stripe.search_lag = True                   search finds nothing yet, as the page says it may
 The card tokens are invented: `pm_fake_ok` succeeds, `pm_fake_declined` is refused with card_declined / insufficient_funds. No card number appears anywhere.
+
+BANK DEBIT (ACH), written from Stripe's "ACH Direct Debit" page: a PaymentIntent with `payment_method_types[0]=us_bank_account` needs a `customer` and a `mandate` and is in `usd`; the
+intent does NOT succeed when it is confirmed, it goes to `processing` (the debit takes days to clear). The test then plays what the bank does later:
+    stripe.settle_ach(pi_id)                          processing -> succeeded (a charge exists now); returns the intent for the succeeded event
+    stripe.fail_ach(pi_id, code="insufficient_funds") processing -> requires_payment_method with a last_payment_error (an ACH return); returns the intent for payment_failed
+The token `pm_fake_ach_ok` is the bank account; anything else starting `pm_fake_ach` is refused as unknown to the customer. No account or routing number appears anywhere.
 """
 from __future__ import annotations
 
@@ -124,6 +130,7 @@ class FakeStripe:
             return httpx.Response(400, json={"error": {"type": "invalid_request_error", "message": "form encoded body expected"}})
         fields = parse_qsl(request.content.decode("ascii"), keep_blank_values=True)
         params = _unflatten(fields)
+        self.requests[-1]["params"] = params           # what the form said, for a test that checks the shape of a request
         fingerprint = json.dumps([path, params], sort_keys=True)
         if key is not None:
             saved = self._saved.get(key)
@@ -160,6 +167,9 @@ class FakeStripe:
         currency = params.get("currency", "")
         if currency != currency.lower() or len(currency) != 3:
             return 400, {"error": {"type": "invalid_request_error", "param": "currency", "message": "currency is a three letter lowercase code"}}
+        types = list((params.get("payment_method_types") or {}).values())
+        if "us_bank_account" in types:
+            return self._create_bank_debit(params, amount, currency)
         pi_id = self._next("pi")
         pi = {"id": pi_id, "object": "payment_intent", "amount": amount, "currency": currency, "metadata": params.get("metadata") or {},
               "payment_method": params.get("payment_method"), "status": "requires_payment_method", "last_payment_error": None, "latest_charge": None}
@@ -173,6 +183,41 @@ class FakeStripe:
             return 402, {"error": {**pi["last_payment_error"], "payment_intent": pi}}
         self.payment_intents[pi_id] = pi
         return 200, pi
+
+    def _create_bank_debit(self, params: dict[str, Any], amount: int, currency: str) -> tuple[int, dict[str, Any]]:
+        def bad(param: str, message: str) -> tuple[int, dict[str, Any]]:
+            return 400, {"error": {"type": "invalid_request_error", "param": param, "message": message}}
+        if currency != "usd":
+            return bad("currency", "ACH Direct Debit is available for payments in usd only")
+        if not params.get("customer"):
+            return bad("customer", "a us_bank_account payment method must be attached to a customer")
+        if not params.get("mandate"):
+            return bad("mandate", "a mandate is required to debit a bank account")
+        if params.get("payment_method") != "pm_fake_ach_ok":
+            return 400, {"error": {"type": "invalid_request_error", "code": "resource_missing", "param": "payment_method", "message": "No such PaymentMethod: %r" % params.get("payment_method")}}
+        pi_id = self._next("pi")
+        pi = {"id": pi_id, "object": "payment_intent", "amount": amount, "currency": currency, "metadata": params.get("metadata") or {}, "payment_method": params["payment_method"],
+              "payment_method_types": ["us_bank_account"], "customer": params["customer"], "mandate": params["mandate"],
+              "status": "processing" if params.get("confirm") == "true" else "requires_confirmation", "last_payment_error": None, "latest_charge": None}
+        self.payment_intents[pi_id] = pi
+        return 200, pi
+
+    def settle_ach(self, payment_intent_id: str) -> dict[str, Any]:
+        """The bank cleared the debit: a processing intent becomes succeeded and has a charge. Returns the intent, the object of the succeeded event."""
+        pi = self.payment_intents[payment_intent_id]
+        assert pi["status"] == "processing", "only a processing bank debit clears"
+        pi["status"] = "succeeded"
+        pi["latest_charge"] = self._next("ch")
+        self.charges.append({"id": pi["latest_charge"], "payment_intent": payment_intent_id, "amount": pi["amount"]})
+        return pi
+
+    def fail_ach(self, payment_intent_id: str, code: str = "insufficient_funds", message: str = "The bank account has insufficient funds.") -> dict[str, Any]:
+        """The bank returned the debit after it was processing. Returns the intent, the object of the payment_failed event."""
+        pi = self.payment_intents[payment_intent_id]
+        assert pi["status"] == "processing", "only a processing bank debit is returned"
+        pi["status"] = "requires_payment_method"
+        pi["last_payment_error"] = {"type": "invalid_request_error", "code": code, "message": message}
+        return pi
 
     def _create_refund(self, params: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         pi = self.payment_intents.get(params.get("payment_intent", ""))

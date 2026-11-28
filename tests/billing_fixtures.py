@@ -63,7 +63,8 @@ def sdk_provider_on(http: httpx.AsyncClient, *, retries: int = 2) -> stripe_sdk.
 
 
 def reset_billing_schema() -> None:
-    reset_schema(("012_billing.sql",))
+    # 022 to 024 are the access matrix, bank debits, invoices and commissions; every billing test runs on the schema with them applied, so what 012 alone did is proven unchanged by them
+    reset_schema(("012_billing.sql", "022_access_matrix.sql", "023_ach_invoices_commissions.sql", "024_fulfillment.sql"))
     with psycopg.connect(DSN, autocommit=True) as conn, conn.cursor() as cur:
         for p in PLANS:
             cur.execute("insert into billing_plan (code, name, currency, monthly_price_minor, included_credits_minor, provider_price_id) values (%s, %s, %s, %s, %s, %s)",

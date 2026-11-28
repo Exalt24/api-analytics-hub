@@ -53,3 +53,23 @@ class ReconciliationFailed(BillingError):
     def __init__(self, report):
         super().__init__("the books do not agree: %d discrepancy(ies)" % len(report.discrepancies))
         self.report = report
+
+
+class InvoiceError(BillingError):
+    """Base for the refusals of the invoice commands."""
+
+
+class InvalidInvoice(InvoiceError):
+    """An invoice that cannot be stored: no lines, a quantity or an amount that is not a positive integer, too many lines, a total that is too large."""
+
+
+class InvoiceNotFound(InvoiceError):
+    """No such invoice for this caller (another tenant's or another clinic's invoice answers exactly like one that does not exist)."""
+
+
+class InvoiceStateError(InvoiceError):
+    """The move is not legal from the invoice's status: finalizing a paid invoice, voiding a paid one, paying a draft, refunding an unpaid one."""
+
+
+class InvoicePaymentPending(InvoiceError):
+    """A payment for this invoice is already in flight (a bank debit takes days), so it cannot be paid again or voided until that payment ends."""

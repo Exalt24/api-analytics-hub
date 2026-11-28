@@ -28,7 +28,7 @@ import stripe
 
 from . import signature
 from .errors import WebhookRejected
-from .provider import (CardDeclined, OutcomeUnknown, PaymentIntent, ProviderUnavailable, Refund, RequestRejected, _intent)
+from .provider import (CardDeclined, OutcomeUnknown, PaymentIntent, ProviderUnavailable, Refund, RequestRejected, _intent, bank_debit_params)
 
 DEFAULT_MAX_NETWORK_RETRIES = 2
 
@@ -69,12 +69,17 @@ class StripeSdkProvider:
 
     # ------------------------------------------------------------------------------------------------- the four calls
 
-    async def create_payment_intent(self, *, amount_minor: int, currency: str, payment_method: str, metadata: dict[str, str], idempotency_key: str) -> PaymentIntent:
+    async def create_payment_intent(self, *, amount_minor: int, currency: str, payment_method: str, metadata: dict[str, str], idempotency_key: str,
+                                    payment_method_type: str = "card", customer: str | None = None, mandate: str | None = None) -> PaymentIntent:
         if not 0 < len(idempotency_key) <= 255:
             raise ValueError("an idempotency key is 1 to 255 characters")
         # allow_redirects "never": a confirmed intent with automatic payment methods otherwise wants a return_url, and a wallet top-up by card has no page to return to
         params = {"amount": amount_minor, "currency": currency.lower(), "payment_method": payment_method, "confirm": True, "metadata": metadata,
                   "automatic_payment_methods": {"enabled": True, "allow_redirects": "never"}}
+        if payment_method_type != "card":
+            # a bank debit names its payment method type, and Stripe refuses that together with automatic_payment_methods
+            del params["automatic_payment_methods"]
+            params.update(bank_debit_params(payment_method_type, currency, customer, mandate))
         try:
             pi = await self._client.v1.payment_intents.create_async(params=params, options={"idempotency_key": idempotency_key})
         except stripe.StripeError as exc:

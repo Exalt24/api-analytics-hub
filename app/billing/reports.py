@@ -27,6 +27,7 @@ from datetime import date, datetime, time, timedelta, timezone
 
 import asyncpg
 
+from app.access.engine import engine_actor
 from app.price_watch.money import format_minor
 
 from .errors import ReconciliationFailed
@@ -259,6 +260,10 @@ class ReconciliationReport:
 async def reconcile(conn: asyncpg.Connection, tenant_id: str) -> ReconciliationReport:
     found = [Discrepancy(r["problem"], r["ref"] or "", int(r["stored_minor"] or 0), int(r["derived_minor"] or 0))
              for r in await conn.fetch("select * from billing_discrepancies($1::uuid)", tenant_id)]
+    # invoices, their refunds and the commissions are kept under row level security by role, so the proof reads them as the engine (all rows of the tenant)
+    async with engine_actor(conn):
+        found += [Discrepancy(r["problem"], r["ref"] or "", int(r["stored_minor"] or 0), int(r["derived_minor"] or 0))
+                  for r in await conn.fetch("select * from billing_invoice_discrepancies($1::uuid)", tenant_id)]
     trial = {r["currency"].strip(): int(r["total"]) for r in await conn.fetch(
         "select currency, sum(amount_minor)::bigint as total from billing_entry where tenant_id = $1::uuid group by currency", tenant_id)}
     for currency, total in sorted(trial.items()):
