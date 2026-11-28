@@ -1,0 +1,12 @@
+dbt/.venv/
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+cube/.cube/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+# a local credentials file or key must never be committed
+*service-account*.json
+.secrets/
+.env

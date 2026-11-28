@@ -1,0 +1,20 @@
+Core:
+  - installed: 1.12.7
+  - latest:    1.12.7 - Up to date!
+
+
+20:56:50  Running with dbt=1.12.7
+20:56:50  Registered adapter: postgres=1.11.0
+20:56:51  Found 11 models, 66 data tests, 10 sources, 500 macros
+20:56:51  
+20:56:51  Concurrency: 4 threads (target='pg')
+20:56:51  
+20:56:51  3 of 3 START freshness of shop.orders .......................................... [RUN]
+20:56:51  2 of 3 START freshness of hub.metric_snapshot .................................. [RUN]
+20:56:51  1 of 3 START freshness of ads.ads_campaign_daily ............................... [RUN]
+20:56:51  1 of 3 PASS freshness of ads.ads_campaign_daily ................................ [PASS in 0.02s]
+20:56:51  3 of 3 PASS freshness of shop.orders ........................................... [PASS in 0.02s]
+20:56:51  2 of 3 PASS freshness of hub.metric_snapshot ................................... [PASS in 0.04s]
+20:56:51  
+20:56:51  Finished running 3 sources in 0 hours 0 minutes and 0.12 seconds (0.12s).
+20:56:51  Done.

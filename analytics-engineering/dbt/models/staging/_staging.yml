@@ -1,0 +1,126 @@
+version: 2
+
+models:
+  - name: stg_hub__daily_figures
+    description: >
+      The hub's daily figures with the source and metric names joined on. One row per source (connection), metric and day. Money stays in integer cents.
+      This is the reference every mart is reconciled to.
+    columns:
+      - name: connection_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: source('hub', 'platform_connection')
+                field: connection_id
+      - name: metric_key
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [orders, gross_sales, refunds, net_sales, customers, ad_spend, ad_impressions, ad_clicks, ad_purchases, ad_purchase_value, sessions, users, page_views, key_events]
+      - name: observed_on
+        data_tests: [not_null]
+      - name: value_numeric
+        data_tests: [not_null]
+    data_tests:
+      - analytics_hub.unique_combination:
+          arguments:
+            columns: [connection_id, metric_key, observed_on]
+
+  - name: stg_shop__orders
+    description: One row per order with its calendar day. financial_status says whether any of it was refunded.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_shop__customers')
+                field: customer_id
+      - name: financial_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [paid, partially_refunded, refunded]
+      - name: channel
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [paid_social, organic, email, direct]
+
+  - name: stg_shop__order_lines
+    description: One row per product on an order. line_gross_cents is quantity times the price paid.
+    columns:
+      - name: order_line_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_shop__orders')
+                field: order_id
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_shop__products')
+                field: product_id
+      - name: quantity
+        data_tests: [not_null]
+
+  - name: stg_shop__refunds
+    description: One row per refund, booked against one order on the day the money went back.
+    columns:
+      - name: refund_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_shop__orders')
+                field: order_id
+      - name: reason
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [damaged, not_as_described, changed_mind, late_delivery]
+
+  - name: stg_shop__products
+    description: One row per product.
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: category
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [apparel, home, outdoor, stationery]
+
+  - name: stg_shop__customers
+    description: One row per customer.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: acquisition_channel
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [paid_social, organic, email, direct]
+
+  - name: stg_ads__campaign_daily
+    description: One row per ad account, campaign and day the campaign delivered.
+    data_tests:
+      - analytics_hub.unique_combination:
+          arguments:
+            columns: [account_id, campaign_id, report_date]
+    columns:
+      - name: campaign_id
+        data_tests: [not_null]
+      - name: spend_cents
+        data_tests: [not_null]

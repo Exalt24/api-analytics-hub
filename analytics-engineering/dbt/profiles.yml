@@ -1,0 +1,33 @@
+# Used with `dbt --profiles-dir .` from this folder. No secret is stored here: the Postgres warehouse is a throwaway local container (user ae, password ae, port 5441),
+# and BigQuery signs in through a key file or the gcloud login, named by environment variables.
+ae:
+  target: pg
+  outputs:
+    pg:
+      type: postgres
+      host: "{{ env_var('AE_PG_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('AE_PG_PORT', '5441') | as_number }}"
+      user: ae
+      password: "{{ env_var('AE_PG_PASSWORD', 'ae') }}"
+      dbname: warehouse
+      schema: analytics
+      threads: 4
+    # the mutation check builds into its own schema so a deliberately broken run never touches the real marts
+    mut:
+      type: postgres
+      host: "{{ env_var('AE_PG_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('AE_PG_PORT', '5441') | as_number }}"
+      user: ae
+      password: "{{ env_var('AE_PG_PASSWORD', 'ae') }}"
+      dbname: warehouse
+      schema: ae_mut
+      threads: 4
+    bq:
+      type: bigquery
+      method: "{{ env_var('AE_BQ_METHOD', 'oauth') }}"
+      project: "{{ env_var('AE_BQ_PROJECT', 'unset') }}"
+      dataset: "{{ env_var('AE_BQ_DATASET', 'ae_analytics') }}"
+      keyfile: "{{ env_var('AE_BQ_KEYFILE', '') }}"
+      location: US
+      threads: 4
+      job_execution_timeout_seconds: 300

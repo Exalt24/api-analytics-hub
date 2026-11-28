@@ -1,0 +1,118 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: >
+      One row per calendar day from the first to the last day the hub has a figure for, no gaps. The date spine is the one piece of SQL that differs between
+      Postgres and BigQuery (macros/dialect.sql). Grain: one calendar day.
+    columns:
+      - name: date_day
+        description: The calendar day. Primary key.
+        data_tests: [unique, not_null]
+      - name: month_start
+        description: First day of the month, used to group by month.
+        data_tests: [not_null]
+      - name: iso_weekday
+        description: Monday 1 to Sunday 7 on both warehouses (BigQuery's own DAYOFWEEK runs Sunday 1 to Saturday 7).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7]
+                quote: false
+      - name: is_weekend
+        description: True for Saturday and Sunday.
+
+  - name: dim_product
+    description: >
+      One row per product with its sales to date taken from fct_orders. Grain: one product. net_revenue_rank_in_category ranks the product inside its category
+      by net revenue (refunds taken off), ties sharing a rank.
+    columns:
+      - name: product_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: category
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [apparel, home, outdoor, stationery]
+      - name: price_band
+        description: low under $25, mid under $50, otherwise high, from the list price.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [low, mid, high]
+      - name: net_cents
+        description: Gross minus refunds allocated to this product's lines, in cents.
+
+  - name: fct_orders
+    description: >
+      Grain: one order line (one product on one order). Money is integer cents. Refunds are booked against whole orders in the source, so each order's refunded
+      cents are spread over its lines in proportion to line value with a running share that adds back to the refund to the cent. is_first_order_for_customer
+      marks every line of a customer's first order; days_since_prior_order is empty for it.
+    columns:
+      - name: order_line_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests: [not_null]
+      - name: customer_id
+        data_tests: [not_null]
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_id
+      - name: order_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: financial_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [paid, partially_refunded, refunded]
+      - name: line_gross_cents
+        description: Quantity times the price paid, before refunds.
+        data_tests: [not_null]
+      - name: allocated_refund_cents
+        description: This line's share of its order's refunds, in cents.
+      - name: line_net_cents
+        description: Refund adjusted net revenue, gross minus the allocated refund.
+        data_tests: [not_null]
+      - name: customer_order_number
+        description: 1 for a customer's first order, 2 for the second, in time order.
+      - name: is_first_order_for_customer
+        description: True on every line of the customer's first order.
+
+  - name: fct_ad_spend_daily
+    description: >
+      Grain: one ad account, campaign and day, with no gaps (a day without delivery is a row of zeros and is_gap_filled is true). spend_7d_cents is the rolling sum
+      over the six days before plus the day itself; the ratios are empty, not an error, when the denominator is zero.
+    data_tests:
+      - analytics_hub.unique_combination:
+          arguments:
+            columns: [account_id, campaign_id, date_day]
+    columns:
+      - name: date_day
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: campaign_id
+        data_tests: [not_null]
+      - name: spend_cents
+        data_tests: [not_null]
+      - name: spend_7d_cents
+        description: Spend of this campaign over the last seven days including this one.
+        data_tests: [not_null]
+      - name: roas_7d
+        description: Purchase value divided by spend over the same seven days.
+      - name: spend_rank_in_account_day
+        description: 1 for the campaign that spent most in the account that day.

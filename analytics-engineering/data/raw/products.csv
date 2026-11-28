@@ -1,0 +1,13 @@
+product_id,product_name,category,list_price_cents,active
+P001,Everyday tee,apparel,2400,true
+P002,Heavy hoodie,apparel,6800,true
+P003,Canvas cap,apparel,2200,true
+P004,Insulated bottle,home,3200,true
+P005,Ceramic mug,home,1800,true
+P006,Desk lamp,home,5400,true
+P007,Trail pack,outdoor,7900,true
+P008,Camp stool,outdoor,4600,true
+P009,Rain shell,outdoor,9200,true
+P010,Notebook set,stationery,1500,true
+P011,Pen roll,stationery,2600,true
+P012,Wall planner,stationery,3100,true

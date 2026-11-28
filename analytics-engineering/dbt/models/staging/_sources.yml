@@ -1,0 +1,60 @@
+version: 2
+
+# Three sources, one raw schema (Postgres) or dataset (BigQuery). `hub` is the hub's own daily figures; `shop` and `ads` hold invented rows whose daily
+# totals equal the hub's figures (analytics-engineering/data/generate_raw.py). Every figure is sample data.
+sources:
+  - name: hub
+    description: The hub's own tables, copied from the CSV export of its Postgres database (one figure per source, metric and day; money in cents).
+    schema: "{{ var('raw_schema', 'ae_raw' if target.type == 'bigquery' else 'raw') }}"
+    freshness:
+      warn_after: {count: 36, period: hour}
+      error_after: {count: 3, period: day}
+    loaded_at_field: synced_at
+    tables:
+      - name: metric_snapshot
+        description: One row per connection, metric and day, as the hub stores it. This is the source of truth the marts are reconciled to.
+        columns:
+          - name: connection_id
+          - name: metric_key
+          - name: observed_on
+          - name: value_numeric
+          - name: currency
+          - name: synced_at
+      - name: metric
+        freshness: null
+        description: The metric registry (key, label, unit, kind).
+      - name: platform_connection
+        freshness: null
+        description: One row per connected source (store, ad account, website).
+      - name: sync_run
+        freshness: null
+        description: One row per sync run, with its status.
+
+  - name: shop
+    description: Invented order level rows for the sample store. Daily totals equal the hub's orders, gross sales, refunds and customers.
+    schema: "{{ var('raw_schema', 'ae_raw' if target.type == 'bigquery' else 'raw') }}"
+    freshness:
+      warn_after: {count: 36, period: hour}
+      error_after: {count: 3, period: day}
+    loaded_at_field: _loaded_at
+    tables:
+      - name: orders
+      - name: order_lines
+        freshness: null
+        description: One row per product on an order; unit_price_cents is the price paid.
+      - name: refunds
+        freshness: null
+      - name: products
+        freshness: null
+      - name: customers
+        freshness: null
+
+  - name: ads
+    description: Invented campaign rows for the sample ad account. Daily totals equal the hub's ad account figures.
+    schema: "{{ var('raw_schema', 'ae_raw' if target.type == 'bigquery' else 'raw') }}"
+    freshness:
+      warn_after: {count: 36, period: hour}
+      error_after: {count: 3, period: day}
+    loaded_at_field: _loaded_at
+    tables:
+      - name: ads_campaign_daily

@@ -1,0 +1,20 @@
+name: analytics_hub
+version: "1.0.0"
+config-version: 2
+profile: ae
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# var raw_schema (default raw on Postgres, ae_raw on BigQuery) names the schema or dataset the raw tables are read from; the mutation check points it at a tampered copy
+
+models:
+  analytics_hub:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
