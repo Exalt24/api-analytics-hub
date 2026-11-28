@@ -130,6 +130,19 @@ class Database:
                 yield conn
 
     @contextlib.asynccontextmanager
+    async def session(self, tenant_id: str, role: str, user_id: str) -> AsyncIterator[asyncpg.Connection]:
+        """A transaction scoped to one tenant AND one portal user: app.tenant_id, app.role and app.user_id, all transaction local, so the row level security of the ordering portal
+        (migrations/022_access_matrix.sql) filters by who is asking as well as by tenant. The three values come from the caller's credential (app/access/principal.py), never from a
+        request body. An empty role or user makes every portal policy answer nothing."""
+        if not tenant_id or not role or not user_id:
+            raise ValueError("tenant_id, role and user_id are all required")
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("select set_config('app.tenant_id', $1, true), set_config('app.role', $2, true), set_config('app.user_id', $3, true)",
+                                   str(tenant_id), str(role), str(user_id))
+                yield conn
+
+    @contextlib.asynccontextmanager
     async def unscoped(self) -> AsyncIterator[asyncpg.Connection]:
         """A transaction with NO tenant set, for control-plane work only.
 
