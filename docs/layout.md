@@ -11,6 +11,8 @@ app/
     ga4_fake.py      stand-in GA4 server on 127.0.0.1 for the tests and the sample
     meta.py          Meta Marketing API insights: daily spend, impressions, clicks, purchases in the ad account's currency
     meta_fake.py     stand-in Meta server, written from Meta's pages
+    meta_creatives.py       Meta ad creative reader: every ad's copy, links, video and preview across campaigns, paged and batched (docs/meta-creatives.md)
+    meta_creatives_fake.py  stand-in server for it, written from Meta's pages, with a small sample account
     gsc.py           Search Console searchAnalytics.query: daily figures and each day's top queries and pages
     gsc_fake.py      stand-in Search Console server, written from Google's pages
     common.py        what the five newest connectors share: integer minor units, half up rounding, the bounded retry loop
@@ -56,6 +58,7 @@ scripts/monthly_report.py      builds the monthly deck from stored snapshots: st
 scripts/sync_ga4.py, sync_meta.py, sync_gsc.py   pull one property's, ad account's or site's daily figures into the snapshots
 scripts/sync_google_ads.py, sync_tiktok.py, sync_square.py, sync_quickbooks.py, sync_shopmonkey.py   the same for a Google Ads customer, TikTok advertiser, Square location, QuickBooks company or Shopmonkey shop
 scripts/ad_spend_report.py   prints the ad spend view (text or JSON) for a tenant and a window
+scripts/meta_creatives.py   writes a CSV and a JSON file of an ad account's creatives (`--stand-in` for the local run)
 n8n/                 the monthly run: workflow JSON, its generator, and the script that runs it in a real n8n container
 scripts/make_carrier_snapshot.py, load_carrier_snapshot.py, measure_change_detection.py
 migrations/          001 core + RLS, 002 control plane, 003 API keys, 004 sync health, 005 change detection, 006 GA4 metric keys, 007 Meta metric keys and the money check, 008 search metrics and top rows, 009 report runs, 010 search query vectors (pgvector, HNSW, row level security), 011 price watch (catalogue, competitor listings and scans, shipping rates, report, review queue and audit trail), 012 billing (double-entry ledger, wallets, payments, subscriptions, webhook events; balanced, append only, forced row level security), 013 the metric keys of Google Ads, TikTok, Square, QuickBooks and Shopmonkey with the money check and the milli_count unit, 014 Business Profile metric keys, 015 report presets sync, 016 e-signatures (signing requests, signatures and a hash chained audit log, forced row level security, append only), 020 inventory planning (suppliers, variants, dated stock snapshots, order lines, promotions, the stored plan, alerts and their outbox; forced row level security, alerts append only), 021 purchase orders (orders, lines, events, late alerts; a trigger holds the legal status moves), 022 the four role access matrix (clinics, portal users, rep assignments, the 80 cell table and the functions every policy asks), 023 bank debit payments, invoices, their refunds and sales rep commissions, 024 partner fulfilment (orders as opaque references, the send and its dead letter, partner events, a hash chained audit log)
@@ -82,6 +85,7 @@ scripts/inventory_live_check.py, inventory_orders_run.py, inventory_dev_store.py
 scripts/inventory_workbook_check.py   the workbook recalculation check on a stored plan
 web/app/inventory/, web/components/InventoryPanel.tsx, PurchaseOrders.tsx, web/lib/inventory/   the Inventory page: exceptions, planning table, purchase order drafts as CSV, Excel or a Sheets paste, purchase orders, the workbook download, promotion form
 tests/test_inventory_model.py, test_inventory_reader.py, test_inventory_alerts.py, test_inventory_db.py, test_inventory_orders_*.py, test_inventory_workbook.py, inventory_fixtures.py, mutation_check_inventory.py   the inventory tests and their mutation harness
+tests/test_meta_creatives.py, test_meta_creatives_oracle.py, test_meta_creatives_fake_server.py, test_meta_creatives_cli.py, meta_creatives_world.py, mutation_check_creatives.py   the ad creative tests: examples, seeded random accounts against a brute force oracle, the stand-in's own rules, the CLI, and the mutation harness
 app/price_watch/     competitor price monitoring (docs/price-watch.md)
   scraper.py         Playwright reader for one competitor page, and the pure extraction over what it collects
   fake_site.py       eight invented competitor pages on 127.0.0.1, for the tests and the demo
