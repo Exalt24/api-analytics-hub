@@ -219,9 +219,14 @@ def test_the_table_refuses_a_bank_debit_that_is_not_usd_or_has_no_mandate_and_an
         with pytest.raises(psycopg.errors.CheckViolation):
             cur.execute(base, (t, "c" + uuid.uuid4().hex, "USD", "cus", None))
         cur.execute(base, (t, "d" + uuid.uuid4().hex, "USD", "cus", "mandate"))             # the control: a complete USD bank debit is accepted
-        with pytest.raises(psycopg.errors.CheckViolation):
-            cur.execute("insert into billing_payment (tenant_id, idempotency_key, request_hash, provider_idempotency_key, amount_minor, currency, purpose, credited_minor) "
-                        "values (%s, %s, 'h', 'p', 100, 'USD', 'invoice', 100)", (t, "e" + uuid.uuid4().hex))
+        cur.execute("insert into billing_invoice (tenant_id, clinic_id, currency, idempotency_key, request_hash, created_by) values (%s, %s, 'USD', %s, 'h', 'x') returning id",
+                    (t, world.a.clinics["c1"], "inv" + uuid.uuid4().hex))
+        invoice = cur.fetchone()[0]
+        insert = ("insert into billing_payment (tenant_id, idempotency_key, request_hash, provider_idempotency_key, amount_minor, currency, purpose, invoice_id, credited_minor) "
+                  "values (%s, %s, 'h', 'p', 100, 'USD', 'invoice', %s, %s)")
+        with pytest.raises(psycopg.errors.CheckViolation):                                    # a payment for an invoice that credits the wallet: only this rule is broken
+            cur.execute(insert, (t, "e" + uuid.uuid4().hex, invoice, 100))
+        cur.execute(insert, (t, "f" + uuid.uuid4().hex, invoice, 0))                          # the control: the same row crediting nothing
 
 
 # ---- a debit that cleared can be refunded like a card payment -----------------------------------------------------------------------------
